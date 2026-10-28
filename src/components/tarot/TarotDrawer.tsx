@@ -14,7 +14,10 @@ import {
   ChevronDown,
   ChevronUp,
   Search,
+  ZoomIn,
+  Maximize2,
 } from 'lucide-react';
+import { TAROT_CARD_BACK_URL } from '../../data/tarotData';
 import {
   NIGHT_CITY_TAROT_DECK,
   TAROT_SPREAD_CONFIGS,
@@ -58,6 +61,7 @@ export const TarotDrawer: React.FC<TarotDrawerProps> = ({ isOpen, onClose }) => 
   const [activeTab, setActiveTab] = useState<'reading' | 'compendium'>('reading');
   const [compendiumSearch, setCompendiumSearch] = useState<string>('');
   const [selectedCompendiumCard, setSelectedCompendiumCard] = useState<TarotCard | null>(NIGHT_CITY_TAROT_DECK[0]);
+  const [zoomedCard, setZoomedCard] = useState<TarotCard | null>(null);
 
   // AI Interpretation State
   const [isAiInterpreting, setIsAiInterpreting] = useState<boolean>(false);
@@ -389,71 +393,103 @@ ${
                           {positionLabel}
                         </div>
 
-                        {/* Card Rectangle with Holographic Border */}
+                        {/* Card Rectangle with Authentic Artwork / Card Back */}
                         <div
-                          className={`relative rounded-2xl border-2 transition-all duration-300 overflow-hidden min-h-[320px] flex flex-col justify-between p-4 shadow-xl ${
+                          className={`relative rounded-2xl border-2 transition-all duration-300 overflow-hidden flex flex-col justify-between shadow-2xl group/card ${
                             revealed
-                              ? `bg-gradient-to-b from-[#161622] via-[#0d0d12] to-[#161622] ${card.accentBorder} shadow-purple-950/40`
-                              : 'bg-gradient-to-br from-[#12121c] via-[#09090e] to-[#1a1228] border-zinc-800 hover:border-purple-500/60'
+                              ? `bg-[#0f0f15] ${card.accentBorder} shadow-purple-950/40`
+                              : 'bg-[#0f0f15] border-purple-900/50 hover:border-purple-500 shadow-lg'
                           }`}
                         >
                           {revealed ? (
                             <>
-                              {/* Top Card Bar */}
-                              <div className="flex items-start justify-between">
-                                <span className="font-mono text-sm font-extrabold text-zinc-100">
-                                  {card.number}
-                                </span>
-                                <span className="text-xl">{card.iconSymbol}</span>
-                                <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded font-bold uppercase ${
+                              {/* Header Card Bar */}
+                              <div className="flex items-center justify-between p-2.5 bg-[#14141d] border-b border-zinc-800/80 z-10">
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <span className="font-mono text-xs font-black text-purple-400 shrink-0">
+                                    [{card.number}]
+                                  </span>
+                                  <span className="font-mono text-xs font-bold text-zinc-100 truncate" title={card.namePt}>
+                                    {card.namePt}
+                                  </span>
+                                </div>
+                                <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded font-bold uppercase shrink-0 ${
                                   isReversed
-                                    ? 'bg-rose-950/80 text-rose-300 border border-rose-800/40'
-                                    : 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/40'
+                                    ? 'bg-rose-950/90 text-rose-300 border border-rose-700/60'
+                                    : 'bg-emerald-950/90 text-emerald-300 border border-emerald-700/60'
                                 }`}>
                                   {isReversed ? 'Invertida' : 'Direta'}
                                 </span>
                               </div>
 
-                              {/* Card Center Illustration Artwork */}
-                              <div className="my-auto py-3 text-center">
-                                <div
-                                  className="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center text-3xl shadow-inner border border-zinc-700/60"
-                                  style={{
-                                    background: `radial-gradient(circle, ${card.color}25 0%, #0d0d12 80%)`,
-                                  }}
-                                >
-                                  {card.iconSymbol}
+                              {/* Official Artwork Photo */}
+                              <div className="relative aspect-[756/1449] w-full overflow-hidden bg-black flex items-center justify-center group/img">
+                                <img
+                                  src={card.imageUrl}
+                                  alt={card.namePt}
+                                  className={`w-full h-full object-cover transition-transform duration-500 ${
+                                    isReversed ? 'rotate-180 group-hover/img:scale-105' : 'group-hover/img:scale-105'
+                                  }`}
+                                  loading="lazy"
+                                />
+
+                                {/* Subtle Inverted Indicator Overlay */}
+                                {isReversed && (
+                                  <div className="absolute top-2 right-2 px-2 py-0.5 rounded bg-black/80 backdrop-blur-sm text-[10px] font-mono text-rose-400 border border-rose-500/40">
+                                    🔄 Invertida
+                                  </div>
+                                )}
+
+                                {/* Hover Zoom Action Button */}
+                                <div className="absolute inset-0 bg-black/45 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center p-2">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setZoomedCard(card);
+                                    }}
+                                    className="px-3 py-1.5 rounded-xl bg-purple-600/95 hover:bg-purple-500 text-white font-mono text-xs font-bold flex items-center gap-1.5 shadow-xl transition transform scale-95 group-hover/img:scale-100"
+                                  >
+                                    <ZoomIn className="w-3.5 h-3.5" />
+                                    <span>Ver Carta HD</span>
+                                  </button>
                                 </div>
-                                <h4 className="text-sm font-bold text-zinc-100 font-mono mt-2 tracking-wide">
-                                  {card.namePt}
-                                </h4>
-                                <span className="text-[10px] text-zinc-400 font-mono block">
-                                  {card.nameEn}
-                                </span>
-                                <span className="text-[9px] text-purple-400 font-mono block mt-1 line-clamp-1 italic">
-                                  "{card.archetype}"
-                                </span>
                               </div>
 
                               {/* Bottom Meaning & Hook */}
-                              <div className="text-[11px] text-zinc-300 leading-tight space-y-1.5 pt-2 border-t border-zinc-800/80 font-sans">
-                                <p className="line-clamp-3">
+                              <div className="p-3 bg-[#111118] border-t border-zinc-800/80 space-y-1.5 text-[11px]">
+                                <div className="flex items-center justify-between text-[10px] font-mono text-zinc-400">
+                                  <span className="truncate italic">"{card.archetype}"</span>
+                                  <span className="text-zinc-500 shrink-0 ml-1">{card.nameEn}</span>
+                                </div>
+                                <p className="text-zinc-300 leading-tight line-clamp-3">
                                   {isReversed ? card.reversedMeaning : card.uprightMeaning}
                                 </p>
+                                <div className="text-[10px] font-mono text-red-400 pt-1 border-t border-zinc-800/60 line-clamp-1 flex items-center gap-1">
+                                  <Zap className="w-3 h-3 text-red-400 shrink-0" />
+                                  <span>RED: {card.officialRedEffect.summary}</span>
+                                </div>
                               </div>
                             </>
                           ) : (
-                            /* Card Back Cover (Misty's Deck Holographic Back) */
-                            <div className="h-full flex flex-col items-center justify-center text-center space-y-3 py-10">
-                              <div className="w-14 h-14 rounded-full border border-purple-500/40 flex items-center justify-center bg-purple-950/20 shadow-inner group-hover:scale-105 transition-transform">
-                                <Sparkles className="w-6 h-6 text-purple-400" />
+                            /* Card Back Cover (Official Night City Tarot Card Back Artwork) */
+                            <div className="relative aspect-[756/1449] w-full overflow-hidden bg-black flex flex-col justify-end">
+                              <img
+                                src={TAROT_CARD_BACK_URL}
+                                alt="Verso Oficial do Baralho"
+                                className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover/card:scale-105"
+                                loading="lazy"
+                              />
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-black/20" />
+                              <div className="relative z-10 p-4 text-center space-y-1">
+                                <span className="font-mono text-xs text-zinc-200 uppercase tracking-widest block font-bold drop-shadow-md">
+                                  Night City Tarot
+                                </span>
+                                <span className="text-[10px] font-mono text-purple-400 flex items-center justify-center gap-1 drop-shadow-md animate-pulse">
+                                  <Sparkles className="w-3 h-3" />
+                                  Clique para Revelar
+                                </span>
                               </div>
-                              <span className="font-mono text-xs text-zinc-400 uppercase tracking-widest block font-bold">
-                                Night City Tarot
-                              </span>
-                              <span className="text-[10px] font-mono text-purple-400 block animate-pulse">
-                                Clique para Revelar
-                              </span>
                             </div>
                           )}
                         </div>
@@ -580,89 +616,128 @@ ${
                   <button
                     key={card.id}
                     onClick={() => setSelectedCompendiumCard(card)}
-                    className={`p-3.5 rounded-xl border text-left transition flex flex-col justify-between space-y-2 ${
+                    className={`p-3 rounded-xl border text-left transition flex items-start gap-3 ${
                       selectedCompendiumCard?.id === card.id
                         ? 'bg-purple-950/40 border-purple-500 shadow-md shadow-purple-950/40'
                         : 'bg-[#121217] border-zinc-800 hover:border-zinc-700'
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="font-mono text-xs font-extrabold text-zinc-100">
-                        [{card.number}] {card.namePt}
-                      </span>
-                      <span className="text-base">{card.iconSymbol}</span>
+                    {/* Authentic Card Thumbnail */}
+                    <div className="relative w-12 sm:w-14 aspect-[756/1449] rounded-lg overflow-hidden border border-zinc-700/80 shrink-0 bg-black shadow group-hover:border-purple-400">
+                      <img
+                        src={card.imageUrl}
+                        alt={card.namePt}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
                     </div>
 
-                    <span className="text-[10px] font-mono text-purple-400 block line-clamp-1 italic">
-                      "{card.archetype}"
-                    </span>
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-xs font-extrabold text-zinc-100 truncate">
+                          [{card.number}] {card.namePt}
+                        </span>
+                        <span className="text-xs shrink-0 ml-1">{card.iconSymbol}</span>
+                      </div>
 
-                    <p className="text-[11px] text-zinc-400 line-clamp-2 leading-relaxed">
-                      {card.uprightMeaning}
-                    </p>
+                      <span className="text-[10px] font-mono text-purple-400 block line-clamp-1 italic">
+                        "{card.archetype}"
+                      </span>
 
-                    <div className="text-[9px] font-mono text-red-400 border-t border-zinc-800/80 pt-1.5 line-clamp-1">
-                      RED: {card.officialRedEffect.summary}
+                      <p className="text-[10px] text-zinc-400 line-clamp-2 leading-relaxed">
+                        {card.uprightMeaning}
+                      </p>
+
+                      <div className="text-[9px] font-mono text-red-400 border-t border-zinc-800/80 pt-1 line-clamp-1">
+                        RED: {card.officialRedEffect.summary}
+                      </div>
                     </div>
                   </button>
                 ))}
               </div>
 
-              {/* Selected Card Deep Inspector */}
+              {/* Selected Card Deep Inspector with Authentic High-Res Artwork */}
               {selectedCompendiumCard && (
-                <div className="p-6 rounded-2xl bg-[#121217] border border-purple-500/60 space-y-4 mt-6">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800 pb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="text-3xl">{selectedCompendiumCard.iconSymbol}</div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-mono uppercase px-2 py-0.5 rounded bg-purple-950 text-purple-300 font-bold border border-purple-800">
-                            Arcano {selectedCompendiumCard.number}
-                          </span>
-                          <span className="text-xs text-zinc-400 font-mono">
-                            {selectedCompendiumCard.nameEn}
-                          </span>
-                        </div>
-                        <h3 className="text-lg font-bold text-zinc-100 font-mono mt-0.5">
-                          {selectedCompendiumCard.namePt}
-                        </h3>
+                <div className="p-6 rounded-2xl bg-[#121217] border border-purple-500/60 space-y-6 mt-6">
+                  <div className="flex flex-col md:flex-row gap-6">
+                    {/* Authentic Card Art Full Display */}
+                    <div
+                      className="relative w-48 sm:w-56 aspect-[756/1449] rounded-2xl overflow-hidden border-2 border-purple-500 shadow-2xl shrink-0 mx-auto md:mx-0 group cursor-pointer bg-black"
+                      onClick={() => setZoomedCard(selectedCompendiumCard)}
+                      title="Clique para ver imagem ampliada em tela cheia"
+                    >
+                      <img
+                        src={selectedCompendiumCard.imageUrl}
+                        alt={selectedCompendiumCard.namePt}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <span className="px-3 py-1.5 rounded-xl bg-purple-600/90 text-white font-mono text-xs font-bold flex items-center gap-1.5 shadow-xl">
+                          <ZoomIn className="w-3.5 h-3.5" /> Ampliar HD
+                        </span>
                       </div>
                     </div>
-                    <span className="text-[11px] font-mono text-zinc-400 bg-zinc-900 px-3 py-1 rounded-lg border border-zinc-800">
-                      📍 {selectedCompendiumCard.graffitiLocation}
-                    </span>
-                  </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                    <div className="p-3.5 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-1">
-                      <span className="text-[10px] font-mono uppercase text-emerald-400 font-bold block">
-                        Significado Direto (Luz):
-                      </span>
-                      <p className="text-zinc-300 leading-relaxed">{selectedCompendiumCard.uprightMeaning}</p>
+                    {/* Detailed System Rules, Lore & Divination */}
+                    <div className="flex-1 space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800 pb-3">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-mono uppercase px-2 py-0.5 rounded bg-purple-950 text-purple-300 font-bold border border-purple-800">
+                              Arcano {selectedCompendiumCard.number}
+                            </span>
+                            <span className="text-xs text-zinc-400 font-mono">
+                              {selectedCompendiumCard.nameEn}
+                            </span>
+                          </div>
+                          <h3 className="text-xl font-bold text-zinc-100 font-mono mt-1 flex items-center gap-2">
+                            <span>{selectedCompendiumCard.namePt}</span>
+                            <span className="text-base">{selectedCompendiumCard.iconSymbol}</span>
+                          </h3>
+                          <span className="text-xs text-purple-400 font-mono block italic mt-0.5">
+                            "{selectedCompendiumCard.archetype}"
+                          </span>
+                        </div>
+                        <span className="text-[11px] font-mono text-zinc-400 bg-zinc-900 px-3 py-1 rounded-lg border border-zinc-800 self-start sm:self-auto">
+                          📍 {selectedCompendiumCard.graffitiLocation}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                        <div className="p-3.5 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-1">
+                          <span className="text-[10px] font-mono uppercase text-emerald-400 font-bold block">
+                            Significado Direto (Luz):
+                          </span>
+                          <p className="text-zinc-300 leading-relaxed">{selectedCompendiumCard.uprightMeaning}</p>
+                        </div>
+
+                        <div className="p-3.5 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-1">
+                          <span className="text-[10px] font-mono uppercase text-rose-400 font-bold block">
+                            Significado Invertido (Sombra):
+                          </span>
+                          <p className="text-zinc-300 leading-relaxed">{selectedCompendiumCard.reversedMeaning}</p>
+                        </div>
+                      </div>
+
+                      {/* Official RED Combat Effect */}
+                      <div className="p-4 rounded-xl bg-red-950/20 border border-red-900/50 space-y-1.5 text-xs">
+                        <span className="text-[10px] font-mono uppercase text-red-400 font-bold flex items-center gap-1.5">
+                          <Zap className="w-3.5 h-3.5" /> Efeito Oficial em Combate (Regra Triplo 6 no Dano):
+                        </span>
+                        <p className="text-zinc-200 leading-relaxed font-mono">{selectedCompendiumCard.officialRedEffect.fullText}</p>
+                        <span className="text-[10px] font-mono text-zinc-500 block">
+                          Ativação: Quando o atacante rola 3 ou mais dados '6' em um ataque bem-sucedido, puxe uma carta do baralho!
+                        </span>
+                      </div>
+
+                      {/* Narrative Hook */}
+                      <div className="p-4 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-1 text-xs">
+                        <span className="text-[10px] font-mono uppercase text-cyan-400 font-bold block">
+                          Gancho Dramático para a Mesa de RPG:
+                        </span>
+                        <p className="text-zinc-300 leading-relaxed">{selectedCompendiumCard.narrativeHook}</p>
+                      </div>
                     </div>
-
-                    <div className="p-3.5 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-1">
-                      <span className="text-[10px] font-mono uppercase text-rose-400 font-bold block">
-                        Significado Invertido (Sombra):
-                      </span>
-                      <p className="text-zinc-300 leading-relaxed">{selectedCompendiumCard.reversedMeaning}</p>
-                    </div>
-                  </div>
-
-                  {/* Official Effect */}
-                  <div className="p-4 rounded-xl bg-red-950/20 border border-red-900/50 space-y-1 text-xs">
-                    <span className="text-[10px] font-mono uppercase text-red-400 font-bold flex items-center gap-1.5">
-                      <Zap className="w-3.5 h-3.5" /> Efeito Oficial em Combate (Regra Triplo 6):
-                    </span>
-                    <p className="text-zinc-200 leading-relaxed font-mono">{selectedCompendiumCard.officialRedEffect.fullText}</p>
-                  </div>
-
-                  {/* Narrative Hook */}
-                  <div className="p-4 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-1 text-xs">
-                    <span className="text-[10px] font-mono uppercase text-cyan-400 font-bold block">
-                      Gancho Dramático para a Mesa de RPG:
-                    </span>
-                    <p className="text-zinc-300 leading-relaxed">{selectedCompendiumCard.narrativeHook}</p>
                   </div>
                 </div>
               )}
@@ -670,6 +745,59 @@ ${
           )}
         </div>
       </div>
+
+      {/* LIGHTBOX MODAL: FULL HIGH-RES CARD VIEWER */}
+      {zoomedCard && (
+        <div
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setZoomedCard(null)}
+        >
+          <div
+            className="relative max-w-lg w-full bg-[#121218] border-2 border-purple-500/80 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-[#161622]">
+              <div>
+                <span className="text-xs font-mono uppercase text-purple-400 font-bold block">
+                  Arcano {zoomedCard.number} &bull; {zoomedCard.nameEn}
+                </span>
+                <h3 className="text-base font-bold text-zinc-100 font-mono flex items-center gap-2">
+                  <span>{zoomedCard.namePt}</span>
+                  <span className="text-sm">{zoomedCard.iconSymbol}</span>
+                </h3>
+              </div>
+              <button
+                onClick={() => setZoomedCard(null)}
+                className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition"
+                aria-label="Fechar visualizador"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal High-Res Card Image */}
+            <div className="flex-1 overflow-y-auto p-4 flex items-center justify-center bg-black/80">
+              <img
+                src={zoomedCard.imageUrl}
+                alt={zoomedCard.namePt}
+                className="max-h-[62vh] object-contain rounded-xl shadow-2xl border border-zinc-800"
+              />
+            </div>
+
+            {/* Modal Footer Info */}
+            <div className="p-4 bg-[#0e0e14] border-t border-zinc-800 space-y-2 text-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-zinc-400 font-mono text-[11px]">
+                <span>📍 {zoomedCard.graffitiLocation}</span>
+                <span className="text-purple-400 italic">"{zoomedCard.archetype}"</span>
+              </div>
+              <div className="text-[11px] font-mono text-red-300 bg-red-950/40 p-2.5 rounded-xl border border-red-900/50">
+                <strong>Regra RED (Triplo 6):</strong> {zoomedCard.officialRedEffect.fullText}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

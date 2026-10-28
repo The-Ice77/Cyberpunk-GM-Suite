@@ -1,3 +1,5 @@
+export const TAROT_CARD_BACK_URL = '/tarot_cards/tarot-back.jpg';
+
 // ========================================================
 // COMPÊNDIO & REGRAS OFICIAIS DO TAROT DE NIGHT CITY
 // Baseado no DLC Oficial "Night City Tarot v1.2" (R. Talsorian Games & CD PROJEKT RED)
@@ -10,6 +12,7 @@ export interface TarotCard {
   numberInt: number;
   namePt: string;
   nameEn: string;
+  imageUrl: string;
   archetype: string;
   graffitiLocation: string;
   color: string;
@@ -49,6 +52,7 @@ export interface TarotReadingResult {
 export const NIGHT_CITY_TAROT_DECK: TarotCard[] = [
   {
     id: 'tarot-0-fool',
+    imageUrl: '/tarot_cards/tarot-0-fool.jpg',
     number: '0',
     numberInt: 0,
     namePt: 'O Louco',
@@ -70,6 +74,7 @@ export const NIGHT_CITY_TAROT_DECK: TarotCard[] = [
   },
   {
     id: 'tarot-1-magician',
+    imageUrl: '/tarot_cards/tarot-1-magician.jpg',
     number: 'I',
     numberInt: 1,
     namePt: 'O Mago',
@@ -90,6 +95,7 @@ export const NIGHT_CITY_TAROT_DECK: TarotCard[] = [
   },
   {
     id: 'tarot-2-high-priestess',
+    imageUrl: '/tarot_cards/tarot-2-high-priestess.jpg',
     number: 'II',
     numberInt: 2,
     namePt: 'A Alta Sacerdotisa',
@@ -111,6 +117,7 @@ export const NIGHT_CITY_TAROT_DECK: TarotCard[] = [
   },
   {
     id: 'tarot-3-empress',
+    imageUrl: '/tarot_cards/tarot-3-empress.jpg',
     number: 'III',
     numberInt: 3,
     namePt: 'A Imperatriz',
@@ -131,6 +138,7 @@ export const NIGHT_CITY_TAROT_DECK: TarotCard[] = [
   },
   {
     id: 'tarot-4-emperor',
+    imageUrl: '/tarot_cards/tarot-4-emperor.jpg',
     number: 'IV',
     numberInt: 4,
     namePt: 'O Imperador',
@@ -151,6 +159,7 @@ export const NIGHT_CITY_TAROT_DECK: TarotCard[] = [
   },
   {
     id: 'tarot-5-hierophant',
+    imageUrl: '/tarot_cards/tarot-5-hierophant.jpg',
     number: 'V',
     numberInt: 5,
     namePt: 'O Hierofante',
@@ -171,6 +180,7 @@ export const NIGHT_CITY_TAROT_DECK: TarotCard[] = [
   },
   {
     id: 'tarot-6-lovers',
+    imageUrl: '/tarot_cards/tarot-6-lovers.jpg',
     number: 'VI',
     numberInt: 6,
     namePt: 'Os Enamorados',
@@ -191,6 +201,7 @@ export const NIGHT_CITY_TAROT_DECK: TarotCard[] = [
   },
   {
     id: 'tarot-7-chariot',
+    imageUrl: '/tarot_cards/tarot-7-chariot.jpg',
     number: 'VII',
     numberInt: 7,
     namePt: 'O Carro',
@@ -211,6 +222,7 @@ export const NIGHT_CITY_TAROT_DECK: TarotCard[] = [
   },
   {
     id: 'tarot-8-strength',
+    imageUrl: '/tarot_cards/tarot-8-strength.jpg',
     number: 'VIII',
     numberInt: 8,
     namePt: 'A Força',
@@ -231,6 +243,7 @@ export const NIGHT_CITY_TAROT_DECK: TarotCard[] = [
   },
   {
     id: 'tarot-9-hermit',
+    imageUrl: '/tarot_cards/tarot-9-hermit.jpg',
     number: 'IX',
     numberInt: 9,
     namePt: 'O Eremita',
@@ -252,6 +265,7 @@ export const NIGHT_CITY_TAROT_DECK: TarotCard[] = [
   },
   {
     id: 'tarot-10-wheel-of-fortune',
+    imageUrl: '/tarot_cards/tarot-10-wheel-of-fortune.jpg',
     number: 'X',
     numberInt: 10,
     namePt: 'A Roda da Fortuna',
@@ -272,6 +286,7 @@ export const NIGHT_CITY_TAROT_DECK: TarotCard[] = [
   },
   {
     id: 'tarot-11-justice',
+    imageUrl: '/tarot_cards/tarot-11-justice.jpg',
     number: 'XI',
     numberInt: 11,
     namePt: 'A Justiça',
@@ -292,6 +307,7 @@ export const NIGHT_CITY_TAROT_DECK: TarotCard[] = [
   },
   {
     id: 'tarot-12-hanged-man',
+    imageUrl: '/tarot_cards/tarot-12-hanged-man.jpg',
     number: 'XII',
     numberInt: 12,
     namePt: 'O Enforcado',
@@ -313,6 +329,7 @@ export const NIGHT_CITY_TAROT_DECK: TarotCard[] = [
   },
   {
     id: 'tarot-13-death',
+    imageUrl: '/tarot_cards/tarot-13-death.jpg',
     number: 'XIII',
     numberInt: 13,
     namePt: 'A Morte',
@@ -333,6 +350,7 @@ export const NIGHT_CITY_TAROT_DECK: TarotCard[] = [
   },
   {
     id: 'tarot-14-temperance',
+    imageUrl: '/tarot_cards/tarot-14-temperance.jpg',
     number: 'XIV',
     numberInt: 14,
     namePt: 'A Temperança',
@@ -354,6 +372,7 @@ export const NIGHT_CITY_TAROT_DECK: TarotCard[] = [
   },
   {
     id: 'tarot-15-devil',
+    imageUrl: '/tarot_cards/tarot-15-devil.jpg',
     number: 'XV',
     numberInt: 15,
     namePt: 'O Diabo',
@@ -375,6 +394,7 @@ export const NIGHT_CITY_TAROT_DECK: TarotCard[] = [
   },
   {
     id: 'tarot-16-tower',
+    imageUrl: '/tarot_cards/tarot-16-tower.jpg',
     number: 'XVI',
     numberInt: 16,
     namePt: 'A Torre',
@@ -396,6 +416,7 @@ export const NIGHT_CITY_TAROT_DECK: TarotCard[] = [
   },
   {
     id: 'tarot-17-star',
+    imageUrl: '/tarot_cards/tarot-17-star.jpg',
     number: 'XVII',
     numberInt: 17,
     namePt: 'A Estrela',
@@ -417,6 +438,7 @@ export const NIGHT_CITY_TAROT_DECK: TarotCard[] = [
   },
   {
     id: 'tarot-18-moon',
+    imageUrl: '/tarot_cards/tarot-18-moon.jpg',
     number: 'XVIII',
     numberInt: 18,
     namePt: 'A Lua',
@@ -438,6 +460,7 @@ export const NIGHT_CITY_TAROT_DECK: TarotCard[] = [
   },
   {
     id: 'tarot-19-sun',
+    imageUrl: '/tarot_cards/tarot-19-sun.jpg',
     number: 'XIX',
     numberInt: 19,
     namePt: 'O Sol',
@@ -458,6 +481,7 @@ export const NIGHT_CITY_TAROT_DECK: TarotCard[] = [
   },
   {
     id: 'tarot-20-judgement',
+    imageUrl: '/tarot_cards/tarot-20-judgement.jpg',
     number: 'XX',
     numberInt: 20,
     namePt: 'O Julgamento',
@@ -479,6 +503,7 @@ export const NIGHT_CITY_TAROT_DECK: TarotCard[] = [
   },
   {
     id: 'tarot-21-world',
+    imageUrl: '/tarot_cards/tarot-21-world.jpg',
     number: 'XXI',
     numberInt: 21,
     namePt: 'O Mundo',
@@ -501,6 +526,7 @@ export const NIGHT_CITY_TAROT_DECK: TarotCard[] = [
   // BÔNUS: 4 ARCANOS DA CORTE DE PHANTOM LIBERTY (DOGTOWN)
   {
     id: 'tarot-king-cups',
+    imageUrl: '/tarot_cards/tarot-king-cups.jpg',
     number: 'KC',
     numberInt: 22,
     namePt: 'Rei de Copas',
@@ -521,6 +547,7 @@ export const NIGHT_CITY_TAROT_DECK: TarotCard[] = [
   },
   {
     id: 'tarot-king-swords',
+    imageUrl: '/tarot_cards/tarot-king-swords.jpg',
     number: 'KS',
     numberInt: 23,
     namePt: 'Rei de Espadas',
@@ -541,6 +568,7 @@ export const NIGHT_CITY_TAROT_DECK: TarotCard[] = [
   },
   {
     id: 'tarot-king-wands',
+    imageUrl: '/tarot_cards/tarot-king-wands.jpg',
     number: 'KW',
     numberInt: 24,
     namePt: 'Rei de Paus',
@@ -561,6 +589,7 @@ export const NIGHT_CITY_TAROT_DECK: TarotCard[] = [
   },
   {
     id: 'tarot-king-pentacles',
+    imageUrl: '/tarot_cards/tarot-king-pentacles.jpg',
     number: 'KP',
     numberInt: 25,
     namePt: 'Rei de Ouros',
