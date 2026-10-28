@@ -120,11 +120,11 @@ export const PeoplePage: React.FC = () => {
       const cp2020Template = gang.statsTemplate.CP2020;
 
       // RED Calculations
-      const hp = (tierStats.hp as any)[selectedTier] || (selectedTier === 'civilian' ? 25 : 35);
-      const cn = (tierStats.combatNumber as any)[selectedTier] || (selectedTier === 'civilian' ? 8 : 10);
-      const bodyStat = selectedTier === 'boss' ? 10 : selectedTier === 'miniboss' ? 8 : selectedTier === 'civilian' ? 4 : 7;
-      const willStat = selectedTier === 'boss' ? 9 : selectedTier === 'miniboss' ? 8 : selectedTier === 'civilian' ? 5 : 6;
-      const refStat = selectedTier === 'boss' ? 9 : selectedTier === 'miniboss' ? 8 : selectedTier === 'civilian' ? 5 : 7;
+      const hp = (tierStats.hp as any)[selectedTier] || (selectedTier === 'civilian' ? 25 : selectedTier === 'pet' ? 20 : 35);
+      const cn = (tierStats.combatNumber as any)[selectedTier] || (selectedTier === 'civilian' ? 8 : selectedTier === 'pet' ? 10 : 10);
+      const bodyStat = selectedTier === 'boss' ? 10 : selectedTier === 'miniboss' ? 8 : selectedTier === 'civilian' ? 4 : selectedTier === 'pet' ? 5 : 7;
+      const willStat = selectedTier === 'boss' ? 9 : selectedTier === 'miniboss' ? 8 : selectedTier === 'civilian' ? 5 : selectedTier === 'pet' ? 6 : 6;
+      const refStat = selectedTier === 'boss' ? 9 : selectedTier === 'miniboss' ? 8 : selectedTier === 'civilian' ? 5 : selectedTier === 'pet' ? 7 : 7;
       const dexStat = refStat;
 
       // 2020 Calculations
@@ -651,6 +651,7 @@ Táticas: ${generatedNPC.tactics}`;
 
   // Tier Counts
   const civilianCount = OFFICIAL_BESTIARY.filter(e => e.tier === 'civilian').length;
+  const petCount = OFFICIAL_BESTIARY.filter(e => e.tier === 'pet').length;
   const mookCount = OFFICIAL_BESTIARY.filter(e => e.tier === 'mook').length;
   const lieutenantCount = OFFICIAL_BESTIARY.filter(e => e.tier === 'lieutenant').length;
   const minibossCount = OFFICIAL_BESTIARY.filter(e => e.tier === 'miniboss').length;
@@ -771,7 +772,7 @@ Táticas: ${generatedNPC.tactics}`;
 
             {showCreationGuide && (
               <div className="p-5 border-t border-[#27272a] bg-[#0c0c10] space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
                   {SYSTEM_CREATION_GUIDELINES.map(g => (
                     <div
                       key={g.tier}
@@ -782,6 +783,8 @@ Táticas: ${generatedNPC.tactics}`;
                           <span className={`text-[10px] font-mono uppercase px-2 py-0.5 rounded font-bold ${
                             g.tier === 'civilian'
                               ? 'bg-emerald-950/70 text-emerald-300 border border-emerald-800/40'
+                              : g.tier === 'pet'
+                              ? 'bg-amber-950/70 text-amber-300 border border-amber-800/40'
                               : g.tier === 'mook'
                               ? 'bg-zinc-800 text-zinc-300 border border-zinc-700'
                               : g.tier === 'lieutenant'
@@ -790,7 +793,7 @@ Táticas: ${generatedNPC.tactics}`;
                               ? 'bg-purple-950/70 text-purple-300 border border-purple-800/40'
                               : 'bg-red-950/80 text-red-300 border border-red-700/60'
                           }`}>
-                            {g.tier.toUpperCase()}
+                            {g.tier === 'pet' ? '🐾 PET' : g.tier.toUpperCase()}
                           </span>
                         </div>
                         <h4 className="text-xs font-bold text-zinc-200">{g.name}</h4>
@@ -904,6 +907,16 @@ Táticas: ${generatedNPC.tactics}`;
                 <span>Civis / Everyday ({civilianCount})</span>
               </button>
               <button
+                onClick={() => setDossierTierFilter('pet')}
+                className={`px-2.5 py-1 rounded-lg border transition flex items-center gap-1.5 ${
+                  dossierTierFilter === 'pet'
+                    ? 'bg-amber-950/80 border-amber-600 text-amber-200 font-bold'
+                    : 'bg-[#0a0a0d] border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                }`}
+              >
+                <span>🐾 Pets & Biopets ({petCount})</span>
+              </button>
+              <button
                 onClick={() => setDossierTierFilter('mook')}
                 className={`px-2.5 py-1 rounded-lg border transition flex items-center gap-1.5 ${
                   dossierTierFilter === 'mook'
@@ -994,6 +1007,8 @@ Táticas: ${generatedNPC.tactics}`;
                             <span className={`text-[9px] font-mono uppercase px-1.5 py-0.5 rounded font-bold ${
                               enemy.tier === 'civilian'
                                 ? 'bg-emerald-950 text-emerald-300 border border-emerald-800/40'
+                                : enemy.tier === 'pet'
+                                ? 'bg-amber-950 text-amber-300 border border-amber-800/40'
                                 : enemy.tier === 'mook'
                                 ? 'bg-zinc-800 text-zinc-300 border border-zinc-700'
                                 : enemy.tier === 'lieutenant'
@@ -1002,7 +1017,7 @@ Táticas: ${generatedNPC.tactics}`;
                                 ? 'bg-purple-950 text-purple-300 border border-purple-800/40'
                                 : 'bg-red-950 text-red-300 border border-red-800/40'
                             }`}>
-                              {enemy.tier === 'civilian' ? 'Civil' : enemy.tier.toUpperCase()}
+                              {enemy.tier === 'pet' ? '🐾 Pet' : enemy.tier === 'civilian' ? 'Civil' : enemy.tier.toUpperCase()}
                             </span>
                             <span className="text-[10px] font-mono text-zinc-500">
                               {enemy.system}
@@ -1064,6 +1079,8 @@ Táticas: ${generatedNPC.tactics}`;
                         <span className={`text-[10px] font-mono uppercase px-2 py-0.5 rounded font-bold ${
                           selectedBestiaryEnemy.tier === 'civilian'
                             ? 'bg-emerald-950 text-emerald-300 border border-emerald-800/50'
+                            : selectedBestiaryEnemy.tier === 'pet'
+                            ? 'bg-amber-950 text-amber-300 border border-amber-800/50'
                             : selectedBestiaryEnemy.tier === 'mook'
                             ? 'bg-zinc-800 text-zinc-300 border border-zinc-700'
                             : selectedBestiaryEnemy.tier === 'lieutenant'
@@ -1072,7 +1089,7 @@ Táticas: ${generatedNPC.tactics}`;
                             ? 'bg-purple-950 text-purple-300 border border-purple-800/50'
                             : 'bg-red-950 text-red-300 border border-red-700/60'
                         }`}>
-                          {selectedBestiaryEnemy.tier === 'civilian' ? 'Civil / Everyday People' : selectedBestiaryEnemy.tier.toUpperCase()}
+                          {selectedBestiaryEnemy.tier === 'pet' ? '🐾 Pet / Animal Cibernético' : selectedBestiaryEnemy.tier === 'civilian' ? 'Civil / Everyday People' : selectedBestiaryEnemy.tier.toUpperCase()}
                         </span>
                         <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800/60 text-zinc-400 border border-zinc-700/60">
                           {selectedBestiaryEnemy.system}
@@ -1335,6 +1352,7 @@ Táticas: ${generatedNPC.tactics}`;
               <div className="grid grid-cols-2 gap-2 text-xs">
                 {[
                   { id: 'civilian', label: 'Cidadão / Civil', sub: 'Everyday People DLC' },
+                  { id: 'pet', label: 'Pet / Biopet', sub: 'Cães K-9 & Robodogs' },
                   { id: 'mook', label: 'Capanga / Mook', sub: 'Combate Comum' },
                   { id: 'lieutenant', label: 'Tenente / LT', sub: 'Especialista Tático' },
                   { id: 'miniboss', label: 'Mini-Chefe', sub: 'Blindado / Perigoso' },
