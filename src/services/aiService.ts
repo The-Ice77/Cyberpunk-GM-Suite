@@ -1,3 +1,10 @@
+import { HomebrewWeapon, HomebrewCyberware, HomebrewVehicle, HomebrewGearOrDrug } from '../data/homebrewData';
+import {
+  generateProceduralVehicle,
+  generateProceduralWeapon,
+  generateProceduralCyberware,
+  generateProceduralGearOrDrug,
+} from '../data/customForgeData';
 import { RULES_CODEX_DATABASE } from '../data/rulesCodexData';
 import { GANGS_LIST } from '../data/gangsData';
 import { strangeWeatherTable } from '../data/weatherData';
@@ -1395,4 +1402,264 @@ Retorne ESTRITAMENTE em formato JSON puro:
     coGMPlotTwist: `Uma reviravolta dramática ligada à carta ${options.cards[0]?.name || 'dominante'}: o patrocinador da missão oculta um vínculo sanguíneo ou corporativo direto com o alvo do trabalho.`,
     mistyClosingWords: '"As cartas mostram o que pode ser, choomba, não o que tem que ser. Mantenha os olhos bem abertos lá fora."',
   };
+}
+
+// 16. FORJA DE VEÍCULOS CUSTOMIZADOS COM IA
+export async function generateAICustomVehicleDetailed(options?: {
+  type?: string;
+  clanOrVibe?: string;
+  prompt?: string;
+  apiKey?: string;
+}): Promise<HomebrewVehicle> {
+  const proceduralFallback = generateProceduralVehicle({
+    type: options?.type,
+    clanOrVibe: options?.clanOrVibe,
+  });
+
+  const prompt = `Você é o "Cyberpunk Neural Co-GM", especialista nas regras oficiais de Veículos e Modificações Nômades de Cyberpunk RED (pp. 322-325 e Black Chrome).
+Crie um veículo customizado, visceral, detalhado e único para o universo Cyberpunk.
+
+PARÂMETROS:
+- Categoria / Chassi: ${options?.type || 'Qualquer tipo de veículo'}
+- Clã Nômade / Estilo: ${options?.clanOrVibe || 'Nômades dos Badlands ou Corredores de Rua'}
+- Instruções adicionais do Mestre: ${options?.prompt || 'Nenhuma'}
+
+Retorne ESTRITAMENTE em formato JSON puro:
+{
+  "name": "Nome e 'Alcunha' do Veículo",
+  "model": "Marca e Modelo (ex: Quadra Type-66 'Javelina' ou Thorton Mackinaw 'Beast')",
+  "manufacturer": "Fabricante (Quadra, Thorton, Archer, Rayfield, Chevillon, Mizutani, Brennan, Yaiba, Kaukaz, Villefort ou Militech)",
+  "type": "Motocicleta | Carro Compacto | Carro Esportivo de Luxo | Picape / Van | Caminhão Pesado / Blindado | Aerodino AV / Aeronave | Barco / Aquático",
+  "clanOrOrigin": "Clã ou Facção de Origem",
+  "sdp": 75,
+  "armorBodySP": 13,
+  "armorGlassSP": 10,
+  "seats": 4,
+  "cargoCapacityKg": 500,
+  "speedMph": 120,
+  "combatMove": 24,
+  "handlingDV": 13,
+  "engineAndFuel": "Descrição do motor e combustível (ex: V8 CHOOH2 Biturbo com nitro)",
+  "costEb": "35.000eb",
+  "weaponsMounted": [
+    {
+      "name": "Nome da arma montada",
+      "damage": "5d6",
+      "rof": 1,
+      "mountType": "Torreta Remota de Teto ou Grelha Frontal Oculta"
+    }
+  ],
+  "installedNomadMods": [
+    "Blindagem Reforçada (+5 SDP, +2 SP)",
+    "Pneus Antifuro de Composto Térmico",
+    "Jammer de Frequências e Rastreadores"
+  ],
+  "visualAesthetic": "Descrição visual rica da pintura, soldas, blindagem, neons e estilo",
+  "quirk": "Peculiaridade mecânica ou cacoete do veículo",
+  "notes": "Histórico do veículo ou quem foi seu dono anterior"
+}`;
+
+  const parsed = await callGeminiJSON<any>(prompt, { apiKey: options?.apiKey });
+  if (parsed && parsed.name) {
+    return {
+      id: `hb-veh-ai-${Date.now()}`,
+      name: parsed.name,
+      model: parsed.model || proceduralFallback.model,
+      manufacturer: parsed.manufacturer || proceduralFallback.manufacturer,
+      type: parsed.type || proceduralFallback.type,
+      clanOrOrigin: parsed.clanOrOrigin || proceduralFallback.clanOrOrigin,
+      sdp: Number(parsed.sdp) || proceduralFallback.sdp,
+      armorBodySP: Number(parsed.armorBodySP) || proceduralFallback.armorBodySP,
+      armorGlassSP: Number(parsed.armorGlassSP) || proceduralFallback.armorGlassSP,
+      seats: Number(parsed.seats) || proceduralFallback.seats,
+      cargoCapacityKg: Number(parsed.cargoCapacityKg) || proceduralFallback.cargoCapacityKg,
+      speedMph: Number(parsed.speedMph) || proceduralFallback.speedMph,
+      combatMove: Number(parsed.combatMove) || proceduralFallback.combatMove,
+      handlingDV: Number(parsed.handlingDV) || proceduralFallback.handlingDV,
+      engineAndFuel: parsed.engineAndFuel || proceduralFallback.engineAndFuel,
+      costEb: parsed.costEb || proceduralFallback.costEb,
+      weaponsMounted: parsed.weaponsMounted || proceduralFallback.weaponsMounted,
+      installedNomadMods: parsed.installedNomadMods || proceduralFallback.installedNomadMods,
+      visualAesthetic: parsed.visualAesthetic || proceduralFallback.visualAesthetic,
+      quirk: parsed.quirk || proceduralFallback.quirk,
+      notes: parsed.notes || proceduralFallback.notes,
+      author: 'Forja IA (Gemini Flash)',
+      createdAt: new Date().toLocaleDateString('pt-BR'),
+      isAiGenerated: true,
+    };
+  }
+
+  return proceduralFallback;
+}
+
+// 17. FORJA DE ARMAS CUSTOMIZADAS COM IA
+export async function generateAICustomWeaponDetailed(options?: {
+  category?: string;
+  manufacturer?: string;
+  quality?: string;
+  prompt?: string;
+  apiKey?: string;
+}): Promise<HomebrewWeapon> {
+  const proceduralFallback = generateProceduralWeapon({
+    category: options?.category,
+    manufacturer: options?.manufacturer,
+    quality: options?.quality,
+  });
+
+  const prompt = `Você é o "Cyberpunk Neural Co-GM", especialista no arsenal bélico oficial de Cyberpunk RED e Cyberpunk 2020.
+Crie uma arma de fogo ou arma branca customizada, icônica, detalhada e balanceada para o sistema.
+
+PARÂMETROS:
+- Categoria: ${options?.category || 'Qualquer tipo de arma'}
+- Fabricante: ${options?.manufacturer || 'Arasaka, Militech, Malorian, Tsunami, Rostović ou Kendachi'}
+- Nível de Qualidade: ${options?.quality || 'Padrão ou Excelente'}
+- Instruções adicionais: ${options?.prompt || 'Nenhuma'}
+
+Retorne ESTRITAMENTE em formato JSON puro:
+{
+  "name": "Nome e Alcunha da Arma",
+  "category": "Pistola Pesada | Pistola Muito Pesada | Submetralhadora | Fuzil de Assalto | Fuzil de Sniper | Espingarda Tática | Arma Branca Muito Pesada",
+  "damage": "Dano oficial (ex: 3d6, 4d6, 5d6)",
+  "rof": 1,
+  "shots": 8,
+  "cost": "1.000eb (Qualidade Excelente)",
+  "concealment": "Ocultável em Jaqueta (J) | Sob Sobretudo (L) | Não Ocultável (N)",
+  "reliability": "Pobre | Padrão | Muito Boa (MB) | Excelente (EX)",
+  "specialEffect": "Efeito especial ou mecânica única no combate",
+  "notes": "Detalhes de calibre, acessórios instalados, estética visual e peculiaridade",
+  "attachments": ["Acessório 1", "Acessório 2"],
+  "visualAesthetic": "Descrição visual do acabamento, carcaça e LEDs",
+  "quirk": "Peculiaridade ou cacoete da arma"
+}`;
+
+  const parsed = await callGeminiJSON<any>(prompt, { apiKey: options?.apiKey });
+  if (parsed && parsed.name) {
+    const notesCombined = `${parsed.notes || ''} Calibre: ${parsed.ammo || 'Padrão'}. Acessórios: ${parsed.attachments ? parsed.attachments.join(', ') : 'Padrão'}. Estética: ${parsed.visualAesthetic || ''}. Peculiaridade: ${parsed.quirk || ''}`.trim();
+    return {
+      id: `hb-w-ai-${Date.now()}`,
+      name: parsed.name,
+      category: parsed.category || proceduralFallback.category,
+      damage: parsed.damage || proceduralFallback.damage,
+      rof: Number(parsed.rof) || proceduralFallback.rof,
+      cost: parsed.cost || proceduralFallback.cost,
+      shots: Number(parsed.shots) || proceduralFallback.shots,
+      concealment: parsed.concealment || proceduralFallback.concealment,
+      reliability: parsed.reliability || proceduralFallback.reliability,
+      specialEffect: parsed.specialEffect || proceduralFallback.specialEffect,
+      notes: notesCombined || proceduralFallback.notes,
+      author: 'Forja IA (Gemini Flash)',
+      createdAt: new Date().toLocaleDateString('pt-BR'),
+    };
+  }
+
+  return proceduralFallback;
+}
+
+// 18. FORJA DE IMPLANTES & CIBERNÉTICOS COM IA
+export async function generateAICustomCyberwareDetailed(options?: {
+  type?: string;
+  manufacturer?: string;
+  prompt?: string;
+  apiKey?: string;
+}): Promise<HomebrewCyberware> {
+  const proceduralFallback = generateProceduralCyberware({
+    type: options?.type,
+    manufacturer: options?.manufacturer,
+  });
+
+  const prompt = `Você é o "Cyberpunk Neural Co-GM", cirurgião e especialista no sistema oficial de Ciberware de Cyberpunk RED (pp. 356-368 e Black Chrome).
+Crie um implante cibernético inovador, balanceado e visceral.
+
+PARÂMETROS:
+- Categoria de Cromo: ${options?.type || 'Neural, Óptico, Auditivo, Membros, Corporal ou Borgware'}
+- Fabricante: ${options?.manufacturer || 'Kiroshi, Dynalar, Zetatech, Raven, Biotechnica, Arasaka ou Militech'}
+- Instruções adicionais: ${options?.prompt || 'Nenhuma'}
+
+Retorne ESTRITAMENTE em formato JSON puro:
+{
+  "name": "Nome e Linha de Modelo do Implante",
+  "type": "Neural | Óptico | Auditivo | Membros | Corporal | Borgware",
+  "humanityLoss": "Perda de Humanidade (ex: 2d6 (7) ou 3d6 (10))",
+  "cost": "1.000eb",
+  "install": "Mall | Clínica | Hospital",
+  "description": "Descrição sensorial de funcionamento e lore da peça",
+  "mechanicalBonus": "Bônus mecânico exato e regras de uso na ficha",
+  "visualFinish": "Acabamento visual do implante no corpo",
+  "sideEffectOrGlitch": "Peculiaridade, glitch ou efeito colateral sutil"
+}`;
+
+  const parsed = await callGeminiJSON<any>(prompt, { apiKey: options?.apiKey });
+  if (parsed && parsed.name) {
+    const fullDesc = `${parsed.description || ''} Acabamento: ${parsed.visualFinish || 'Padrão'}. Glitch: ${parsed.sideEffectOrGlitch || 'Nenhum'}`.trim();
+    return {
+      id: `hb-c-ai-${Date.now()}`,
+      name: parsed.name,
+      type: parsed.type || proceduralFallback.type,
+      humanityLoss: parsed.humanityLoss || proceduralFallback.humanityLoss,
+      cost: parsed.cost || proceduralFallback.cost,
+      install: parsed.install || proceduralFallback.install,
+      description: fullDesc || proceduralFallback.description,
+      mechanicalBonus: parsed.mechanicalBonus || proceduralFallback.mechanicalBonus,
+      author: 'Forja IA (Gemini Flash)',
+      createdAt: new Date().toLocaleDateString('pt-BR'),
+    };
+  }
+
+  return proceduralFallback;
+}
+
+// 19. FORJA DE DROGAS, QUÍMICOS E EQUIPAMENTOS ESPECIAIS COM IA
+export async function generateAICustomGearOrDrugDetailed(options?: {
+  category?: string;
+  prompt?: string;
+  apiKey?: string;
+}): Promise<HomebrewGearOrDrug> {
+  const proceduralFallback = generateProceduralGearOrDrug({
+    category: options?.category,
+  });
+
+  const prompt = `Você é o "Cyberpunk Neural Co-GM", químico de rua e mestre em equipamentos e drogas de combate de Cyberpunk RED.
+Crie um item de rua, químico/droga sintética ou equipamento tático customizado para o universo Cyberpunk.
+
+PARÂMETROS:
+- Categoria: ${options?.category || 'Droga de Rua / Químico de Combate ou Equipamento Especial'}
+- Instruções adicionais: ${options?.prompt || 'Nenhuma'}
+
+Retorne ESTRITAMENTE em formato JSON puro:
+{
+  "name": "Nome do item ou químico",
+  "slang": "Gíria de rua",
+  "category": "Droga de Rua / Químico de Combate | Cyberdeck Customizado | Blindagem / Traje Tático | Equipamento Especial",
+  "costEb": "50eb / dose ou 500eb",
+  "deliveryMethodOrInterface": "Método de uso (inalador, ampola, conector neural, colete)",
+  "primaryEffect": "Bônus mecânico principal ou efeito de combate",
+  "secondaryOrCrashEffect": "Crash, ressaca ou efeito colateral",
+  "addictionDV": 13,
+  "duration": "Duração do efeito",
+  "visualAesthetic": "Descrição visual do frasco, cápsula ou equipamento",
+  "notes": "Histórico ou dica de uso"
+}`;
+
+  const parsed = await callGeminiJSON<any>(prompt, { apiKey: options?.apiKey });
+  if (parsed && parsed.name) {
+    return {
+      id: `hb-g-ai-${Date.now()}`,
+      name: parsed.name,
+      slang: parsed.slang || proceduralFallback.slang,
+      category: parsed.category || proceduralFallback.category,
+      costEb: parsed.costEb || proceduralFallback.costEb,
+      deliveryMethodOrInterface: parsed.deliveryMethodOrInterface || proceduralFallback.deliveryMethodOrInterface,
+      primaryEffect: parsed.primaryEffect || proceduralFallback.primaryEffect,
+      secondaryOrCrashEffect: parsed.secondaryOrCrashEffect || proceduralFallback.secondaryOrCrashEffect,
+      addictionDV: Number(parsed.addictionDV) || proceduralFallback.addictionDV,
+      duration: parsed.duration || proceduralFallback.duration,
+      visualAesthetic: parsed.visualAesthetic || proceduralFallback.visualAesthetic,
+      notes: parsed.notes || proceduralFallback.notes,
+      author: 'Forja IA (Gemini Flash)',
+      createdAt: new Date().toLocaleDateString('pt-BR'),
+      isAiGenerated: true,
+    };
+  }
+
+  return proceduralFallback;
 }

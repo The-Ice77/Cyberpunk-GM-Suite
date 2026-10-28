@@ -52,10 +52,57 @@ export interface HomebrewEnemy {
   createdAt: string;
 }
 
+export interface HomebrewVehicle {
+  id: string;
+  name: string;
+  model: string;
+  manufacturer: string;
+  type: string;
+  clanOrOrigin: string;
+  sdp: number;
+  armorBodySP: number;
+  armorGlassSP: number;
+  seats: number;
+  cargoCapacityKg: number;
+  speedMph: number;
+  combatMove: number;
+  handlingDV: number;
+  engineAndFuel: string;
+  costEb: string;
+  weaponsMounted: { name: string; damage: string; rof: number; mountType: string }[];
+  installedNomadMods: string[];
+  visualAesthetic: string;
+  quirk: string;
+  notes?: string;
+  author?: string;
+  createdAt: string;
+  isAiGenerated?: boolean;
+}
+
+export interface HomebrewGearOrDrug {
+  id: string;
+  name: string;
+  slang: string;
+  category: string;
+  costEb: string;
+  deliveryMethodOrInterface: string;
+  primaryEffect: string;
+  secondaryOrCrashEffect: string;
+  addictionDV?: number;
+  duration?: string;
+  visualAesthetic: string;
+  notes?: string;
+  author?: string;
+  createdAt: string;
+  isAiGenerated?: boolean;
+}
+
 export interface HomebrewDatabase {
   weapons: HomebrewWeapon[];
   cyberware: HomebrewCyberware[];
   enemies: HomebrewEnemy[];
+  vehicles?: HomebrewVehicle[];
+  gearOrDrugs?: HomebrewGearOrDrug[];
 }
 
 export const DEFAULT_HOMEBREW_DATA: HomebrewDatabase = {

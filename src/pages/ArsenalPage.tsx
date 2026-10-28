@@ -46,6 +46,7 @@ import { VEHICLES_LIST, NOMAD_UPGRADES_TABLE, VehicleModel, VehicleCategory } fr
 import { NPCTier, WeaponItem, CyberwareItem, ArmorItem, AttachmentItem, AmmunitionItem, GearItem, StreetDrugItem } from '../types/system';
 import { generateAICustomVehicle } from '../services/aiService';
 import { NightMarketSection } from '../components/world/NightMarketSection';
+import { CustomForgeSection } from '../components/arsenal/CustomForgeSection';
 
 type CatalogCategory =
   | 'all'
@@ -59,7 +60,7 @@ type CatalogCategory =
 
 export const ArsenalPage: React.FC = () => {
   const { system, isRed } = useSystem();
-  const [activeTab, setActiveTab] = useState<'catalog' | 'market' | 'loot' | 'garage'>('catalog');
+  const [activeTab, setActiveTab] = useState<'catalog' | 'forge' | 'market' | 'loot' | 'garage'>('catalog');
 
   // LOOT STATE
   const [lootSubTab, setLootSubTab] = useState<'harvest' | 'corpse' | 'stash'>('harvest');
@@ -320,7 +321,18 @@ export const ArsenalPage: React.FC = () => {
                 : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
-            Catálogo Geral de Equipamentos
+            Catálogo Geral
+          </button>
+          <button
+            onClick={() => setActiveTab('forge')}
+            className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
+              activeTab === 'forge'
+                ? 'bg-amber-600 text-white font-bold shadow-sm'
+                : 'text-amber-400 hover:text-amber-300'
+            }`}
+          >
+            <Zap className="w-3.5 h-3.5 text-amber-300" />
+            <span>⚡ Forja & Gerador Próprio</span>
           </button>
           <button
             onClick={() => setActiveTab('market')}
@@ -844,6 +856,13 @@ export const ArsenalPage: React.FC = () => {
             </div>
           )}
         </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* ABA: FORJA & GERADOR PRÓPRIO COM IA                      */}
+      {/* ======================================================== */}
+      {activeTab === 'forge' && (
+        <CustomForgeSection />
       )}
 
       {/* ======================================================== */}

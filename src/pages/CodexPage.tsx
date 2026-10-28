@@ -37,6 +37,8 @@ import {
   HomebrewEnemy,
 } from '../data/homebrewData';
 import { RuleEntry } from '../types/system';
+import { generateProceduralWeapon, generateProceduralCyberware } from '../data/customForgeData';
+import { generateAICustomWeaponDetailed, generateAICustomCyberwareDetailed } from '../services/aiService';
 
 type MainTab = 'official' | 'campaign' | 'homebrew';
 type OfficialSubTab = 'bestiary' | 'rules';
@@ -1126,10 +1128,60 @@ export const CodexPage: React.FC = () => {
               {/* Creator Form */}
               {isCreatingWeapon && (
                 <div className="p-5 rounded-2xl bg-[#121217] border border-cyan-500/40 space-y-4">
-                  <h3 className="text-xs font-bold text-cyan-400 font-mono uppercase flex items-center gap-2">
-                    <Crosshair className="w-4 h-4" />
-                    <span>Forja de Nova Arma Personalizada</span>
-                  </h3>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#27272a] pb-2">
+                    <h3 className="text-xs font-bold text-cyan-400 font-mono uppercase flex items-center gap-2">
+                      <Crosshair className="w-4 h-4" />
+                      <span>Forja de Nova Arma Personalizada</span>
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const w = generateProceduralWeapon();
+                          setNewWeapon({
+                            name: w.name,
+                            category: w.category,
+                            damage: w.damage,
+                            rof: w.rof,
+                            cost: w.cost,
+                            shots: w.shots,
+                            concealment: w.concealment,
+                            reliability: w.reliability,
+                            specialEffect: w.specialEffect,
+                            notes: w.notes,
+                          });
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-mono text-[10px] flex items-center gap-1 transition"
+                        title="Preencher com rolagem procedural rápida"
+                      >
+                        <Sparkles className="w-3 h-3 text-amber-400" />
+                        <span>🎲 Preencher Rápido</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const w = await generateAICustomWeaponDetailed();
+                          setNewWeapon({
+                            name: w.name,
+                            category: w.category,
+                            damage: w.damage,
+                            rof: w.rof,
+                            cost: w.cost,
+                            shots: w.shots,
+                            concealment: w.concealment,
+                            reliability: w.reliability,
+                            specialEffect: w.specialEffect,
+                            notes: w.notes,
+                          });
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 text-white font-mono text-[10px] flex items-center gap-1 transition"
+                        title="Preencher usando a IA do Gemini"
+                      >
+                        <Zap className="w-3 h-3 text-cyan-200" />
+                        <span>⚡ Preencher com IA</span>
+                      </button>
+                    </div>
+                  </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
@@ -1317,10 +1369,54 @@ export const CodexPage: React.FC = () => {
               {/* Creator Form */}
               {isCreatingCyberware && (
                 <div className="p-5 rounded-2xl bg-[#121217] border border-cyan-500/40 space-y-4">
-                  <h3 className="text-xs font-bold text-cyan-400 font-mono uppercase flex items-center gap-2">
-                    <Cpu className="w-4 h-4" />
-                    <span>Forja de Novo Ciberware</span>
-                  </h3>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#27272a] pb-2">
+                    <h3 className="text-xs font-bold text-cyan-400 font-mono uppercase flex items-center gap-2">
+                      <Cpu className="w-4 h-4" />
+                      <span>Forja de Novo Ciberware</span>
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const c = generateProceduralCyberware();
+                          setNewCyberware({
+                            name: c.name,
+                            type: c.type,
+                            humanityLoss: c.humanityLoss,
+                            cost: c.cost,
+                            install: c.install,
+                            description: c.description,
+                            mechanicalBonus: c.mechanicalBonus,
+                          });
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-mono text-[10px] flex items-center gap-1 transition"
+                        title="Preencher com rolagem procedural rápida"
+                      >
+                        <Sparkles className="w-3 h-3 text-amber-400" />
+                        <span>🎲 Preencher Rápido</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const c = await generateAICustomCyberwareDetailed();
+                          setNewCyberware({
+                            name: c.name,
+                            type: c.type,
+                            humanityLoss: c.humanityLoss,
+                            cost: c.cost,
+                            install: c.install,
+                            description: c.description,
+                            mechanicalBonus: c.mechanicalBonus,
+                          });
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 text-white font-mono text-[10px] flex items-center gap-1 transition"
+                        title="Preencher usando a IA do Gemini"
+                      >
+                        <Zap className="w-3 h-3 text-cyan-200" />
+                        <span>⚡ Preencher com IA</span>
+                      </button>
+                    </div>
+                  </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
