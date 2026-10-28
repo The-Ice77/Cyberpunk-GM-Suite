@@ -36,6 +36,14 @@ import {
 import { TarotCard, TarotSpreadType, DrawnCard } from '../data/tarotData';
 import { NPCSheet, NPCTier, GameSystem } from '../types/system';
 import { EnemySquad, SquadGenerationOptions, generateEnemySquadOffline } from '../data/squadGeneratorData';
+import {
+  TacticalStructure,
+  StructureCategory,
+  StructureScale,
+  StructureThreatLevel,
+  generateProceduralStructure,
+} from '../data/structureGeneratorData';
+
 
 export const DEFAULT_USER_API_KEY = '';
 
@@ -1989,4 +1997,112 @@ Retorne estritamente um JSON no seguinte formato:
     ],
     tacticalAdvice: 'Use poças e reflexos para criar oportunidades de emboscada ou perda de tração para veículos.',
   };
+}
+
+
+// ========================================================
+// GENERATE TACTICAL INFILTRATION STRUCTURE WITH AI
+// ========================================================
+export async function generateAITacticalStructure(options: {
+  category: StructureCategory;
+  scale: StructureScale;
+  threatLevel: StructureThreatLevel;
+  faction?: string;
+  district?: string;
+  customPrompt?: string;
+  apiKey?: string;
+}): Promise<TacticalStructure> {
+  const base = generateProceduralStructure(options);
+
+  const nonce = `[STRUCT-${Date.now().toString(36)}-${Math.floor(Math.random() * 99999)}]`;
+  const prompt = `Você é o "Cyberpunk Architecture & Infiltration Co-GM", especialista em design de fases e fortalezas de Night City 2045 (Cyberpunk RED e 2020).
+Crie uma ESTRUTURA / BASE / EDIFÍCIO completo, detalhado e atmosférico para infiltração tática ou tiroteio.
+${nonce}
+
+INFORMAÇÕES DA ESTRUTURA:
+- Categoria: ${options.category} (${base.name})
+- Facção Controladora: ${base.faction}
+- Distrito: ${base.district}
+- Escala: ${options.scale} (${base.rooms.length} cômodos/salas)
+- Nível de Ameaça: ${options.threatLevel}
+- Instruções Específicas do Mestre: ${options.customPrompt || 'Crie um complexo com arquitetura tática marcante e múltiplos pontos de invasão'}
+
+SALAS GERADAS NA PLANTA BASE:
+${base.rooms.map(r => `Sala ${r.roomNumber}: ${r.name} (${r.floor}) - Propósito: ${r.purpose}`).join('\n')}
+
+Retorne estritamente um JSON no seguinte formato:
+{
+  "name": "Nome temático marcante do local (ex: Refinaria Clandestina Maelstrom 'O Moedor', Bunker Subterrâneo Arasaka 'Kitsune-4', Boate 'Neon Velvet')",
+  "facadeDescription": "Descrição cinematográfica da fachada exterior, materiais, iluminação neon e câmeras visíveis da calçada (2 a 3 frases)",
+  "atmosphereDescription": "Descrição sensorial do interior (cheiro de ozônio/químicos, música, ruído de máquinas, temperatura) (2 frases)",
+  "perimeterSecurity": "Defesas externas e perimétricas (grades eletrificadas, holofotes, câmeras CFTV, cães de guarda) (2 frases)",
+  "infiltrationWeakness": "Uma rota alternativa ou brecha tática que os Edgerunners podem explorar (duto de ventilação, disjuntor vulnerável, janela frouxa) com teste de perícia e DV recomendado",
+  "netarchSummary": "Resumo da arquitetura digital da rede do prédio (quantos pisos na Net, Black ICE e onde ficam os pontos de acesso)",
+  "rooms": [
+    ${base.rooms.map(r => `{
+      "roomNumber": ${r.roomNumber},
+      "name": "${r.name}",
+      "floor": "${r.floor}",
+      "purpose": "Finalidade e função prática desta sala",
+      "sensoryDescription": "Descrição imersiva de como a sala se parece com iluminação, sons e coberturas físicas",
+      "lighting": "${r.lighting}",
+      "cover": "${r.cover}",
+      "securityLevel": "Dispositivos de segurança presentes nesta sala",
+      "interactionTitle": "Nome de um elemento interativo tático na sala (terminal, cofre, disjuntor, válvula, janela)",
+      "interactionType": "hack",
+      "interactionSkill": "Perícia sugerida (ex: Eletrônica / Segurança, Interface, Básico Técnico, Atletismo)",
+      "interactionDV": ${options.threatLevel === 'extreme' ? 21 : options.threatLevel === 'high' ? 17 : options.threatLevel === 'medium' ? 15 : 13},
+      "interactionDesc": "Descrição do que o elemento faz e como os jogadores podem usá-lo",
+      "lootText": "Item especial ou créditos que podem ser encontrados se revistarem a sala"
+    }`).join(',\n    ')}
+  ]
+}`;
+
+  try {
+    const parsed = await callGeminiJSON<any>(prompt, { apiKey: options.apiKey });
+    if (parsed && parsed.name && Array.isArray(parsed.rooms)) {
+      const mergedRooms = base.rooms.map((br, idx) => {
+        const ar = parsed.rooms[idx];
+        if (!ar) return br;
+        return {
+          ...br,
+          name: ar.name || br.name,
+          floor: ar.floor || br.floor,
+          purpose: ar.purpose || br.purpose,
+          sensoryDescription: ar.sensoryDescription || br.sensoryDescription,
+          lighting: (ar.lighting === 'Iluminado' || ar.lighting === 'Penumbra / Neon' || ar.lighting === 'Escuridão Total') ? ar.lighting : br.lighting,
+          cover: (ar.cover === 'Nenhuma' || ar.cover === 'Média (SP 15)' || ar.cover === 'Pesada (SP 25)') ? ar.cover : br.cover,
+          securityLevel: ar.securityLevel || br.securityLevel,
+          lootText: ar.lootText || br.lootText,
+          interactionPoints: ar.interactionTitle ? [
+            {
+              id: `pt-${br.roomNumber}-${Date.now()}`,
+              title: ar.interactionTitle,
+              type: ar.interactionType || 'hack',
+              dv: ar.interactionDV || 15,
+              skillRequired: ar.interactionSkill || 'Eletrônica / Segurança',
+              description: ar.interactionDesc || 'Ponto de interação tático.',
+              effect: ar.interactionDesc || 'Interação concluída com sucesso.',
+              isCompleted: false,
+            }
+          ] : br.interactionPoints,
+        };
+      });
+
+      return {
+        ...base,
+        name: parsed.name,
+        facadeDescription: parsed.facadeDescription || base.facadeDescription,
+        atmosphereDescription: parsed.atmosphereDescription || base.atmosphereDescription,
+        perimeterSecurity: parsed.perimeterSecurity || base.perimeterSecurity,
+        infiltrationWeakness: parsed.infiltrationWeakness || base.infiltrationWeakness,
+        netarchSummary: parsed.netarchSummary || base.netarchSummary,
+        rooms: mergedRooms,
+        isAiGenerated: true,
+      };
+    }
+  } catch (err) {
+    console.warn('AI tactical structure fallback to procedural:', err);
+  }
+  return base;
 }

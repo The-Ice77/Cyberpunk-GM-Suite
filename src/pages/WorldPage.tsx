@@ -57,6 +57,7 @@ import { generateAIExtendedEncounter, generateAIScreamsheet, generateAICustomBar
 import { NightMarketSection } from '../components/world/NightMarketSection';
 import { SafeHousesSection } from '../components/world/SafeHousesSection';
 import { StreetFoodDrinksSection } from '../components/world/StreetFoodDrinksSection';
+import { StructureGeneratorSection } from '../components/world/StructureGeneratorSection';
 import {
   SUBWAY_ENCOUNTERS_TABLE,
   HOUSES_OF_WORSHIP_TABLE,
@@ -221,7 +222,8 @@ export type WorldTab =
   | 'encounters'
   | 'screamsheets'
   | 'dating'
-  | 'venues';
+  | 'venues'
+  | 'structures';
 
 export const WorldPage: React.FC = () => {
   const { system } = useSystem();
@@ -1073,6 +1075,17 @@ export const WorldPage: React.FC = () => {
           >
             <Heart className="w-3.5 h-3.5 text-pink-300" />
             <span>Digital Dating</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('structures')}
+            className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
+              activeTab === 'structures'
+                ? 'bg-rose-600 text-white font-bold shadow-sm'
+                : 'text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            <Building2 className="w-3.5 h-3.5 text-rose-300" />
+            <span>Estruturas & Bases</span>
           </button>
         </div>
       </div>
@@ -4063,6 +4076,11 @@ export const WorldPage: React.FC = () => {
             </div>
           )}
         </div>
+      )}
+
+      {/* SUB-TAB 5: TACTICAL STRUCTURES & BASES */}
+      {activeTab === 'structures' && (
+        <StructureGeneratorSection />
       )}
     </div>
   );

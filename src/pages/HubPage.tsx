@@ -57,7 +57,7 @@ export const HubPage: React.FC<HubPageProps> = ({ onNavigate, onOpenTarot }) => 
       subtitle: 'Mapa, Clima, Encontros e Vida Noturna',
       description: 'Mapa vetorial interativo com tempos de resposta de polícia e trauma, simulador do DLC Night City Weather com penalidades exatas, tabelas d100 de rua, Digital Dating e Screamsheets.',
       icon: <MapPin className="w-5 h-5 text-amber-500" />,
-      features: ['Mapa Distrital Interativo', 'Clima Cáustico e Anomalias', 'Digital Dating & Screamsheets'],
+      features: ['Mapa Distrital Interativo', 'Bases Táticas & Invasões', 'Clima Cáustico & Encontros'],
       tag: 'Ambientação',
     },
     {
