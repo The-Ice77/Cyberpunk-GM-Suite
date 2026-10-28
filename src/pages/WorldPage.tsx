@@ -41,16 +41,19 @@ import {
   Wand2,
   Target,
   Radio,
+  BookOpen,
+  Eye,
+  Copy,
 } from 'lucide-react';
 import { useSystem } from '../context/SystemContext';
 import { useUserRole, CustomDistrictLocation } from '../context/UserRoleContext';
 import { NIGHT_CITY_DISTRICTS, MapDistrict, isPointInPolygon, detectDistrictByCoords } from '../data/mapData';
-import { seasonalWeatherTables, strangeWeatherTable, urbanEventsList, StrangeWeatherRoll, UrbanEvent } from '../data/weatherData';
+import { seasonalWeatherTables, strangeWeatherTable, urbanEventsList, StrangeWeatherRoll, UrbanEvent, WeatherRollEntry, DISTRICT_WEATHER_NUANCES } from '../data/weatherData';
 import { NIGHT_CITY_BARS, BarVenue } from '../data/barsData';
 import { DATING_KEYWORDS, DATING_LOCATIONS, DATING_COMPLICATIONS } from '../data/datingData';
 import { SCREAMSHEET_NETWORKS, SCREAMSHEET_TEMPLATES } from '../data/screamsheetData';
 import { GANGS_LIST, GangProfile } from '../data/gangsData';
-import { generateAIExtendedEncounter, generateAIScreamsheet, generateAICustomBar, generateAIDate, AIDateResult, generateAICustomMapLocation } from '../services/aiService';
+import { generateAIExtendedEncounter, generateAIScreamsheet, generateAICustomBar, generateAIDate, AIDateResult, generateAICustomMapLocation, generateAIWeatherAtmosphere, AIWeatherAtmosphereResult } from '../services/aiService';
 import { NightMarketSection } from '../components/world/NightMarketSection';
 import { SafeHousesSection } from '../components/world/SafeHousesSection';
 import { StreetFoodDrinksSection } from '../components/world/StreetFoodDrinksSection';
@@ -440,11 +443,20 @@ export const WorldPage: React.FC = () => {
 
   // WEATHER STATE
   const [selectedSeasonIdx, setSelectedSeasonIdx] = useState<number>(0);
+  const [selectedWeatherDistrict, setSelectedWeatherDistrict] = useState<string>('watson');
+  const [weatherSubTab, setWeatherSubTab] = useState<'narrative' | 'sensory' | 'tactics' | 'districts'>('narrative');
+  const [isGeneratingWeatherAI, setIsGeneratingWeatherAI] = useState<boolean>(false);
+  const [aiWeatherAtmosphere, setAiWeatherAtmosphere] = useState<AIWeatherAtmosphereResult | null>(null);
+  const [weatherCopied, setWeatherCopied] = useState<boolean>(false);
   const [currentWeatherRoll, setCurrentWeatherRoll] = useState<{
     temperature: string;
     condition: string;
     strangeAnomaly?: StrangeWeatherRoll;
     citation: string;
+    tempRoll: number;
+    condRoll: number;
+    entry?: WeatherRollEntry;
+    districtId: string;
   } | null>(null);
   const [currentUrbanEvent, setCurrentUrbanEvent] = useState<UrbanEvent | null>(null);
 
@@ -682,13 +694,13 @@ export const WorldPage: React.FC = () => {
     setShowAddBarModal(false);
   };
 
-  // Roll Weather handler
+  // Roll Weather handler (with rich narrative & sensory details)
   const handleRollWeather = () => {
     const season = seasonalWeatherTables[selectedSeasonIdx];
     const tempRoll = Math.floor(Math.random() * 6);
     const condRoll = Math.floor(Math.random() * 6);
-    const tempResult = season.rolls[tempRoll].temperature;
-    const condResult = season.rolls[condRoll].condition;
+    const tempEntry = season.rolls[tempRoll];
+    const condEntry = season.rolls[condRoll];
 
     let strangeAnomaly: StrangeWeatherRoll | undefined = undefined;
     if (condRoll === 5) {
@@ -697,11 +709,43 @@ export const WorldPage: React.FC = () => {
     }
 
     setCurrentWeatherRoll({
-      temperature: tempResult,
-      condition: condResult,
+      temperature: tempEntry.temperature,
+      condition: condEntry.condition,
       strangeAnomaly,
-      citation: 'Night City Weather DLC pp. 2-5',
+      citation: strangeAnomaly ? strangeAnomaly.citation : 'Night City Weather DLC pp. 2-5',
+      tempRoll: tempRoll + 1,
+      condRoll: condRoll + 1,
+      entry: condEntry,
+      districtId: selectedWeatherDistrict,
     });
+    setAiWeatherAtmosphere(null);
+  };
+
+  const handleGenerateWeatherAI = async () => {
+    if (!currentWeatherRoll) return;
+    setIsGeneratingWeatherAI(true);
+    try {
+      const season = seasonalWeatherTables[selectedSeasonIdx];
+      const districtNuance = DISTRICT_WEATHER_NUANCES[selectedWeatherDistrict];
+      const result = await generateAIWeatherAtmosphere({
+        season: season.season,
+        temperature: currentWeatherRoll.temperature,
+        condition: currentWeatherRoll.condition,
+        districtName: districtNuance ? districtNuance.districtName : selectedWeatherDistrict,
+        strangeAnomalyName: currentWeatherRoll.strangeAnomaly?.namePt,
+      });
+      setAiWeatherAtmosphere(result);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsGeneratingWeatherAI(false);
+    }
+  };
+
+  const handleCopyWeatherNarration = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setWeatherCopied(true);
+    setTimeout(() => setWeatherCopied(false), 2500);
   };
 
   const handleRollUrbanEvent = () => {
@@ -2308,25 +2352,28 @@ export const WorldPage: React.FC = () => {
         </div>
       )}
 
-      {/* SUB-TAB 2: WEATHER & URBAN EVENTS */}
+      {/* SUB-TAB 2: WEATHER & URBAN EVENTS (NARRATIVA EXPANDIDA & REGRAS OFICIAIS) */}
       {activeTab === 'weather' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-7 p-6 rounded-2xl bg-[#121217] border border-[#27272a] space-y-5">
+          {/* LEFT COLUMN: WEATHER GENERATOR & NARRATIVE HUD (7 cols) */}
+          <div className="lg:col-span-7 p-5 sm:p-6 rounded-2xl bg-[#121217] border border-[#27272a] space-y-5">
             <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
               <div>
                 <h2 className="text-base font-bold text-zinc-100 flex items-center gap-2">
                   <CloudRain className="w-5 h-5 text-red-500" />
-                  <span>Gerador de Clima Oficial (Night City Weather DLC)</span>
+                  <span>Gerador de Clima & Atmosfera Narrativa (Night City Weather DLC)</span>
                 </h2>
-                <p className="text-xs text-zinc-400">Rola tabelas sazonais com regras mecânicas de ablação e toxidade.</p>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  Tabelas oficiais de rolagens 2d6, ablações ácidas, descrições noir e detalhes sensoriais da rua.
+                </p>
               </div>
               <span className="text-[10px] font-mono text-zinc-500">Ref: RTG-CPR-Weather</span>
             </div>
 
             {/* Season Selector */}
             <div className="space-y-2">
-              <label className="block text-xs font-mono uppercase text-zinc-400">
-                Selecione a Época do Ano:
+              <label className="block text-xs font-mono uppercase text-zinc-400 font-bold">
+                1. Selecione a Época do Ano:
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {seasonalWeatherTables.map((s, idx) => (
@@ -2335,81 +2382,391 @@ export const WorldPage: React.FC = () => {
                     onClick={() => setSelectedSeasonIdx(idx)}
                     className={`p-2.5 rounded-xl border text-left transition ${
                       selectedSeasonIdx === idx
-                        ? 'bg-zinc-800 border-red-500 text-zinc-100 font-semibold'
+                        ? 'bg-zinc-800 border-red-500 text-zinc-100 font-semibold ring-1 ring-red-500/50 shadow-sm'
                         : 'bg-[#0a0a0d] border-[#27272a] text-zinc-400 hover:bg-zinc-800'
                     }`}
                   >
-                    <div className="text-xs">{s.season.split(' ')[0]}</div>
+                    <div className="text-xs font-bold">{s.season.split(' ')[0]}</div>
                     <div className="text-[10px] text-zinc-500">{s.months}</div>
                   </button>
                 ))}
               </div>
             </div>
 
+            {/* District Context Selector for Weather */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-mono uppercase text-zinc-400 font-bold">
+                  2. Distrito de Referência (Microclima Local):
+                </label>
+                <span className="text-[10px] font-mono text-cyan-400">
+                  {DISTRICT_WEATHER_NUANCES[selectedWeatherDistrict]?.districtName.split(' (')[0]}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[11px] font-mono">
+                {Object.values(DISTRICT_WEATHER_NUANCES).map(d => {
+                  const isSel = selectedWeatherDistrict === d.districtId;
+                  return (
+                    <button
+                      key={d.districtId}
+                      type="button"
+                      onClick={() => setSelectedWeatherDistrict(d.districtId)}
+                      className={`p-1.5 rounded-lg border text-center transition truncate ${
+                        isSel
+                          ? 'bg-cyan-950/70 border-cyan-500 text-cyan-300 font-bold'
+                          : 'bg-[#0a0a0d] border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                      }`}
+                      title={d.districtName}
+                    >
+                      {d.districtName.split(' ')[0]}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Roll Action Button */}
             <button
               onClick={handleRollWeather}
-              className="w-full py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-semibold text-xs tracking-wider uppercase transition shadow-md flex items-center justify-center gap-2"
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 hover:from-red-500 hover:via-rose-500 hover:to-amber-500 text-white font-bold text-xs tracking-wider uppercase transition shadow-lg shadow-red-950/40 flex items-center justify-center gap-2 active:scale-98 font-mono"
             >
-              <Zap className="w-4 h-4" />
-              <span>Rolar Clima do Dia (Tabelas 2d6)</span>
+              <Zap className="w-4 h-4 text-amber-200" />
+              <span>Rolar Clima do Dia (Tabelas Canônicas 2d6)</span>
             </button>
 
             {/* Weather Result Display */}
             {currentWeatherRoll && (
-              <div className="p-4 rounded-xl bg-[#0a0a0d] border border-[#27272a] space-y-3">
-                <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
-                  <span className="text-xs font-mono uppercase text-zinc-400 font-semibold">
-                    Boletim Meteorológico do Dia
-                  </span>
+              <div className="p-4 sm:p-5 rounded-xl bg-[#0a0a0d] border border-[#27272a] space-y-4">
+                {/* Result Top Line */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-zinc-800 pb-2.5 gap-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono uppercase text-zinc-300 font-bold flex items-center gap-1.5">
+                      <Radio className="w-3.5 h-3.5 text-red-500 animate-pulse" />
+                      <span>Boletim Meteorológico de Night City</span>
+                    </span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-amber-400">
+                      1d6 Temp: {currentWeatherRoll.tempRoll} • 1d6 Cond: {currentWeatherRoll.condRoll}
+                    </span>
+                  </div>
                   <span className="text-[10px] font-mono text-zinc-500">{currentWeatherRoll.citation}</span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div className="bg-zinc-900/60 p-2.5 rounded-lg border border-zinc-800">
-                    <span className="text-[10px] text-zinc-500 uppercase block">Temperatura do Ar</span>
-                    <strong className="text-zinc-100 font-mono text-sm">{currentWeatherRoll.temperature}</strong>
+                {/* Temp & Condition Metric Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="bg-zinc-900/70 p-3 rounded-xl border border-zinc-800 space-y-1">
+                    <span className="text-[10px] text-zinc-400 uppercase font-mono block">Temperatura Oficial</span>
+                    <strong className="text-zinc-100 font-mono text-base block">{currentWeatherRoll.temperature}</strong>
+                    <span className="text-[10px] text-zinc-500 block">Estação: {seasonalWeatherTables[selectedSeasonIdx].season.split(' ')[0]}</span>
                   </div>
-                  <div className="bg-zinc-900/60 p-2.5 rounded-lg border border-zinc-800">
-                    <span className="text-[10px] text-zinc-500 uppercase block">Condição de Superfície</span>
-                    <strong className="text-zinc-100 font-mono text-sm">{currentWeatherRoll.condition}</strong>
+                  <div className="bg-zinc-900/70 p-3 rounded-xl border border-zinc-800 space-y-1">
+                    <span className="text-[10px] text-zinc-400 uppercase font-mono block">Condição de Superfície</span>
+                    <strong className="text-zinc-100 font-mono text-base block">{currentWeatherRoll.condition}</strong>
+                    <span className="text-[10px] text-zinc-500 block">Setor: {DISTRICT_WEATHER_NUANCES[selectedWeatherDistrict]?.districtName.split(' (')[0]}</span>
                   </div>
                 </div>
 
-                {/* Strange Weather Anomaly Box */}
+                {/* Strange Weather Anomaly Box (If d6 = 6) */}
                 {currentWeatherRoll.strangeAnomaly && (
-                  <div className="p-3.5 rounded-lg bg-red-950/30 border border-red-700/60 space-y-2 text-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-red-400 flex items-center gap-1.5">
-                        <AlertTriangle className="w-4 h-4" />
-                        ANOMALIA CLIMÁTICA: {currentWeatherRoll.strangeAnomaly.namePt}
+                  <div className="p-4 rounded-xl bg-red-950/40 border-2 border-red-600/80 space-y-2.5 text-xs shadow-lg animate-in fade-in duration-150">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-red-800/60 pb-2">
+                      <span className="font-bold text-red-300 flex items-center gap-1.5 text-sm">
+                        <AlertTriangle className="w-4 h-4 text-red-400 animate-pulse" />
+                        <span>ANOMALIA CLIMÁTICA: {currentWeatherRoll.strangeAnomaly.namePt}</span>
                       </span>
-                      <span className="font-mono text-[10px] text-zinc-400">
+                      <span className="font-mono text-[10px] text-red-300 bg-red-900/60 px-2 py-0.5 rounded border border-red-700/60 self-start sm:self-auto">
                         Duração: {currentWeatherRoll.strangeAnomaly.duration}
                       </span>
                     </div>
 
-                    <p className="text-zinc-300 leading-relaxed">
+                    <p className="text-zinc-200 leading-relaxed text-xs">
                       {currentWeatherRoll.strangeAnomaly.description}
                     </p>
 
-                    <div className="p-2 rounded bg-black/40 border border-red-900/40 text-[11px] font-mono text-red-200">
-                      <strong>Efeito Mecânico Exato:</strong> {currentWeatherRoll.strangeAnomaly.mechanics}
+                    <div className="p-2.5 rounded-lg bg-black/60 border border-red-800/60 text-[11px] font-mono text-red-200 space-y-1">
+                      <strong className="text-red-400 block uppercase">Regra Mecânica Oficial (Dano / Penalidade):</strong>
+                      <p>{currentWeatherRoll.strangeAnomaly.mechanics}</p>
                     </div>
+
+                    {currentWeatherRoll.strangeAnomaly.survivalProtocols && (
+                      <div className="text-[10px] font-mono text-zinc-300">
+                        <strong className="text-amber-400">Protocolo de Sobrevivência: </strong>
+                        {currentWeatherRoll.strangeAnomaly.survivalProtocols}
+                      </div>
+                    )}
                   </div>
                 )}
+
+                {/* SUB-TABS FOR EXPANDED NARRATIVE, SENSORY & TACTICAL EFFECTS */}
+                <div className="space-y-3 pt-2">
+                  <div className="flex items-center gap-1 bg-[#14141a] border border-[#27272a] rounded-xl p-1 text-xs font-mono overflow-x-auto">
+                    <button
+                      type="button"
+                      onClick={() => setWeatherSubTab('narrative')}
+                      className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 whitespace-nowrap ${
+                        weatherSubTab === 'narrative'
+                          ? 'bg-red-600 text-white font-bold shadow-sm'
+                          : 'text-zinc-400 hover:text-zinc-200'
+                      }`}
+                    >
+                      <BookOpen className="w-3.5 h-3.5" />
+                      <span>Narração Noir (Boxed Text)</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setWeatherSubTab('sensory')}
+                      className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 whitespace-nowrap ${
+                        weatherSubTab === 'sensory'
+                          ? 'bg-zinc-800 text-amber-300 font-bold border border-amber-600/40'
+                          : 'text-zinc-400 hover:text-zinc-200'
+                      }`}
+                    >
+                      <Eye className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Detalhes Sensoriais da Rua</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setWeatherSubTab('tactics')}
+                      className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 whitespace-nowrap ${
+                        weatherSubTab === 'tactics'
+                          ? 'bg-zinc-800 text-cyan-300 font-bold border border-cyan-600/40'
+                          : 'text-zinc-400 hover:text-zinc-200'
+                      }`}
+                    >
+                      <Crosshair className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>Efeitos Táticos em Combate</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setWeatherSubTab('districts')}
+                      className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 whitespace-nowrap ${
+                        weatherSubTab === 'districts'
+                          ? 'bg-zinc-800 text-purple-300 font-bold border border-purple-600/40'
+                          : 'text-zinc-400 hover:text-zinc-200'
+                      }`}
+                    >
+                      <Home className="w-3.5 h-3.5 text-purple-400" />
+                      <span>Nuance no Distrito</span>
+                    </button>
+                  </div>
+
+                  {/* SUB-TAB 1: BOXED NARRATION FOR THE GM */}
+                  {weatherSubTab === 'narrative' && (
+                    <div className="space-y-3 animate-in fade-in duration-100">
+                      {/* Boxed Text Card */}
+                      <div className="p-4 rounded-xl bg-gradient-to-r from-[#17141f] to-[#121218] border border-amber-600/40 space-y-2.5 relative">
+                        <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2">
+                          <span className="text-[10px] font-mono uppercase tracking-wider text-amber-400 font-bold flex items-center gap-1.5">
+                            <Sparkles className="w-3 h-3 text-amber-400" />
+                            <span>Para Narrar aos Jogadores (Leitura em Voz Alta)</span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyWeatherNarration(
+                              aiWeatherAtmosphere?.boxedNarration ||
+                              (currentWeatherRoll.strangeAnomaly
+                                ? currentWeatherRoll.strangeAnomaly.boxedNarration
+                                : currentWeatherRoll.entry?.boxedNarration || '')
+                            )}
+                            className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white text-[10px] font-mono flex items-center gap-1 border border-zinc-700 transition"
+                          >
+                            {weatherCopied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                            <span>{weatherCopied ? 'Copiado!' : 'Copiar Texto'}</span>
+                          </button>
+                        </div>
+
+                        <p className="text-zinc-200 text-xs sm:text-sm leading-relaxed italic font-serif">
+                          "{aiWeatherAtmosphere?.boxedNarration ||
+                            (currentWeatherRoll.strangeAnomaly
+                              ? currentWeatherRoll.strangeAnomaly.boxedNarration
+                              : currentWeatherRoll.entry?.boxedNarration)}"
+                        </p>
+
+                        <div className="pt-2 border-t border-zinc-800/60 text-[11px] text-zinc-400 leading-relaxed font-sans">
+                          {currentWeatherRoll.entry?.narrativeDescription}
+                        </div>
+                      </div>
+
+                      {/* AI Atmosphere Expander Button & Output */}
+                      <div className="p-3.5 rounded-xl bg-[#0e0e14] border border-zinc-800 space-y-2">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <div>
+                            <span className="text-xs font-bold text-zinc-200 block">
+                              Expandir Cena com IA Co-GM
+                            </span>
+                            <span className="text-[11px] text-zinc-500">
+                              Gera parágrafos noir sob medida e ganchos de eventos na rua para o distrito de {DISTRICT_WEATHER_NUANCES[selectedWeatherDistrict]?.districtName.split(' (')[0]}.
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleGenerateWeatherAI}
+                            disabled={isGeneratingWeatherAI}
+                            className="py-1.5 px-3 rounded-lg bg-gradient-to-r from-purple-700 to-red-700 hover:from-purple-600 hover:to-red-600 text-white font-mono text-xs font-bold transition flex items-center gap-1.5 flex-shrink-0"
+                          >
+                            <Wand2 className={`w-3.5 h-3.5 text-amber-300 ${isGeneratingWeatherAI ? 'animate-spin' : ''}`} />
+                            <span>{isGeneratingWeatherAI ? 'Escrevendo...' : '⚡ Gerar com IA'}</span>
+                          </button>
+                        </div>
+
+                        {aiWeatherAtmosphere && (
+                          <div className="p-3 rounded-lg bg-[#07070a] border border-purple-800/50 space-y-2 text-xs animate-in fade-in duration-150">
+                            <span className="text-[11px] font-mono text-purple-300 font-bold block">
+                              ★ {aiWeatherAtmosphere.sceneTitle}
+                            </span>
+                            {aiWeatherAtmosphere.streetEncounterHooks?.length > 0 && (
+                              <div className="space-y-1 pt-1 border-t border-zinc-800">
+                                <span className="text-[10px] font-mono text-amber-400 font-bold block uppercase">
+                                  Imprevistos Imediatos Provocados pelo Clima na Cena:
+                                </span>
+                                {aiWeatherAtmosphere.streetEncounterHooks.map((h, i) => (
+                                  <p key={i} className="text-zinc-300 text-[11px] leading-relaxed">
+                                    • {h}
+                                  </p>
+                                ))}
+                              </div>
+                            )}
+                            {aiWeatherAtmosphere.tacticalAdvice && (
+                              <div className="text-[11px] font-mono text-cyan-300 pt-1 border-t border-zinc-800">
+                                <strong>Conselho para o Mestre: </strong>
+                                {aiWeatherAtmosphere.tacticalAdvice}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* SUB-TAB 2: SENSORY DETAILS OF THE STREET */}
+                  {weatherSubTab === 'sensory' && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs animate-in fade-in duration-100">
+                      {/* Visual */}
+                      <div className="p-3.5 rounded-xl bg-[#0e0e14] border border-zinc-800 space-y-1">
+                        <span className="text-[10px] font-mono uppercase text-amber-400 font-bold flex items-center gap-1.5">
+                          <span>💡</span>
+                          <span>Visual & Iluminação Neon</span>
+                        </span>
+                        <p className="text-zinc-300 text-[11px] leading-relaxed">
+                          {currentWeatherRoll.strangeAnomaly?.sensoryAtmosphere.visual ||
+                            currentWeatherRoll.entry?.sensoryAtmosphere.visual}
+                        </p>
+                      </div>
+
+                      {/* Scent & Air */}
+                      <div className="p-3.5 rounded-xl bg-[#0e0e14] border border-zinc-800 space-y-1">
+                        <span className="text-[10px] font-mono uppercase text-rose-400 font-bold flex items-center gap-1.5">
+                          <span>👃</span>
+                          <span>Olfato, Gosto & Tato</span>
+                        </span>
+                        <p className="text-zinc-300 text-[11px] leading-relaxed">
+                          {currentWeatherRoll.strangeAnomaly?.sensoryAtmosphere.scentAndAir ||
+                            currentWeatherRoll.entry?.sensoryAtmosphere.scentAndAir}
+                        </p>
+                      </div>
+
+                      {/* Soundscape */}
+                      <div className="p-3.5 rounded-xl bg-[#0e0e14] border border-zinc-800 space-y-1">
+                        <span className="text-[10px] font-mono uppercase text-cyan-400 font-bold flex items-center gap-1.5">
+                          <span>🔊</span>
+                          <span>Paisagem Sonora Urbana</span>
+                        </span>
+                        <p className="text-zinc-300 text-[11px] leading-relaxed">
+                          {currentWeatherRoll.strangeAnomaly?.sensoryAtmosphere.soundscape ||
+                            currentWeatherRoll.entry?.sensoryAtmosphere.soundscape}
+                        </p>
+                      </div>
+
+                      {/* Street Life */}
+                      <div className="p-3.5 rounded-xl bg-[#0e0e14] border border-zinc-800 space-y-1">
+                        <span className="text-[10px] font-mono uppercase text-emerald-400 font-bold flex items-center gap-1.5">
+                          <span>👥</span>
+                          <span>Comportamento nas Ruas</span>
+                        </span>
+                        <p className="text-zinc-300 text-[11px] leading-relaxed">
+                          {currentWeatherRoll.strangeAnomaly?.sensoryAtmosphere.streetLife ||
+                            currentWeatherRoll.entry?.sensoryAtmosphere.streetLife}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* SUB-TAB 3: TACTICAL EFFECTS & COMBAT MODIFIERS */}
+                  {weatherSubTab === 'tactics' && (
+                    <div className="p-4 rounded-xl bg-[#0e0e14] border border-zinc-800 space-y-3 text-xs animate-in fade-in duration-100">
+                      <div>
+                        <span className="text-[10px] font-mono uppercase text-cyan-400 font-bold block mb-1">
+                          Regras & Modificadores Táticos Oficiais:
+                        </span>
+                        <p className="text-zinc-200 leading-relaxed text-xs">
+                          {currentWeatherRoll.strangeAnomaly?.mechanics ||
+                            currentWeatherRoll.entry?.tacticalEffects}
+                        </p>
+                      </div>
+
+                      {/* Recommended Gear */}
+                      {((currentWeatherRoll.strangeAnomaly?.recommendedGear || currentWeatherRoll.entry?.recommendedGear)?.length ?? 0) > 0 && (
+                        <div className="pt-2 border-t border-zinc-800 space-y-1.5">
+                          <span className="text-[10px] font-mono uppercase text-zinc-400 font-bold block">
+                            Equipamentos & Trajes Recomendados para Sobrevivência:
+                          </span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {(currentWeatherRoll.strangeAnomaly?.recommendedGear || currentWeatherRoll.entry?.recommendedGear || []).map((gear, i) => (
+                              <span key={i} className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-300">
+                                🛡️ {gear}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* SUB-TAB 4: DISTRICT SPECIFIC NUANCE */}
+                  {weatherSubTab === 'districts' && (
+                    <div className="p-4 rounded-xl bg-[#0e0e14] border border-purple-800/40 space-y-3 text-xs animate-in fade-in duration-100">
+                      <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
+                        <strong className="text-purple-300 text-sm">
+                          {DISTRICT_WEATHER_NUANCES[selectedWeatherDistrict]?.districtName}
+                        </strong>
+                        <span className="text-[10px] font-mono text-zinc-500">Microclima Local</span>
+                      </div>
+
+                      <p className="text-zinc-200 leading-relaxed">
+                        {DISTRICT_WEATHER_NUANCES[selectedWeatherDistrict]?.localAtmosphere}
+                      </p>
+
+                      <div className="p-2.5 rounded-lg bg-black/40 border border-zinc-800 space-y-1">
+                        <strong className="text-amber-400 font-mono text-[11px] block">Detalhe de Cena no Distrito:</strong>
+                        <p className="text-zinc-300 text-[11px]">
+                          {DISTRICT_WEATHER_NUANCES[selectedWeatherDistrict]?.sensoryHook}
+                        </p>
+                      </div>
+
+                      <div className="p-2.5 rounded-lg bg-red-950/20 border border-red-900/40 space-y-1">
+                        <strong className="text-red-400 font-mono text-[11px] block">Perigo Ambiental Típico deste Bairro:</strong>
+                        <p className="text-red-200 text-[11px]">
+                          {DISTRICT_WEATHER_NUANCES[selectedWeatherDistrict]?.environmentalHazard}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
 
-          {/* Urban Events Column (5 cols) */}
-          <div className="lg:col-span-5 p-6 rounded-2xl bg-[#121217] border border-[#27272a] space-y-4">
+          {/* RIGHT COLUMN: URBAN EVENTS (5 cols) */}
+          <div className="lg:col-span-5 p-5 sm:p-6 rounded-2xl bg-[#121217] border border-[#27272a] space-y-4">
             <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
               <div>
                 <h2 className="text-base font-bold text-zinc-100 flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-amber-500" />
                   <span>Acontecimentos Urbanos da Cidade</span>
                 </h2>
-                <p className="text-xs text-zinc-400">Imprevistos de infraestrutura e operações militares.</p>
+                <p className="text-xs text-zinc-400">Imprevistos de infraestrutura, bloqueios e operações militares.</p>
               </div>
             </div>
 

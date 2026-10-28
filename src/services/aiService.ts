@@ -1807,3 +1807,87 @@ Retorne estritamente um JSON no seguinte formato:
 
   return baseSquad;
 }
+
+
+// 19. EXPANSOR NARRATIVO DE CLIMA E ATMOSFERA URBANA COM IA (CYBERPUNK RED)
+export interface AIWeatherAtmosphereResult {
+  sceneTitle: string;
+  boxedNarration: string;
+  sensoryDetails: {
+    visual: string;
+    scentAndAir: string;
+    soundscape: string;
+    streetLife: string;
+  };
+  districtImpact: string;
+  streetEncounterHooks: string[];
+  tacticalAdvice: string;
+}
+
+export async function generateAIWeatherAtmosphere(options: {
+  season: string;
+  temperature: string;
+  condition: string;
+  districtName: string;
+  strangeAnomalyName?: string;
+  apiKey?: string;
+}): Promise<AIWeatherAtmosphereResult> {
+  const nonce = `[WEATHER-VARIATION-${Date.now().toString(36)}-${Math.floor(Math.random() * 88888)}]`;
+  const prompt = `Você é o "Cyberpunk Neural Co-GM", especialista em descrição de cenas climáticas, sensoriais e narrativas noir para Cyberpunk RED (Night City Weather DLC).
+Crie uma DESCRIÇÃO DE CLIMA E ATMOSFERA URBANA CINEMATOGRÁFICA para o Mestre de RPG ler ou usar no início da cena.
+${nonce}
+
+PARÂMETROS DA CENA:
+- Estação do Ano: ${options.season}
+- Temperatura do Ar: ${options.temperature}
+- Condição Climática: ${options.condition}
+${options.strangeAnomalyName ? `- ANOMALIA CLIMÁTICA SEVERA: ${options.strangeAnomalyName}` : ''}
+- Distrito / Localidade: ${options.districtName}
+
+Retorne estritamente um JSON no seguinte formato:
+{
+  "sceneTitle": "Título impactante da atmosfera climática (ex: Crepúsculo de Chuva Ácida em Watson, Névoa de Chumbo sobre Corpo Plaza)",
+  "boxedNarration": "Dois parágrafos de prosa noir rica, sensorial e visceral pronta para o Mestre ler em voz alta para os jogadores. Descreva a iluminação dos neons através da névoa/chuva, o asfalto, o ardor na respiração e a decadência urbana.",
+  "sensoryDetails": {
+    "visual": "Detalhes de iluminação, neons piscando, reflexos em poças químicas e cores da névoa",
+    "scentAndAir": "Odores marcantes (ozônio, solvente, enxofre, café sintético, plástico molhado) e sensação na pele",
+    "soundscape": "Sons urbanos característicos (chiado ácido, trovões, sirenes abafadas, ruído de pneus)",
+    "streetLife": "Como os gangers, nômades, pedestres e a polícia reagem a este clima na rua"
+  },
+  "districtImpact": "Como este clima específico altera a vida e a segurança no distrito de ${options.districtName}",
+  "streetEncounterHooks": [
+    "Gancho ou acontecimento repentino na rua provocado por este clima 1",
+    "Gancho ou acontecimento repentino na rua provocado por este clima 2",
+    "Gancho ou acontecimento repentino na rua provocado por este clima 3"
+  ],
+  "tacticalAdvice": "Dica prática para o Mestre explorar este clima em combate ou perseguição veicular"
+}`;
+
+  try {
+    const parsed = await callGeminiJSON<AIWeatherAtmosphereResult>(prompt, { apiKey: options.apiKey });
+    if (parsed && parsed.sceneTitle && parsed.boxedNarration) {
+      return parsed;
+    }
+  } catch (err) {
+    console.error('Erro ao gerar narrativa de clima com IA:', err);
+  }
+
+  // Fallback procedural
+  return {
+    sceneTitle: `${options.condition} em ${options.districtName}`,
+    boxedNarration: `As ruas de ${options.districtName} estão mergulhadas sob ${options.condition.toLowerCase()}. O ar frio a ${options.temperature} traz o cheiro persistente de asfalto molhado e gases de exaustão industrial, enquanto os neons das lojas refletem em poças oleosas avermelhadas.`,
+    sensoryDetails: {
+      visual: `Luz difusa cortando o smog e reflexos multicoloridos no asfalto molhado de ${options.districtName}.`,
+      scentAndAir: `Odor característico de petroquímica e ozônio no ar da baía.`,
+      soundscape: `Sons distantes de turbinas de AVs e goteiras ritmadas em marquises de metal.`,
+      streetLife: `Pedestres encasacados apressam o passo enquanto gangers observam das sombras sob viadutos.`,
+    },
+    districtImpact: `Em ${options.districtName}, as condições reduzem a visibilidade em becos e aumentam a vigilância de patrulhas.`,
+    streetEncounterHooks: [
+      'Um bueiro transborda lama química forçando transeuntes a desviarem para um beco escuro.',
+      'Uma van de entrega derrapa no asfalto escorregadio e bate contra uma barricada de concreto.',
+      'Moradores de rua discutem pelo abrigo sob uma marquise de neon que ainda funciona.',
+    ],
+    tacticalAdvice: 'Use poças e reflexos para criar oportunidades de emboscada ou perda de tração para veículos.',
+  };
+}
