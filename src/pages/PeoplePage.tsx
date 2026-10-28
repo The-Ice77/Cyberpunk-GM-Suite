@@ -17,6 +17,19 @@ import {
   Crosshair,
   Dice5,
   X,
+  BookOpen,
+  Filter,
+  Search,
+  ChevronDown,
+  ChevronUp,
+  AlertCircle,
+  Sparkles,
+  Eye,
+  UserCheck,
+  Skull,
+  MessageSquare,
+  Compass,
+  Radio,
 } from 'lucide-react';
 import { useSystem } from '../context/SystemContext';
 import { useCampaign } from '../context/CampaignContext';
@@ -24,6 +37,12 @@ import { useCombat } from '../context/CombatContext';
 import { GANGS_LIST } from '../data/gangsData';
 import { FACTIONS_LIST } from '../data/factionsData';
 import { NPCSheet, NPCTier } from '../types/system';
+import {
+  OFFICIAL_BESTIARY,
+  SYSTEM_CREATION_GUIDELINES,
+  BestiaryEnemy,
+  SystemCreationGuideline,
+} from '../data/bestiaryData';
 
 const FIRST_NAMES = ['Kael', 'Jax', 'Raven', 'Vektor', 'Rocco', 'Slick', 'Nyx', 'Brick', 'T-Bug', 'Zero', 'Crash', 'Elena', 'Malik', 'Hana', 'Dante', 'Blaze', 'Cipher', 'Viper', 'Spike', 'Ghost'];
 const LAST_NAMES = ['Vance', 'Kowalski', 'Silver', 'Cross', 'Tanaka', 'Mendez', 'Steel', 'Frost', 'Mercer', 'Chen', 'Black', 'Reyes', 'Novak', 'Winter', 'Kane', 'Wolf', 'Stone', 'Sato'];
@@ -33,13 +52,23 @@ export const PeoplePage: React.FC = () => {
   const { savedNPCs, saveNPC, deleteNPC } = useCampaign();
   const { addCombatant, combatants, updateHP, ablateSP, addCriticalInjury } = useCombat();
 
-  const [activeTab, setActiveTab] = useState<'generator' | 'builder' | 'library'>('generator');
+  const [activeTab, setActiveTab] = useState<'dossier' | 'generator' | 'builder' | 'library'>('dossier');
   const [selectedTier, setSelectedTier] = useState<NPCTier>('mook');
   const [selectedCategory, setSelectedCategory] = useState<'gangs' | 'trauma' | 'corps' | 'police' | 'nomads'>('gangs');
   const [selectedSubfaction, setSelectedSubfaction] = useState<string>('maelstrom');
   const [generatedNPC, setGeneratedNPC] = useState<NPCSheet | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
   const [sendSuccess, setSendSuccess] = useState<boolean>(false);
+
+  // Dossier & Bestiary State
+  const [dossierTierFilter, setDossierTierFilter] = useState<'all' | NPCTier>('all');
+  const [dossierFactionFilter, setDossierFactionFilter] = useState<string>('all');
+  const [dossierSystemFilter, setDossierSystemFilter] = useState<'all' | 'RED' | '2020'>('all');
+  const [dossierSearch, setDossierSearch] = useState<string>('');
+  const [selectedBestiaryEnemy, setSelectedBestiaryEnemy] = useState<BestiaryEnemy>(OFFICIAL_BESTIARY[0]);
+  const [showCreationGuide, setShowCreationGuide] = useState<boolean>(false);
+  const [dossierCopied, setDossierCopied] = useState<boolean>(false);
+  const [dossierActionMsg, setDossierActionMsg] = useState<string | null>(null);
 
   // NPC Attack Modal State
   const [npcAttackModal, setNpcAttackModal] = useState<{
@@ -91,11 +120,11 @@ export const PeoplePage: React.FC = () => {
       const cp2020Template = gang.statsTemplate.CP2020;
 
       // RED Calculations
-      const hp = tierStats.hp[selectedTier];
-      const cn = tierStats.combatNumber[selectedTier];
-      const bodyStat = selectedTier === 'boss' ? 10 : selectedTier === 'miniboss' ? 8 : 7;
-      const willStat = selectedTier === 'boss' ? 9 : selectedTier === 'miniboss' ? 8 : 6;
-      const refStat = selectedTier === 'boss' ? 9 : selectedTier === 'miniboss' ? 8 : 7;
+      const hp = (tierStats.hp as any)[selectedTier] || (selectedTier === 'civilian' ? 25 : 35);
+      const cn = (tierStats.combatNumber as any)[selectedTier] || (selectedTier === 'civilian' ? 8 : 10);
+      const bodyStat = selectedTier === 'boss' ? 10 : selectedTier === 'miniboss' ? 8 : selectedTier === 'civilian' ? 4 : 7;
+      const willStat = selectedTier === 'boss' ? 9 : selectedTier === 'miniboss' ? 8 : selectedTier === 'civilian' ? 5 : 6;
+      const refStat = selectedTier === 'boss' ? 9 : selectedTier === 'miniboss' ? 8 : selectedTier === 'civilian' ? 5 : 7;
       const dexStat = refStat;
 
       // 2020 Calculations
@@ -114,7 +143,7 @@ export const PeoplePage: React.FC = () => {
         description: gang.description,
         notes: `Identificadores: ${gang.identifiers}\nFilosofia: ${gang.philosophy}`,
         tactics: gang.tactics,
-        reputation: selectedTier === 'boss' ? 7 : selectedTier === 'miniboss' ? 5 : selectedTier === 'lieutenant' ? 3 : 1,
+        reputation: selectedTier === 'boss' ? 7 : selectedTier === 'miniboss' ? 5 : selectedTier === 'lieutenant' ? 3 : selectedTier === 'civilian' ? 0 : 1,
         statsRED: {
           INT: 6,
           REF: refStat,
@@ -130,8 +159,8 @@ export const PeoplePage: React.FC = () => {
           seriouslyWounded: Math.ceil(hp / 2),
           deathSave: bodyStat,
           combatNumber: cn,
-          headSP: tierStats.spHead,
-          bodySP: tierStats.spBody,
+          headSP: selectedTier === 'civilian' ? 0 : tierStats.spHead,
+          bodySP: selectedTier === 'civilian' ? 4 : tierStats.spBody,
         },
         stats2020: {
           INT: 6,
@@ -273,6 +302,178 @@ export const PeoplePage: React.FC = () => {
     setTimeout(() => setSendSuccess(false), 2000);
   };
 
+  // Send Bestiary Enemy to Combat Tracker
+  const handleSendBestiaryToCombat = (enemy: BestiaryEnemy) => {
+    addCombatant({
+      id: 'combat-' + enemy.id + '-' + Date.now(),
+      name: enemy.name,
+      system: enemy.system === 'BOTH' ? (isRed ? 'RED' : '2020') : enemy.system,
+      initiative: Math.floor(Math.random() * 10) + 1 + (enemy.ref || 7),
+      currentHP: enemy.hp,
+      maxHP: enemy.hp,
+      headSP: enemy.headSP,
+      bodySP: enemy.bodySP,
+      torsoSP: enemy.torsoSP,
+      rArmSP: enemy.rArmSP,
+      lArmSP: enemy.lArmSP,
+      rLegSP: enemy.rLegSP,
+      lLegSP: enemy.lLegSP,
+      btm: enemy.btm,
+      conditions: [],
+      criticalInjuries: [],
+      deathSavePenalty: 0,
+      faction: enemy.faction,
+      weapons: enemy.weapons.map(w => ({
+        name: w.name,
+        damage: w.damage,
+        rof: w.rof,
+      })),
+      combatNumber: enemy.combatNumber || (enemy.ref + 6),
+      appearance: enemy.appearance || enemy.description,
+    });
+    setDossierActionMsg(`"${enemy.name}" enviado com sucesso ao Rastreador de Combate!`);
+    setTimeout(() => setDossierActionMsg(null), 2500);
+  };
+
+  // Save Bestiary Enemy to Campaign Library
+  const handleSaveBestiaryToLibrary = (enemy: BestiaryEnemy) => {
+    const sheet: NPCSheet = {
+      id: 'npc-' + enemy.id + '-' + Date.now(),
+      name: enemy.name,
+      faction: enemy.faction,
+      tier: enemy.tier,
+      system: enemy.system === 'BOTH' ? (isRed ? 'RED' : '2020') : enemy.system,
+      role: enemy.role,
+      description: enemy.description,
+      notes: `${enemy.appearance ? `Aparência: ${enemy.appearance}\n` : ''}${enemy.quirks ? `Maneirismos: ${enemy.quirks}\n` : ''}${enemy.motivation ? `Motivação: ${enemy.motivation}\n` : ''}${enemy.citation ? `Fonte: ${enemy.citation}` : ''}`,
+      tactics: `${enemy.tactics}${enemy.surrenderTrigger ? `\nGatilho de Rendição: ${enemy.surrenderTrigger}` : ''}`,
+      reputation: enemy.tier === 'boss' ? 7 : enemy.tier === 'miniboss' ? 5 : enemy.tier === 'lieutenant' ? 3 : enemy.tier === 'mook' ? 1 : 0,
+      statsRED: {
+        INT: 6,
+        REF: enemy.ref,
+        DEX: enemy.dex,
+        TECH: 5,
+        COOL: 7,
+        WILL: enemy.will,
+        LUCK: enemy.tier === 'boss' ? 6 : 2,
+        MOVE: enemy.move,
+        BODY: enemy.body,
+        EMP: 4,
+        HP: enemy.hp,
+        seriouslyWounded: Math.ceil(enemy.hp / 2),
+        deathSave: enemy.body,
+        combatNumber: enemy.combatNumber || (enemy.ref + 6),
+        headSP: enemy.headSP,
+        bodySP: enemy.bodySP,
+      },
+      stats2020: {
+        INT: 6,
+        REF: enemy.ref,
+        TEC: 5,
+        COOL: 7,
+        ATR: 5,
+        LUCK: enemy.tier === 'boss' ? 6 : 2,
+        MA: enemy.move,
+        BODY: enemy.body,
+        EMP: 4,
+        BTM: enemy.btm || -2,
+        headSP: enemy.headSP,
+        torsoSP: enemy.torsoSP || enemy.bodySP,
+        rArmSP: enemy.rArmSP || enemy.bodySP,
+        lArmSP: enemy.lArmSP || enemy.bodySP,
+        rLegSP: enemy.rLegSP || enemy.bodySP,
+        lLegSP: enemy.lLegSP || enemy.bodySP,
+      },
+      skills: {
+        'Combate Geral': enemy.combatNumber || (enemy.ref + 6),
+        'Percepção': (enemy.combatNumber || (enemy.ref + 6)) - 2,
+        'Esquiva (Evasion)': enemy.combatNumber || (enemy.ref + 6),
+      },
+      weapons: enemy.weapons.map(w => ({
+        name: w.name,
+        category: 'Arma',
+        damage: w.damage,
+        rof: w.rof,
+        system: 'BOTH',
+      })),
+      cyberware: enemy.cyberware,
+      gear: enemy.equipment,
+    };
+    saveNPC(sheet);
+    setDossierActionMsg(`"${enemy.name}" salvo com sucesso na sua Biblioteca de NPCs!`);
+    setTimeout(() => setDossierActionMsg(null), 2500);
+  };
+
+  // Open Attack modal for Bestiary Enemy
+  const handleOpenBestiaryAttack = (enemy: BestiaryEnemy, weapon: { name: string; damage: string }) => {
+    const cNum = enemy.combatNumber || (enemy.ref + 6);
+    const fakeSheet: NPCSheet = {
+      id: enemy.id,
+      name: enemy.name,
+      faction: enemy.faction,
+      tier: enemy.tier,
+      system: enemy.system === 'BOTH' ? (isRed ? 'RED' : '2020') : enemy.system,
+      role: enemy.role,
+      description: enemy.description,
+      reputation: 3,
+      skills: { 'Combate Geral': cNum },
+      weapons: enemy.weapons.map(w => ({ name: w.name, category: 'Arma', damage: w.damage, system: 'BOTH' })),
+      cyberware: enemy.cyberware,
+      gear: enemy.equipment,
+    };
+    setNpcAttackModal({
+      isOpen: true,
+      npc: fakeSheet,
+      weapon,
+      combatNumber: cNum,
+      aimMode: 'normal',
+      targetId: combatants[0]?.id || '',
+      distanceDV: 15,
+      isEvading: false,
+      evasionBonus: 14,
+    });
+    setNpcAttackResult(null);
+  };
+
+  // Copy Bestiary Dossier
+  const handleCopyBestiary = (enemy: BestiaryEnemy) => {
+    const text = `[DOSSIÊ DE NPC // ${enemy.name.toUpperCase()}]
+Escalão: ${enemy.tier.toUpperCase()} | Sistema: ${enemy.system}
+Facção: ${enemy.faction} | Papel: ${enemy.role}
+Fonte: ${enemy.citation}
+
+DESCRIÇÃO VISUAL & ESTÉTICA:
+${enemy.appearance || enemy.description}
+
+PERSONALIDADE & MANEIRISMOS:
+${enemy.quirks || 'Profissional e pragmático nas ruas.'}
+
+MOTIVAÇÃO & AGENDA OCULTA:
+${enemy.motivation || 'Sobreviver e cumprir a missão.'}
+
+DIRETRIZES TÁTICAS:
+${enemy.tactics}
+Gatilho de Rendição: ${enemy.surrenderTrigger || 'Recua se sofrer Gravemente Ferido.'}
+
+ESTATÍSTICAS VITAIS:
+HP: ${enemy.hp} (Gravemente Ferido: ${Math.ceil(enemy.hp / 2)}, Salva da Morte: ${enemy.body})
+SP: Cabeça ${enemy.headSP} | Corpo ${enemy.bodySP}
+Combat Number: ${enemy.combatNumber || (enemy.ref + 6)}
+MOVE ${enemy.move} | REF ${enemy.ref} | DEX ${enemy.dex} | BODY ${enemy.body} | WILL ${enemy.will}
+
+ARMAS:
+${enemy.weapons.map(w => `- ${w.name}: Dano ${w.damage} (ROF ${w.rof})${w.notes ? ` [${w.notes}]` : ''}`).join('\n')}
+
+CIBERWARE & EQUIPAMENTO:
+- Implantes: ${enemy.cyberware.join(', ')}
+- Equipamento: ${enemy.equipment.join(', ')}
+${enemy.specialAbility ? `\nHABILIDADE ESPECIAL:\n${enemy.specialAbility}` : ''}`;
+
+    navigator.clipboard.writeText(text);
+    setDossierCopied(true);
+    setTimeout(() => setDossierCopied(false), 2000);
+  };
+
   const handleOpenNpcAttack = (npc: NPCSheet, weapon: { name: string; damage: string }) => {
     const cNum = npc.statsRED?.combatNumber || (npc.system === '2020' ? (npc.stats2020?.REF || 8) + 6 : 14);
     setNpcAttackModal({
@@ -397,8 +598,74 @@ Táticas: ${generatedNPC.tactics}`;
     setTimeout(() => setCopied(false), 1500);
   };
 
+  // Filtered Bestiary Calculation
+  const filteredBestiary = OFFICIAL_BESTIARY.filter(enemy => {
+    // 1. Tier filter
+    if (dossierTierFilter !== 'all' && enemy.tier !== dossierTierFilter) {
+      return false;
+    }
+    // 2. Faction filter
+    if (dossierFactionFilter !== 'all') {
+      if (dossierFactionFilter === 'gangs') {
+        const isGang = ['Maelstrom', 'Tyger Claws', 'Valentinos', 'Voodoo Boys', 'Bozos', '6th Street'].some(g => enemy.faction.includes(g));
+        if (!isGang) return false;
+      } else if (dossierFactionFilter === 'corps') {
+        const isCorp = ['Arasaka', 'Militech', 'Petrochem'].some(c => enemy.faction.includes(c));
+        if (!isCorp) return false;
+      } else if (dossierFactionFilter === 'police') {
+        const isPolice = enemy.faction.includes('DPNC') || enemy.faction.includes('MaxTac') || enemy.faction.includes('Polícia');
+        if (!isPolice) return false;
+      } else if (dossierFactionFilter === 'trauma') {
+        if (!enemy.faction.includes('Trauma')) return false;
+      } else if (dossierFactionFilter === 'nomads') {
+        const isNomadOrCivilian = enemy.faction.includes('Nômade') || enemy.faction.includes('Civil') || enemy.faction.includes('Civis') || enemy.faction.includes('Aldecaldo');
+        if (!isNomadOrCivilian) return false;
+      } else if (dossierFactionFilter === 'cyberpsycho') {
+        if (!enemy.faction.includes('Ciberpsicopata')) return false;
+      } else if (!['gangs', 'corps', 'police', 'trauma', 'nomads', 'cyberpsycho'].includes(dossierFactionFilter) && enemy.faction !== dossierFactionFilter) {
+        return false;
+      }
+    }
+    // 3. System filter
+    if (dossierSystemFilter !== 'all') {
+      if (enemy.system !== 'BOTH' && enemy.system !== dossierSystemFilter) {
+        return false;
+      }
+    }
+    // 4. Text search
+    if (dossierSearch.trim()) {
+      const q = dossierSearch.toLowerCase();
+      const matchName = enemy.name.toLowerCase().includes(q);
+      const matchRole = enemy.role.toLowerCase().includes(q);
+      const matchFaction = enemy.faction.toLowerCase().includes(q);
+      const matchDesc = enemy.description.toLowerCase().includes(q);
+      const matchTactics = enemy.tactics.toLowerCase().includes(q);
+      const matchWeapons = enemy.weapons.some(w => w.name.toLowerCase().includes(q));
+      const matchCyber = enemy.cyberware.some(c => c.toLowerCase().includes(q));
+      const matchQuote = enemy.dialogueHook?.toLowerCase().includes(q);
+      const matchAppearance = enemy.appearance?.toLowerCase().includes(q);
+      return matchName || matchRole || matchFaction || matchDesc || matchTactics || matchWeapons || matchCyber || matchQuote || matchAppearance;
+    }
+    return true;
+  });
+
+  // Tier Counts
+  const civilianCount = OFFICIAL_BESTIARY.filter(e => e.tier === 'civilian').length;
+  const mookCount = OFFICIAL_BESTIARY.filter(e => e.tier === 'mook').length;
+  const lieutenantCount = OFFICIAL_BESTIARY.filter(e => e.tier === 'lieutenant').length;
+  const minibossCount = OFFICIAL_BESTIARY.filter(e => e.tier === 'miniboss').length;
+  const bossCount = OFFICIAL_BESTIARY.filter(e => e.tier === 'boss').length;
+
   return (
     <div className="max-w-7xl mx-auto space-y-6">
+      {/* ACTION TOAST / NOTIFICATION */}
+      {dossierActionMsg && (
+        <div className="fixed bottom-6 right-6 z-50 p-4 rounded-xl bg-zinc-900 border border-red-500/50 text-white shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <Check className="w-5 h-5 text-green-400 shrink-0" />
+          <span className="text-xs font-mono font-medium">{dossierActionMsg}</span>
+        </div>
+      )}
+
       {/* Header and Sub-tabs */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-[#27272a] pb-4">
         <div>
@@ -407,12 +674,30 @@ Táticas: ${generatedNPC.tactics}`;
             <span>Pessoas & Facções (Inimigos & NPCs)</span>
           </h1>
           <p className="text-xs text-zinc-400 mt-1">
-            Gere, personalize e organize combatentes e contatos para sessões em Cyberpunk RED ou 2020.
+            Dossiê oficial do sistema com guia de criação, parâmetros de escalão, ficha de combate e gerador de NPCs.
           </p>
         </div>
 
         {/* Sub-tabs pills */}
         <div className="flex items-center bg-[#14141a] border border-[#27272a] rounded-lg p-0.5 text-xs font-medium">
+          <button
+            onClick={() => setActiveTab('dossier')}
+            className={`px-3 py-1.5 rounded-md transition flex items-center gap-1.5 ${
+              activeTab === 'dossier'
+                ? 'bg-red-600 text-white shadow-sm font-semibold'
+                : 'text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            <BookOpen className="w-3.5 h-3.5" />
+            <span>Dossiê Oficial</span>
+            <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono border ${
+              activeTab === 'dossier'
+                ? 'bg-red-950/80 text-white border-red-400/40'
+                : 'bg-zinc-800 text-zinc-300 border-zinc-700'
+            }`}>
+              {OFFICIAL_BESTIARY.length}
+            </span>
+          </button>
           <button
             onClick={() => setActiveTab('generator')}
             className={`px-3 py-1.5 rounded-md transition ${
@@ -451,6 +736,592 @@ Táticas: ${generatedNPC.tactics}`;
         </div>
       </div>
 
+      {/* TAB 0: DOSSIÊ & BESTIÁRIO OFICIAL DE NPCS */}
+      {activeTab === 'dossier' && (
+        <div className="space-y-6">
+          {/* 1. GUIA OFICIAL DE CRIAÇÃO DO SISTEMA (ACCORDION) */}
+          <div className="rounded-2xl bg-[#121217] border border-[#27272a] overflow-hidden">
+            <button
+              onClick={() => setShowCreationGuide(!showCreationGuide)}
+              className="w-full p-4 flex items-center justify-between text-left hover:bg-zinc-800/40 transition"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-red-950/60 border border-red-800/40 text-red-400">
+                  <BookOpen className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-zinc-100">
+                      Guia Oficial de Criação de Ameaças & NPCs
+                    </span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-zinc-800 text-zinc-300 border border-zinc-700">
+                      Cyberpunk RED p. 224-227 & DLCs
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-400 mt-0.5">
+                    Parâmetros mecânicos oficiais de Combat Number, HP, Blindagem SP e Diretrizes Psicológicas de cada escalão.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-xs font-mono text-zinc-400">
+                <span>{showCreationGuide ? 'Ocultar Parâmetros' : 'Ver Parâmetros do Sistema'}</span>
+                {showCreationGuide ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </div>
+            </button>
+
+            {showCreationGuide && (
+              <div className="p-5 border-t border-[#27272a] bg-[#0c0c10] space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+                  {SYSTEM_CREATION_GUIDELINES.map(g => (
+                    <div
+                      key={g.tier}
+                      className="p-3.5 rounded-xl bg-[#14141a] border border-zinc-800 hover:border-zinc-700 flex flex-col justify-between space-y-3 transition"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className={`text-[10px] font-mono uppercase px-2 py-0.5 rounded font-bold ${
+                            g.tier === 'civilian'
+                              ? 'bg-emerald-950/70 text-emerald-300 border border-emerald-800/40'
+                              : g.tier === 'mook'
+                              ? 'bg-zinc-800 text-zinc-300 border border-zinc-700'
+                              : g.tier === 'lieutenant'
+                              ? 'bg-blue-950/70 text-blue-300 border border-blue-800/40'
+                              : g.tier === 'miniboss'
+                              ? 'bg-purple-950/70 text-purple-300 border border-purple-800/40'
+                              : 'bg-red-950/80 text-red-300 border border-red-700/60'
+                          }`}>
+                            {g.tier.toUpperCase()}
+                          </span>
+                        </div>
+                        <h4 className="text-xs font-bold text-zinc-200">{g.name}</h4>
+                        <div className="text-[11px] font-mono text-amber-400 mt-1">{g.combatNumberRange}</div>
+                        <div className="text-[10px] font-mono text-zinc-400">{g.hpRange} • {g.spRange}</div>
+                        <p className="text-[11px] text-zinc-300 mt-2 leading-relaxed">{g.tacticalDirective}</p>
+                      </div>
+
+                      <div className="pt-2 border-t border-zinc-800/80 space-y-1.5">
+                        <div className="text-[9px] font-mono text-zinc-500 italic">{g.systemCitation}</div>
+                        <button
+                          onClick={() => {
+                            setDossierTierFilter(g.tier);
+                            setShowCreationGuide(false);
+                          }}
+                          className="w-full py-1 text-[10px] font-mono text-center rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition"
+                        >
+                          Filtrar por este Tier
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 2. FILTROS E BUSCA */}
+          <div className="p-4 rounded-2xl bg-[#121217] border border-[#27272a] space-y-3">
+            {/* Search Input and Tier Pills */}
+            <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between">
+              {/* Text Search */}
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={dossierSearch}
+                  onChange={e => setDossierSearch(e.target.value)}
+                  placeholder="Pesquisar NPC por nome, facção, arma, implante, citação ou tática..."
+                  className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-xl pl-9 pr-8 py-2 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-red-500 transition"
+                />
+                {dossierSearch && (
+                  <button
+                    onClick={() => setDossierSearch('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Faction & System Selectors */}
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 bg-[#0a0a0d] border border-[#27272a] rounded-xl px-2.5 py-1.5 text-xs text-zinc-300 font-mono">
+                  <Filter className="w-3.5 h-3.5 text-zinc-500" />
+                  <select
+                    value={dossierFactionFilter}
+                    onChange={e => setDossierFactionFilter(e.target.value)}
+                    className="bg-transparent text-xs text-zinc-200 focus:outline-none"
+                  >
+                    <option value="all">Todas as Facções ({OFFICIAL_BESTIARY.length})</option>
+                    <option value="gangs">Gangues de Rua (Watson, Heywood, Pacifica...)</option>
+                    <option value="corps">Corporações (Arasaka, Militech, Petrochem)</option>
+                    <option value="police">Polícia DPNC & MaxTac</option>
+                    <option value="trauma">Trauma Team™ Internacional</option>
+                    <option value="nomads">Nômades & Civis / Everyday</option>
+                    <option value="cyberpsycho">Ciberpsicopatas Independentes</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-1 bg-[#0a0a0d] border border-[#27272a] rounded-xl p-1 text-[11px] font-mono">
+                  {(['all', 'RED', '2020'] as const).map(sys => (
+                    <button
+                      key={sys}
+                      onClick={() => setDossierSystemFilter(sys)}
+                      className={`px-2 py-0.5 rounded-lg transition ${
+                        dossierSystemFilter === sys
+                          ? 'bg-zinc-800 text-zinc-100 font-bold'
+                          : 'text-zinc-500 hover:text-zinc-300'
+                      }`}
+                    >
+                      {sys === 'all' ? 'Todos' : sys}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Tier Pills */}
+            <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-zinc-800/60 text-xs font-mono">
+              <span className="text-[11px] text-zinc-500 uppercase mr-1">Filtrar Escalão:</span>
+              <button
+                onClick={() => setDossierTierFilter('all')}
+                className={`px-2.5 py-1 rounded-lg border transition ${
+                  dossierTierFilter === 'all'
+                    ? 'bg-zinc-800 border-zinc-600 text-zinc-100 font-bold'
+                    : 'bg-[#0a0a0d] border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                }`}
+              >
+                Todos ({OFFICIAL_BESTIARY.length})
+              </button>
+              <button
+                onClick={() => setDossierTierFilter('civilian')}
+                className={`px-2.5 py-1 rounded-lg border transition flex items-center gap-1.5 ${
+                  dossierTierFilter === 'civilian'
+                    ? 'bg-emerald-950/80 border-emerald-600 text-emerald-200 font-bold'
+                    : 'bg-[#0a0a0d] border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                }`}
+              >
+                <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Civis / Everyday ({civilianCount})</span>
+              </button>
+              <button
+                onClick={() => setDossierTierFilter('mook')}
+                className={`px-2.5 py-1 rounded-lg border transition flex items-center gap-1.5 ${
+                  dossierTierFilter === 'mook'
+                    ? 'bg-zinc-800 border-zinc-500 text-zinc-100 font-bold'
+                    : 'bg-[#0a0a0d] border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                }`}
+              >
+                <Users className="w-3.5 h-3.5 text-zinc-400" />
+                <span>Capangas / Mooks ({mookCount})</span>
+              </button>
+              <button
+                onClick={() => setDossierTierFilter('lieutenant')}
+                className={`px-2.5 py-1 rounded-lg border transition flex items-center gap-1.5 ${
+                  dossierTierFilter === 'lieutenant'
+                    ? 'bg-blue-950/80 border-blue-600 text-blue-200 font-bold'
+                    : 'bg-[#0a0a0d] border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                }`}
+              >
+                <Shield className="w-3.5 h-3.5 text-blue-400" />
+                <span>Tenentes ({lieutenantCount})</span>
+              </button>
+              <button
+                onClick={() => setDossierTierFilter('miniboss')}
+                className={`px-2.5 py-1 rounded-lg border transition flex items-center gap-1.5 ${
+                  dossierTierFilter === 'miniboss'
+                    ? 'bg-purple-950/80 border-purple-600 text-purple-200 font-bold'
+                    : 'bg-[#0a0a0d] border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                }`}
+              >
+                <Zap className="w-3.5 h-3.5 text-purple-400" />
+                <span>Mini-Chefes ({minibossCount})</span>
+              </button>
+              <button
+                onClick={() => setDossierTierFilter('boss')}
+                className={`px-2.5 py-1 rounded-lg border transition flex items-center gap-1.5 ${
+                  dossierTierFilter === 'boss'
+                    ? 'bg-red-950/90 border-red-600 text-red-200 font-bold'
+                    : 'bg-[#0a0a0d] border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                }`}
+              >
+                <Skull className="w-3.5 h-3.5 text-red-500" />
+                <span>Chefes / Ciberpsicos ({bossCount})</span>
+              </button>
+            </div>
+          </div>
+
+          {/* 3. MASTER-DETAIL SPLIT VIEW */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* LEFT COLUMN: LIST OF NPCS */}
+            <div className="lg:col-span-5 space-y-2">
+              <div className="flex items-center justify-between text-xs font-mono text-zinc-400 px-1 pb-1">
+                <span>Catálogo de NPCs ({filteredBestiary.length})</span>
+                <span>Clique para abrir o dossiê</span>
+              </div>
+
+              {filteredBestiary.length === 0 ? (
+                <div className="p-8 rounded-2xl bg-[#121217] border border-[#27272a] text-center space-y-2">
+                  <AlertCircle className="w-6 h-6 text-zinc-500 mx-auto" />
+                  <p className="text-xs text-zinc-300">Nenhum combatente encontrado com os filtros atuais.</p>
+                  <button
+                    onClick={() => {
+                      setDossierSearch('');
+                      setDossierTierFilter('all');
+                      setDossierFactionFilter('all');
+                      setDossierSystemFilter('all');
+                    }}
+                    className="text-xs text-red-400 underline font-mono"
+                  >
+                    Limpar todos os filtros
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-[750px] overflow-y-auto pr-1">
+                  {filteredBestiary.map(enemy => {
+                    const isSelected = selectedBestiaryEnemy?.id === enemy.id;
+                    return (
+                      <div
+                        key={enemy.id}
+                        onClick={() => setSelectedBestiaryEnemy(enemy)}
+                        className={`p-3.5 rounded-xl border text-left cursor-pointer transition flex items-start justify-between gap-3 ${
+                          isSelected
+                            ? 'bg-zinc-800/80 border-red-500/70 shadow-lg'
+                            : 'bg-[#121217] border-[#27272a] hover:bg-zinc-800/40 hover:border-zinc-700'
+                        }`}
+                      >
+                        <div className="space-y-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`text-[9px] font-mono uppercase px-1.5 py-0.5 rounded font-bold ${
+                              enemy.tier === 'civilian'
+                                ? 'bg-emerald-950 text-emerald-300 border border-emerald-800/40'
+                                : enemy.tier === 'mook'
+                                ? 'bg-zinc-800 text-zinc-300 border border-zinc-700'
+                                : enemy.tier === 'lieutenant'
+                                ? 'bg-blue-950 text-blue-300 border border-blue-800/40'
+                                : enemy.tier === 'miniboss'
+                                ? 'bg-purple-950 text-purple-300 border border-purple-800/40'
+                                : 'bg-red-950 text-red-300 border border-red-800/40'
+                            }`}>
+                              {enemy.tier === 'civilian' ? 'Civil' : enemy.tier.toUpperCase()}
+                            </span>
+                            <span className="text-[10px] font-mono text-zinc-500">
+                              {enemy.system}
+                            </span>
+                            <span className="text-[10px] font-mono text-zinc-400 truncate">
+                              • {enemy.faction}
+                            </span>
+                          </div>
+
+                          <h4 className="text-xs font-bold text-zinc-100 truncate">{enemy.name}</h4>
+                          <p className="text-[11px] text-zinc-400 truncate">{enemy.role}</p>
+
+                          <div className="flex items-center gap-2 pt-1 text-[10px] font-mono text-zinc-400">
+                            <span className="text-red-400 font-bold">HP {enemy.hp}</span>
+                            <span>•</span>
+                            <span>SP {enemy.bodySP}</span>
+                            <span>•</span>
+                            <span className="text-amber-400">Combate #{enemy.combatNumber || (enemy.ref + 6)}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col gap-1 shrink-0 pt-0.5">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenBestiaryAttack(enemy, enemy.weapons[0]);
+                            }}
+                            className="p-1.5 rounded-lg bg-red-950/40 hover:bg-red-900/60 border border-red-800/40 text-red-300 text-[10px] transition"
+                            title="Rolar ataque com arma primária"
+                          >
+                            <Sword className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSendBestiaryToCombat(enemy);
+                            }}
+                            className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] transition"
+                            title="Enviar ao combate ativo"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* RIGHT COLUMN: DETAILED DOSSIER CARD */}
+            <div className="lg:col-span-7">
+              {selectedBestiaryEnemy ? (
+                <div className="p-6 rounded-2xl bg-[#121217] border border-[#27272a] space-y-5 animate-in fade-in duration-200 shadow-2xl">
+                  {/* Header with Title and Actions */}
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-[#27272a] pb-4">
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <span className={`text-[10px] font-mono uppercase px-2 py-0.5 rounded font-bold ${
+                          selectedBestiaryEnemy.tier === 'civilian'
+                            ? 'bg-emerald-950 text-emerald-300 border border-emerald-800/50'
+                            : selectedBestiaryEnemy.tier === 'mook'
+                            ? 'bg-zinc-800 text-zinc-300 border border-zinc-700'
+                            : selectedBestiaryEnemy.tier === 'lieutenant'
+                            ? 'bg-blue-950 text-blue-300 border border-blue-800/50'
+                            : selectedBestiaryEnemy.tier === 'miniboss'
+                            ? 'bg-purple-950 text-purple-300 border border-purple-800/50'
+                            : 'bg-red-950 text-red-300 border border-red-700/60'
+                        }`}>
+                          {selectedBestiaryEnemy.tier === 'civilian' ? 'Civil / Everyday People' : selectedBestiaryEnemy.tier.toUpperCase()}
+                        </span>
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800/60 text-zinc-400 border border-zinc-700/60">
+                          {selectedBestiaryEnemy.system}
+                        </span>
+                        <span className="text-[10px] font-mono text-zinc-400">
+                          {selectedBestiaryEnemy.citation}
+                        </span>
+                      </div>
+
+                      <h2 className="text-xl font-bold text-zinc-100">{selectedBestiaryEnemy.name}</h2>
+                      <p className="text-xs text-zinc-400 mt-0.5">
+                        <strong className="text-zinc-200">{selectedBestiaryEnemy.role}</strong> • {selectedBestiaryEnemy.faction}
+                      </p>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        onClick={() => handleSendBestiaryToCombat(selectedBestiaryEnemy)}
+                        className="px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-semibold text-xs tracking-wider uppercase transition shadow flex items-center gap-1.5"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Enviar ao Combate</span>
+                      </button>
+                      <button
+                        onClick={() => handleSaveBestiaryToLibrary(selectedBestiaryEnemy)}
+                        className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-mono transition flex items-center gap-1.5"
+                        title="Salvar na Biblioteca da Campanha"
+                      >
+                        <Bookmark className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Salvar</span>
+                      </button>
+                      <button
+                        onClick={() => handleCopyBestiary(selectedBestiaryEnemy)}
+                        className="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition"
+                        title="Copiar Ficha do Dossiê"
+                      >
+                        {dossierCopied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Atmospheric Quote / Dialogue Hook */}
+                  {selectedBestiaryEnemy.dialogueHook && (
+                    <div className="p-3.5 rounded-xl bg-red-950/20 border border-red-900/40 text-xs text-red-200 italic font-mono flex items-start gap-2.5">
+                      <MessageSquare className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                      <span>{selectedBestiaryEnemy.dialogueHook}</span>
+                    </div>
+                  )}
+
+                  {/* Sensory Visual Appearance & Aesthetic Box */}
+                  <div className="p-4 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-1.5">
+                    <span className="text-[10px] font-mono uppercase text-zinc-500 font-bold flex items-center gap-1.5">
+                      <Eye className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>Aparência Visual & Estética das Ruas:</span>
+                    </span>
+                    <p className="text-xs text-zinc-300 leading-relaxed">
+                      {selectedBestiaryEnemy.appearance || selectedBestiaryEnemy.description}
+                    </p>
+                  </div>
+
+                  {/* Contextual Narrative: Personality, Quirks, Motivation & Secret */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div className="p-3.5 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-1">
+                      <span className="text-[10px] font-mono uppercase text-zinc-500 font-bold block">
+                        Maneirismos & Personalidade:
+                      </span>
+                      <p className="text-zinc-300 text-xs leading-relaxed">
+                        {selectedBestiaryEnemy.quirks || 'Comportamento profissional e focado nas ruas de Night City.'}
+                      </p>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-1">
+                      <span className="text-[10px] font-mono uppercase text-zinc-500 font-bold block">
+                        Motivação & Segredo Imediato:
+                      </span>
+                      <p className="text-zinc-300 text-xs leading-relaxed">
+                        {selectedBestiaryEnemy.motivation || 'Cumprir as ordens da facção e sobreviver aos perigos da cidade.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Tactical Directives & Surrender Protocol */}
+                  <div className="p-3.5 rounded-xl bg-amber-950/20 border border-amber-900/40 space-y-1.5 text-xs">
+                    <div className="flex items-center gap-1.5 text-amber-400 font-mono font-bold">
+                      <ShieldAlert className="w-4 h-4" />
+                      <span>Comportamento Tático & Gatilho de Rendição / Fuga</span>
+                    </div>
+                    <p className="text-amber-200/90 leading-relaxed">{selectedBestiaryEnemy.tactics}</p>
+                    {selectedBestiaryEnemy.surrenderTrigger && (
+                      <div className="text-[11px] font-mono text-zinc-400 bg-black/40 p-2 rounded-lg border border-amber-900/30">
+                        <strong className="text-amber-300">Gatilho de Rendição:</strong> {selectedBestiaryEnemy.surrenderTrigger}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Special Ability if Present */}
+                  {selectedBestiaryEnemy.specialAbility && (
+                    <div className="p-3.5 rounded-xl bg-purple-950/20 border border-purple-800/40 space-y-1 text-xs">
+                      <div className="flex items-center gap-1.5 text-purple-300 font-mono font-bold">
+                        <Sparkles className="w-4 h-4" />
+                        <span>Habilidade Especial / Regra Única</span>
+                      </div>
+                      <p className="text-purple-200/90">{selectedBestiaryEnemy.specialAbility}</p>
+                    </div>
+                  )}
+
+                  {/* Vitals HUD & Stats */}
+                  <div className="p-4 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-3">
+                    <span className="text-[10px] font-mono uppercase text-zinc-500 font-bold block">
+                      Estatísticas de Combate & Vitalidade:
+                    </span>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center font-mono">
+                      <div className="p-2.5 rounded-xl bg-red-950/30 border border-red-900/40">
+                        <span className="text-[10px] text-zinc-400 block">Pontos de Vida (HP)</span>
+                        <strong className="text-base text-red-400">{selectedBestiaryEnemy.hp}</strong>
+                        <span className="text-[9px] text-zinc-500 block">Grave: {Math.ceil(selectedBestiaryEnemy.hp / 2)}</span>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-blue-950/30 border border-blue-900/40">
+                        <span className="text-[10px] text-zinc-400 block">Blindagem Cabeça</span>
+                        <strong className="text-base text-blue-300">SP {selectedBestiaryEnemy.headSP}</strong>
+                        <span className="text-[9px] text-zinc-500 block">Capacete / Implante</span>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-blue-950/30 border border-blue-900/40">
+                        <span className="text-[10px] text-zinc-400 block">Blindagem Corpo</span>
+                        <strong className="text-base text-blue-300">SP {selectedBestiaryEnemy.bodySP}</strong>
+                        <span className="text-[9px] text-zinc-500 block">Colete / Subdermal</span>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-amber-950/30 border border-amber-900/40">
+                        <span className="text-[10px] text-zinc-400 block">Combat Number</span>
+                        <strong className="text-base text-amber-400">
+                          #{selectedBestiaryEnemy.combatNumber || (selectedBestiaryEnemy.ref + 6)}
+                        </strong>
+                        <span className="text-[9px] text-zinc-500 block">Perícias Base 1d10</span>
+                      </div>
+                    </div>
+
+                    {/* Attributes Bar */}
+                    <div className="grid grid-cols-6 gap-1 text-center font-mono text-xs pt-1 border-t border-zinc-800">
+                      <div className="p-1 rounded bg-zinc-900/60">
+                        <span className="text-[9px] text-zinc-500 block">MOVE</span>
+                        <span className="text-zinc-200 font-bold">{selectedBestiaryEnemy.move}</span>
+                      </div>
+                      <div className="p-1 rounded bg-zinc-900/60">
+                        <span className="text-[9px] text-zinc-500 block">REF</span>
+                        <span className="text-zinc-200 font-bold">{selectedBestiaryEnemy.ref}</span>
+                      </div>
+                      <div className="p-1 rounded bg-zinc-900/60">
+                        <span className="text-[9px] text-zinc-500 block">DEX</span>
+                        <span className="text-zinc-200 font-bold">{selectedBestiaryEnemy.dex}</span>
+                      </div>
+                      <div className="p-1 rounded bg-zinc-900/60">
+                        <span className="text-[9px] text-zinc-500 block">BODY</span>
+                        <span className="text-zinc-200 font-bold">{selectedBestiaryEnemy.body}</span>
+                      </div>
+                      <div className="p-1 rounded bg-zinc-900/60">
+                        <span className="text-[9px] text-zinc-500 block">WILL</span>
+                        <span className="text-zinc-200 font-bold">{selectedBestiaryEnemy.will}</span>
+                      </div>
+                      <div className="p-1 rounded bg-zinc-900/60">
+                        <span className="text-[9px] text-zinc-500 block">SAVE</span>
+                        <span className="text-zinc-200 font-bold">DV {selectedBestiaryEnemy.body}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Arsenal & Weapons Matrix with Live Attack Rolls */}
+                  <div className="space-y-2">
+                    <span className="text-xs font-mono uppercase text-zinc-400 font-semibold block flex items-center justify-between">
+                      <span>Armamento & Ataques Oficiais ({selectedBestiaryEnemy.weapons.length}):</span>
+                      <span className="text-[10px] text-red-400 lowercase font-normal">clique em 'rolar ataque' para testar</span>
+                    </span>
+
+                    <div className="space-y-2">
+                      {selectedBestiaryEnemy.weapons.map((w, wIdx) => (
+                        <div
+                          key={wIdx}
+                          className="p-3 rounded-xl bg-[#0a0a0d] border border-zinc-800 flex items-center justify-between gap-3 text-xs"
+                        >
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <Sword className="w-3.5 h-3.5 text-red-500" />
+                              <strong className="text-zinc-200">{w.name}</strong>
+                              <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-zinc-800 text-red-300 font-bold">
+                                {w.damage}
+                              </span>
+                              <span className="text-[10px] font-mono text-zinc-500">
+                                ROF {w.rof}
+                              </span>
+                            </div>
+                            {w.notes && (
+                              <p className="text-[11px] text-zinc-400 mt-0.5 ml-5">{w.notes}</p>
+                            )}
+                          </div>
+
+                          <button
+                            onClick={() => handleOpenBestiaryAttack(selectedBestiaryEnemy, w)}
+                            className="px-3 py-1.5 rounded-lg bg-red-600/90 hover:bg-red-600 text-white font-semibold text-xs transition shadow flex items-center gap-1.5 shrink-0"
+                          >
+                            <Crosshair className="w-3.5 h-3.5" />
+                            <span>Rolar Ataque</span>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Cyberware & Gear */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div className="p-3.5 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-1.5">
+                      <span className="text-[10px] font-mono uppercase text-zinc-500 font-bold block flex items-center gap-1">
+                        <Cpu className="w-3.5 h-3.5 text-cyan-400" />
+                        <span>Ciberware Instalado:</span>
+                      </span>
+                      <div className="flex flex-wrap gap-1">
+                        {selectedBestiaryEnemy.cyberware.map((c, cIdx) => (
+                          <span key={cIdx} className="px-2 py-0.5 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-300 text-[10px] font-mono">
+                            {c}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-1.5">
+                      <span className="text-[10px] font-mono uppercase text-zinc-500 font-bold block flex items-center gap-1">
+                        <Shield className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Equipamento & Pertences:</span>
+                      </span>
+                      <div className="flex flex-wrap gap-1">
+                        {selectedBestiaryEnemy.equipment.map((eq, eqIdx) => (
+                          <span key={eqIdx} className="px-2 py-0.5 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-400 text-[10px]">
+                            {eq}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-12 rounded-2xl bg-[#121217] border border-[#27272a] text-center text-zinc-500 text-xs">
+                  Selecione um NPC da lista à esquerda para carregar seu dossiê completo.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* TAB 1: AUTOMATIC GENERATOR */}
       {activeTab === 'generator' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -463,6 +1334,7 @@ Táticas: ${generatedNPC.tactics}`;
               </span>
               <div className="grid grid-cols-2 gap-2 text-xs">
                 {[
+                  { id: 'civilian', label: 'Cidadão / Civil', sub: 'Everyday People DLC' },
                   { id: 'mook', label: 'Capanga / Mook', sub: 'Combate Comum' },
                   { id: 'lieutenant', label: 'Tenente / LT', sub: 'Especialista Tático' },
                   { id: 'miniboss', label: 'Mini-Chefe', sub: 'Blindado / Perigoso' },

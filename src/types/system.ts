@@ -38,7 +38,7 @@ export interface StatBlock2020 {
   lLegSP: number;
 }
 
-export type NPCTier = 'mook' | 'lieutenant' | 'miniboss' | 'boss';
+export type NPCTier = 'mook' | 'lieutenant' | 'miniboss' | 'boss' | 'civilian';
 
 export interface WeaponItem {
   name: string;

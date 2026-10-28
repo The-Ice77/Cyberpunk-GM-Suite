@@ -25,6 +25,7 @@ import {
   Building2,
   Bot,
   RotateCcw,
+  Trash2,
 } from 'lucide-react';
 import { useSystem } from '../context/SystemContext';
 import { useUserRole } from '../context/UserRoleContext';
@@ -247,6 +248,7 @@ export const WorldPage: React.FC = () => {
 
   // VENUES & SOCIAL STATE
   const [venueSubTab, setVenueSubTab] = useState<'bars' | 'dating' | 'screamsheets'>('bars');
+  const [barFilterTab, setBarFilterTab] = useState<'all' | 'official' | 'custom'>('all');
   const [customBars, setCustomBars] = useState<BarVenue[]>(() => {
     try {
       const saved = localStorage.getItem('cyberpunk_custom_bars');
@@ -272,6 +274,59 @@ export const WorldPage: React.FC = () => {
   const [newBarRumor, setNewBarRumor] = useState<string>('Dizem que mercenários da Arasaka estão recrutando nas mesas do fundo.');
 
   const [generatedDate, setGeneratedDate] = useState<any | null>(null);
+
+  // Delete single custom bar
+  const handleDeleteCustomBar = (id: string) => {
+    if (window.confirm('Tem certeza que deseja excluir permanentemente este bar customizado?')) {
+      const updated = customBars.filter(b => b.id !== id);
+      setCustomBars(updated);
+      localStorage.setItem('cyberpunk_custom_bars', JSON.stringify(updated));
+      setSelectedBar(NIGHT_CITY_BARS[0]);
+    }
+  };
+
+  // Clear all custom bars
+  const handleClearAllCustomBars = () => {
+    if (window.confirm('Tem certeza que deseja apagar todos os bares criados artificialmente pelo Mestre? Os locais oficiais dos livros permanecerão intactos.')) {
+      setCustomBars([]);
+      localStorage.removeItem('cyberpunk_custom_bars');
+      setSelectedBar(NIGHT_CITY_BARS[0]);
+    }
+  };
+
+  // Roll Romance Date with full bug-free structure
+  const handleRollDate = () => {
+    const kw1 = DATING_KEYWORDS[Math.floor(Math.random() * DATING_KEYWORDS.length)];
+    const kw2 = DATING_KEYWORDS[Math.floor(Math.random() * DATING_KEYWORDS.length)];
+    const loc = DATING_LOCATIONS[Math.floor(Math.random() * DATING_LOCATIONS.length)];
+    const act = loc.activities[Math.floor(Math.random() * loc.activities.length)];
+    const comp = DATING_COMPLICATIONS[Math.floor(Math.random() * DATING_COMPLICATIONS.length)];
+
+    const partners = [
+      { name: 'Kira "Nova" Chen', role: 'Netrunner Freelancer', style: 'Moletom holográfico, tatuagens luminosas e tênis neon com cabos trançados.' },
+      { name: 'Dante "Iron" Vance', role: 'Solo Veterano de Heywood', style: 'Jaqueta militar desgastada com ombreiras de couro e ciberolho azul brilhante.' },
+      { name: 'Chloe "Silk" Moreau', role: 'Executiva Júnior da Petrochem', style: 'Terno risca de giz com corte assimétrico e perfume sintético raro de orquídea.' },
+      { name: 'Rocco "Spark" Rossi', role: 'Técnico de Garagem em Watson', style: 'Macacão jeans graxento, chaves de fenda no coldre e sorriso descontraído.' },
+      { name: 'T-Bug "Viper" Tanaka', role: 'DJ do Totentanz / Rockerboy', style: 'Cabelo verde-limão espetado com leds cibernéticos e jaqueta cravejada de spikes.' },
+      { name: 'Sora "Stitch" Morita', role: 'Cirurgiã de Rua Clandestina', style: 'Bata cirúrgica preta com detalhes em cromo e bisturi laser no pulso.' },
+      { name: 'Jax "Dust" Mendoza', role: 'Nômade dos Bakkers', style: 'Bandana no pescoço, botas de couro empoeiradas e óculos de piloto espelhados.' },
+      { name: 'Raven "Hex" Kelly', role: 'Bartender do Afterlife', style: 'Colete preto elegante, anéis pesados de tungstênio e fala macia e misteriosa.' },
+    ];
+    const partner = partners[Math.floor(Math.random() * partners.length)];
+
+    setGeneratedDate({
+      partnerName: partner.name,
+      partnerRole: partner.role,
+      partnerStyle: partner.style,
+      keywords: [kw1.pt, kw2.pt],
+      locationName: loc.locationName,
+      district: loc.district,
+      activity: act,
+      complicationTitle: comp.title,
+      complicationDesc: comp.description,
+      complicationHook: comp.mechanicalHook,
+    });
+  };
   const [generatedScreamsheet, setGeneratedScreamsheet] = useState<any | null>(null);
   const [screamsheetTopic, setScreamsheetTopic] = useState<string>('Escândalo de Implantes Piratas em Watson');
   const [isScreamsheetAiLoading, setIsScreamsheetAiLoading] = useState<boolean>(false);
@@ -1823,97 +1878,201 @@ export const WorldPage: React.FC = () => {
           {/* 1. BARS */}
           {venueSubTab === 'bars' && (
             <div className="space-y-4">
-              {/* Bars Toolbar: Add and AI Generate */}
-              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-[#121217] border border-[#27272a] text-xs">
+              {/* Bars Toolbar: Add, Filter, and AI Generate */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-2xl bg-[#121217] border border-[#27272a] text-xs">
                 <div>
-                  <span className="font-mono text-zinc-300 font-bold block">
-                    Bares, Balcões & Boates de Night City ({allBarsList.length} Estabelecimentos)
+                  <span className="font-mono text-zinc-200 font-bold block text-sm">
+                    Bares, Balcões & Boates de Night City ({allBarsList.length} Locais)
                   </span>
                   <span className="text-[11px] text-zinc-400">
-                    Locais oficiais dos livros e estabelecimentos customizados criados pelo Mestre.
+                    Locais lendários dos livros e estabelecimentos customizados criados pelo Mestre.
                   </span>
                 </div>
 
+                <div className="flex items-center gap-2">
+                  {customBars.length > 0 && (
+                    <button
+                      onClick={handleClearAllCustomBars}
+                      className="px-3 py-2 rounded-xl bg-red-950/40 hover:bg-red-900/60 border border-red-800/50 text-red-300 text-xs font-mono transition flex items-center gap-1.5"
+                      title="Apagar todos os bares criados pelo mestre"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Limpar Bares Criados ({customBars.length})</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setShowAddBarModal(true)}
+                    className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-700 hover:to-amber-700 text-white font-semibold text-xs tracking-wider uppercase transition shadow-md flex items-center gap-1.5"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Criar Novo Bar</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Bar Filter Pills */}
+              <div className="flex items-center gap-2 font-mono text-xs">
                 <button
-                  onClick={() => setShowAddBarModal(true)}
-                  className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-700 hover:to-amber-700 text-white font-semibold text-xs tracking-wider uppercase transition shadow-md flex items-center gap-1.5"
+                  onClick={() => setBarFilterTab('all')}
+                  className={`px-3 py-1.5 rounded-xl border transition ${
+                    barFilterTab === 'all'
+                      ? 'bg-zinc-800 border-zinc-600 text-zinc-100 font-bold'
+                      : 'bg-[#121217] border-[#27272a] text-zinc-400 hover:text-zinc-200'
+                  }`}
                 >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Criar Novo Bar</span>
+                  Todos ({allBarsList.length})
+                </button>
+                <button
+                  onClick={() => setBarFilterTab('official')}
+                  className={`px-3 py-1.5 rounded-xl border transition ${
+                    barFilterTab === 'official'
+                      ? 'bg-red-950/60 border-red-700 text-red-200 font-bold'
+                      : 'bg-[#121217] border-[#27272a] text-zinc-400 hover:text-zinc-200'
+                  }`}
+                >
+                  Lendários Oficiais ({NIGHT_CITY_BARS.length})
+                </button>
+                <button
+                  onClick={() => setBarFilterTab('custom')}
+                  className={`px-3 py-1.5 rounded-xl border transition flex items-center gap-1 ${
+                    barFilterTab === 'custom'
+                      ? 'bg-amber-950/60 border-amber-700 text-amber-200 font-bold'
+                      : 'bg-[#121217] border-[#27272a] text-zinc-400 hover:text-zinc-200'
+                  }`}
+                >
+                  <span>Criados pelo Mestre</span>
+                  <span className="px-1.5 py-0.2 rounded-full bg-amber-900/60 text-[10px] text-amber-300">
+                    {customBars.length}
+                  </span>
                 </button>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Bar List */}
                 <div className="space-y-2 max-h-[600px] overflow-y-auto pr-1">
                   <span className="text-xs font-mono uppercase text-zinc-400 block font-semibold">
                     Selecione um Estabelecimento:
                   </span>
-                  {allBarsList.map(bar => (
-                    <button
-                      key={bar.id}
-                      onClick={() => setSelectedBar(bar)}
-                      className={`w-full p-3 rounded-xl border text-left transition ${
-                        selectedBar.id === bar.id
-                          ? 'bg-zinc-800 border-red-500 text-zinc-100 shadow-sm'
-                          : 'bg-[#121217] border-[#27272a] text-zinc-400 hover:bg-zinc-800'
-                      }`}
-                    >
-                      <div className="text-xs font-bold flex items-center justify-between">
-                        <span>{bar.name}</span>
-                        {bar.citation?.includes('Custom') && (
-                          <span className="text-[9px] font-mono px-1 rounded bg-amber-950 text-amber-300 border border-amber-800">
-                            Custom
+                  {allBarsList
+                    .filter(bar => {
+                      const isCustom = bar.id.startsWith('custom-bar-') || bar.citation?.includes('Custom');
+                      if (barFilterTab === 'official') return !isCustom;
+                      if (barFilterTab === 'custom') return isCustom;
+                      return true;
+                    })
+                    .map(bar => {
+                      const isCustom = bar.id.startsWith('custom-bar-') || bar.citation?.includes('Custom');
+                      const isSelected = selectedBar?.id === bar.id;
+
+                      return (
+                        <div
+                          key={bar.id}
+                          onClick={() => setSelectedBar(bar)}
+                          className={`w-full p-3 rounded-xl border text-left transition cursor-pointer flex items-center justify-between ${
+                            isSelected
+                              ? 'bg-zinc-800 border-red-500 text-zinc-100 shadow-sm'
+                              : 'bg-[#121217] border-[#27272a] text-zinc-400 hover:bg-zinc-800/80 hover:text-zinc-200'
+                          }`}
+                        >
+                          <div className="truncate pr-2">
+                            <div className="text-xs font-bold flex items-center gap-1.5">
+                              <span className="truncate">{bar.name}</span>
+                              {isCustom && (
+                                <span className="text-[9px] font-mono px-1 rounded bg-amber-950 text-amber-300 border border-amber-800 flex-shrink-0">
+                                  Custom
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[10px] text-zinc-500 truncate mt-0.5">{bar.district}</div>
+                          </div>
+
+                          {isCustom && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteCustomBar(bar.id);
+                              }}
+                              className="p-1.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-950/40 transition flex-shrink-0"
+                              title="Excluir este bar customizado"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                </div>
+
+                {/* Selected Bar Detail Card */}
+                {selectedBar && (
+                  <div className="md:col-span-2 p-6 rounded-2xl bg-[#121217] border border-[#27272a] space-y-4 shadow-sm">
+                    <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-zinc-800 text-zinc-400">
+                            {selectedBar.citation || 'Bar & Balcão'}
                           </span>
+                          {(selectedBar.id.startsWith('custom-bar-') || selectedBar.citation?.includes('Custom')) && (
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-800">
+                              Criado pelo Mestre
+                            </span>
+                          )}
+                        </div>
+                        <h2 className="text-base font-bold text-zinc-100 mt-1">{selectedBar.name}</h2>
+                        <span className="text-xs text-zinc-400 font-mono">📍 {selectedBar.district}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <span className="text-[10px] text-zinc-500 block font-mono">Segurança</span>
+                          <span className="text-xs font-mono font-bold text-zinc-200">{selectedBar.securityRating}</span>
+                        </div>
+                        {(selectedBar.id.startsWith('custom-bar-') || selectedBar.citation?.includes('Custom')) && (
+                          <button
+                            onClick={() => handleDeleteCustomBar(selectedBar.id)}
+                            className="p-2 rounded-xl bg-red-950/40 hover:bg-red-900/60 border border-red-800/60 text-red-300 transition"
+                            title="Excluir bar criado artificialmente"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         )}
                       </div>
-                      <div className="text-[10px] text-zinc-500 truncate mt-0.5">{bar.district}</div>
-                    </button>
-                  ))}
-                </div>
+                    </div>
 
-                <div className="md:col-span-2 p-6 rounded-2xl bg-[#121217] border border-[#27272a] space-y-4 shadow-sm">
-                  <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
-                    <div>
-                      <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-zinc-800 text-zinc-400">
-                        {selectedBar.citation || 'Bar & Balcão'}
-                      </span>
-                      <h2 className="text-base font-bold text-zinc-100 mt-1">{selectedBar.name}</h2>
-                      <span className="text-xs text-zinc-400">{selectedBar.district}</span>
+                    <p className="text-xs text-zinc-300 leading-relaxed">{selectedBar.aesthetic}</p>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div className="p-3.5 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-1">
+                        <span className="text-[10px] text-zinc-500 font-mono uppercase block mb-1">Bebida da Casa:</span>
+                        <strong className="text-red-400 block text-xs">{selectedBar.signatureDrink.name} ({selectedBar.signatureDrink.cost})</strong>
+                        <span className="text-zinc-400 text-[11px] block">{selectedBar.signatureDrink.description}</span>
+                        <span className="text-amber-400 text-[10px] font-mono mt-1.5 block bg-amber-950/30 p-1.5 rounded border border-amber-900/40">
+                          {selectedBar.signatureDrink.inGameEffect}
+                        </span>
+                      </div>
+                      <div className="p-3.5 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-2">
+                        <div>
+                          <span className="text-[10px] text-zinc-500 font-mono uppercase block mb-0.5">Público Frequente:</span>
+                          <p className="text-zinc-300 text-[11px]">{selectedBar.clientele}</p>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-zinc-500 font-mono uppercase block mb-0.5">Estilo Musical:</span>
+                          <p className="text-zinc-400 text-[11px] font-mono">{selectedBar.musicStyle}</p>
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <span className="text-[10px] text-zinc-500 block font-mono">Segurança</span>
-                      <span className="text-xs font-mono font-bold text-zinc-200">{selectedBar.securityRating}</span>
-                    </div>
+
+                    {selectedBar.localRumors && selectedBar.localRumors.length > 0 && (
+                      <div className="p-3.5 rounded-xl bg-amber-950/20 border border-amber-900/40 text-xs">
+                        <span className="text-amber-400 font-mono font-bold block mb-1.5">Rumores Recentes no Balcão:</span>
+                        <ul className="list-disc list-inside text-amber-200 space-y-1">
+                          {selectedBar.localRumors.map((rumor, rIdx) => (
+                            <li key={rIdx}>{rumor}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
-
-                  <p className="text-xs text-zinc-300 leading-relaxed">{selectedBar.aesthetic}</p>
-
-                  <div className="grid grid-cols-2 gap-3 text-xs">
-                    <div className="p-3 rounded-lg bg-[#0a0a0d] border border-zinc-800">
-                      <span className="text-[10px] text-zinc-500 uppercase block mb-1">Bebida da Casa:</span>
-                      <strong className="text-red-400 block">{selectedBar.signatureDrink.name} ({selectedBar.signatureDrink.cost})</strong>
-                      <span className="text-zinc-400 text-[11px] block">{selectedBar.signatureDrink.description}</span>
-                      <span className="text-amber-400 text-[10px] font-mono mt-1 block">{selectedBar.signatureDrink.inGameEffect}</span>
-                    </div>
-                    <div className="p-3 rounded-lg bg-[#0a0a0d] border border-zinc-800">
-                      <span className="text-[10px] text-zinc-500 uppercase block mb-1">Público Frequente:</span>
-                      <p className="text-zinc-300 text-[11px] mb-2">{selectedBar.clientele}</p>
-                      <span className="text-[10px] text-zinc-500 uppercase block mb-1">Estilo Musical:</span>
-                      <p className="text-zinc-400 text-[11px]">{selectedBar.musicStyle}</p>
-                    </div>
-                  </div>
-
-                  {selectedBar.localRumors && selectedBar.localRumors.length > 0 && (
-                    <div className="p-3 rounded-lg bg-amber-950/20 border border-amber-900/40 text-xs">
-                      <span className="text-amber-400 font-mono font-bold block mb-1">Rumores Recentes no Balcão:</span>
-                      <ul className="list-disc list-inside text-amber-200 space-y-1">
-                        {selectedBar.localRumors.map((rumor, rIdx) => (
-                          <li key={rIdx}>{rumor}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
 
               {/* MODAL: CRIAR BAR CUSTOMIZADO COM IA */}
@@ -2086,51 +2245,69 @@ export const WorldPage: React.FC = () => {
                     <Heart className="w-5 h-5 text-pink-500" />
                     <span>Digital Dating & Datepath (DLC Oficial)</span>
                   </h3>
-                  <p className="text-xs text-zinc-400">Gera encontros românticos de mercenários com locais e complicações.</p>
+                  <p className="text-xs text-zinc-400">
+                    Gera encontros românticos de mercenários com parceiro(a), locais, atividades e complicações táticas.
+                  </p>
                 </div>
               </div>
 
               <button
-                onClick={() => {
-                  const kw1 = DATING_KEYWORDS[Math.floor(Math.random() * DATING_KEYWORDS.length)];
-                  const kw2 = DATING_KEYWORDS[Math.floor(Math.random() * DATING_KEYWORDS.length)];
-                  const loc = DATING_LOCATIONS[Math.floor(Math.random() * DATING_LOCATIONS.length)];
-                  const act = loc.activities[Math.floor(Math.random() * loc.activities.length)];
-                  const comp = DATING_COMPLICATIONS[Math.floor(Math.random() * DATING_COMPLICATIONS.length)];
-
-                  setGeneratedDate({
-                    keywords: [kw1.pt, kw2.pt],
-                    locationName: loc.locationName,
-                    district: loc.district,
-                    activity: act,
-                    complication: comp,
-                  });
-                }}
-                className="w-full py-2.5 rounded-xl bg-pink-600 hover:bg-pink-700 text-white font-medium text-xs transition shadow"
+                onClick={handleRollDate}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500 text-white font-bold text-xs uppercase tracking-wider transition shadow-lg flex items-center justify-center gap-2"
               >
-                Sortear Encontro Romântico
+                <Heart className="w-4 h-4 fill-white" />
+                <span>Sortear Encontro Romântico (Datepath)</span>
               </button>
 
               {generatedDate && (
-                <div className="p-4 rounded-xl bg-[#0a0a0d] border border-pink-900/40 space-y-3 text-xs">
-                  <div className="flex items-center justify-between">
-                    <strong className="text-zinc-100 text-sm">{generatedDate.locationName}</strong>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-400">
-                      {generatedDate.district}
+                <div className="p-5 rounded-2xl bg-[#0a0a0d] border border-pink-900/40 space-y-4 text-xs animate-in fade-in duration-200">
+                  <div className="flex items-start justify-between border-b border-zinc-800 pb-3">
+                    <div>
+                      <span className="text-[10px] font-mono uppercase text-pink-400 font-bold">Perfil do Match Encontrado</span>
+                      <h4 className="text-base font-bold text-zinc-100 mt-0.5">{generatedDate.partnerName}</h4>
+                      <span className="text-xs text-zinc-400 font-mono">{generatedDate.partnerRole}</span>
+                    </div>
+                    <span className="text-[10px] font-mono px-2.5 py-1 rounded bg-zinc-800 text-zinc-300">
+                      📍 {generatedDate.district}
                     </span>
                   </div>
 
-                  <div className="flex gap-2">
-                    {generatedDate.keywords.map((k: string, i: number) => (
-                      <span key={i} className="px-2 py-0.5 rounded bg-pink-950/60 border border-pink-800/40 text-pink-300 text-[10px] font-mono">
-                        #{k}
-                      </span>
-                    ))}
+                  <div>
+                    <span className="text-[10px] font-mono uppercase text-zinc-500 block mb-0.5">Estilo Visual do Parceiro(a):</span>
+                    <p className="text-zinc-300 italic">{generatedDate.partnerStyle}</p>
                   </div>
 
-                  <p className="text-zinc-300"><strong>Atividade:</strong> {generatedDate.activity}</p>
-                  <div className="p-2.5 rounded bg-red-950/20 border border-red-900/40 text-red-300 text-[11px]">
-                    <strong>Complicação do Encontro:</strong> {generatedDate.complication}
+                  <div>
+                    <span className="text-[10px] font-mono uppercase text-zinc-500 block mb-1">Tags do Garden Dating (#Keywords):</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {generatedDate.keywords.map((k: string, i: number) => (
+                        <span key={i} className="px-2.5 py-0.5 rounded-full bg-pink-950/60 border border-pink-800/50 text-pink-300 text-[10px] font-mono font-bold">
+                          #{k}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-zinc-900/60 border border-zinc-800 space-y-1">
+                    <div className="flex items-center justify-between text-[11px] font-mono">
+                      <strong className="text-zinc-200">{generatedDate.locationName}</strong>
+                      <span className="text-zinc-400">{generatedDate.district}</span>
+                    </div>
+                    <p className="text-zinc-300 text-xs">
+                      <strong className="text-cyan-400 font-normal">Atividade Planejada:</strong> {generatedDate.activity}
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-red-950/30 border border-red-800/50 text-xs space-y-1.5">
+                    <div className="flex items-center gap-1.5 text-red-400 font-bold font-mono">
+                      <AlertTriangle className="w-4 h-4" />
+                      <span>Complicação do Encontro: {generatedDate.complicationTitle}</span>
+                    </div>
+                    <p className="text-zinc-300 leading-relaxed">{generatedDate.complicationDesc}</p>
+                    <div className="text-[11px] font-mono text-amber-300 bg-red-950/40 p-2.5 rounded-lg border border-red-900/50">
+                      <strong className="text-amber-400 block mb-0.5">Resolução Mecânica Sugerida:</strong>
+                      <span>{generatedDate.complicationHook}</span>
+                    </div>
                   </div>
                 </div>
               )}
