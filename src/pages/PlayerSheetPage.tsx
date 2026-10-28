@@ -38,11 +38,26 @@ import {
   ArrowLeft,
   CheckSquare,
   RefreshCw,
+  Globe,
+  Shirt,
+  Scissors,
+  Smile,
+  Home,
+  Target,
+  Bot,
+  MapPin,
 } from 'lucide-react';
 import { useUserRole } from '../context/UserRoleContext';
 import { useSystem } from '../context/SystemContext';
 import { useCombat } from '../context/CombatContext';
-import { PlayerCharacter, PREMADE_ARCHETYPES, LIFEPATH_TABLES } from '../data/playerArchetypes';
+import {
+  PlayerCharacter,
+  PREMADE_ARCHETYPES,
+  LIFEPATH_TABLES,
+  generateRandomLifepath,
+  rollLifepathField,
+} from '../data/playerArchetypes';
+import { generateAILifepathBackstory } from '../services/aiService';
 import {
   WEAPONS_DATABASE,
   STREET_GEAR_DATABASE,
@@ -359,6 +374,82 @@ export const PlayerSheetPage: React.FC = () => {
     notes: '',
   });
   const [customGearInput, setCustomGearInput] = useState('');
+
+  // Lifepath State & Actions
+  const [isGeneratingBio, setIsGeneratingBio] = useState<boolean>(false);
+  const [bioToast, setBioToast] = useState<string | null>(null);
+
+  const handleUpdateLifepathField = (field: keyof PlayerCharacter['lifepath'], value: string) => {
+    if (!char) return;
+    const currentLifepath = char.lifepath || {
+      culturalOrigin: '',
+      personality: '',
+      clothingStyle: '',
+      hairstyle: '',
+      valueMost: '',
+      feelingsAboutPeople: '',
+      valuedPerson: '',
+      valuedPossession: '',
+      familyBackground: '',
+      childhoodEnvironment: '',
+      familyCrisis: '',
+      lifeGoals: '',
+      tragicLoveAffair: '',
+      nemesis: '',
+    };
+    const updatedLifepath = {
+      ...currentLifepath,
+      [field]: value,
+    };
+    savePlayerCharacter({
+      ...char,
+      lifepath: updatedLifepath,
+    });
+  };
+
+  const handleRollSingleField = (field: keyof PlayerCharacter['lifepath'], tableKey: keyof typeof LIFEPATH_TABLES) => {
+    const table = LIFEPATH_TABLES[tableKey];
+    if (!table) return;
+    const rolled = rollLifepathField(table);
+    handleUpdateLifepathField(field, rolled);
+    setBioToast(`Rolado: ${rolled.slice(0, 32)}...`);
+    setTimeout(() => setBioToast(null), 2000);
+  };
+
+  const handleRollAllLifepath = () => {
+    if (!char) return;
+    const newLifepath = generateRandomLifepath();
+    savePlayerCharacter({
+      ...char,
+      lifepath: newLifepath,
+    });
+    setBioToast('Lifepath completo sorteado nas 14 tabelas oficiais!');
+    setTimeout(() => setBioToast(null), 2500);
+  };
+
+  const handleGenerateBio = async () => {
+    if (!char) return;
+    setIsGeneratingBio(true);
+    try {
+      const bio = await generateAILifepathBackstory(
+        char.name,
+        char.role,
+        char.lifepath as unknown as Record<string, string>
+      );
+      const currentNotes = char.notes ? `${char.notes}\n\n` : '';
+      const updatedNotes = `${currentNotes}### 📖 Crônica do Edgerunner (Lifepath)\n${bio}`;
+      savePlayerCharacter({
+        ...char,
+        notes: updatedNotes,
+      });
+      setBioToast('Crônica gerada com IA e salva nas Anotações da ficha!');
+      setTimeout(() => setBioToast(null), 3000);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsGeneratingBio(false);
+    }
+  };
 
   const [wizardChar, setWizardChar] = useState<Partial<PlayerCharacter>>({
     name: 'Novo Cyberpunk',
@@ -1747,38 +1838,708 @@ export const PlayerSheetPage: React.FC = () => {
           )}
 
           {/* ======================================================== */}
-          {/* TAB 5: LIFEPATH                                          */}
+          {/* TAB 5: LIFEPATH (INTERATIVO, ESCOLHÍVEL & EDITÁVEL)       */}
           {/* ======================================================== */}
           {activeSheetTab === 'lifepath' && (
-            <div className="p-6 rounded-2xl bg-[#121217] border border-[#27272a] space-y-4">
-              <h3 className="text-xs font-mono uppercase text-zinc-400 font-semibold flex items-center gap-1.5">
-                <BookOpen className="w-4 h-4 text-rose-500" /> Caminho de Vida & Personalidade (Lifepath)
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-sans">
-                <div className="p-3.5 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-1">
-                  <span className="text-[10px] font-mono uppercase text-zinc-500 block">Origem Cultural</span>
-                  <strong className="text-zinc-200">{char.lifepath.culturalOrigin}</strong>
+            <div className="space-y-6 animate-in fade-in duration-150">
+              {/* Lifepath Toolbar Banner */}
+              <div className="p-5 rounded-2xl bg-[#121217] border border-[#27272a] flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-lg">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="p-2 rounded-xl bg-rose-950/60 border border-rose-800/50 text-rose-400">
+                      <BookOpen className="w-5 h-5" />
+                    </span>
+                    <div>
+                      <h3 className="text-base font-bold text-zinc-100 flex items-center gap-2">
+                        <span>Caminho de Vida & Narrativa (Lifepath)</span>
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-800/40">
+                          Cyberpunk RED Oficial
+                        </span>
+                      </h3>
+                      <p className="text-xs text-zinc-400 mt-0.5">
+                        Escolha opções oficiais das tabelas d10 com um clique, role dados individualmente ou digite livremente sua história.
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <div className="p-3.5 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-1">
-                  <span className="text-[10px] font-mono uppercase text-zinc-500 block">Personalidade</span>
-                  <strong className="text-zinc-200">{char.lifepath.personality}</strong>
+
+                {/* Quick Action Buttons */}
+                <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                  <button
+                    onClick={handleRollAllLifepath}
+                    className="flex-1 md:flex-initial px-3.5 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-rose-300 border border-zinc-700 text-xs font-mono font-bold transition flex items-center justify-center gap-2 shadow-sm"
+                    title="Rolar aleatoriamente em todas as 14 tabelas oficiais"
+                  >
+                    <Dices className="w-4 h-4 text-rose-400" />
+                    <span>Sortear Tudo (14 d10)</span>
+                  </button>
+
+                  <button
+                    onClick={handleGenerateBio}
+                    disabled={isGeneratingBio}
+                    className="flex-1 md:flex-initial px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-md disabled:opacity-50"
+                    title="Gera uma biografia rica em primeira pessoa com a IA e adiciona às Anotações"
+                  >
+                    {isGeneratingBio ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Bot className="w-4 h-4" />
+                    )}
+                    <span>{isGeneratingBio ? 'Criando História...' : 'Gerar Crônica IA'}</span>
+                  </button>
                 </div>
-                <div className="p-3.5 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-1">
-                  <span className="text-[10px] font-mono uppercase text-zinc-500 block">Estilo de Roupas</span>
-                  <strong className="text-zinc-200">{char.lifepath.clothingStyle}</strong>
+              </div>
+
+              {/* Feedback Toast */}
+              {bioToast && (
+                <div className="p-3 rounded-xl bg-emerald-950/80 border border-emerald-700/60 text-emerald-300 text-xs font-mono flex items-center gap-2 shadow-md animate-in fade-in duration-150">
+                  <Check className="w-4 h-4 text-emerald-400" />
+                  <span>{bioToast}</span>
                 </div>
-                <div className="p-3.5 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-1">
-                  <span className="text-[10px] font-mono uppercase text-zinc-500 block">Objetivo de Vida</span>
-                  <strong className="text-zinc-200">{char.lifepath.lifeGoals}</strong>
+              )}
+
+              {/* ======================================================== */}
+              {/* SEÇÃO 1: ORIGEM, ESTILO & ATITUDE                        */}
+              {/* ======================================================== */}
+              <div className="p-5 rounded-2xl bg-[#121217] border border-[#27272a] space-y-4">
+                <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
+                  <h4 className="text-xs font-mono uppercase text-zinc-300 font-bold flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-rose-500" />
+                    <span>1. Origem, Estilo & Atitude Visual (Style & Heritage)</span>
+                  </h4>
+                  <span className="text-[10px] font-mono text-zinc-500">Tabelas 1 a 4</span>
                 </div>
-                <div className="p-3.5 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-1">
-                  <span className="text-[10px] font-mono uppercase text-zinc-500 block">Pessoa Mais Valorizada</span>
-                  <strong className="text-zinc-200">{char.lifepath.valuedPerson}</strong>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Field 1: Cultural Origin */}
+                  <div className="p-4 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-mono uppercase text-zinc-300 font-bold flex items-center gap-1.5">
+                        <Globe className="w-3.5 h-3.5 text-rose-400" />
+                        <span>Origem Cultural & Idioma</span>
+                      </span>
+                      <button
+                        onClick={() => handleRollSingleField('culturalOrigin', 'culturalOrigins')}
+                        className="flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-900 hover:bg-zinc-800 text-[10px] font-mono text-rose-400 border border-zinc-800 transition"
+                        title="Rolar 1d10 na tabela de Origem Cultural"
+                      >
+                        <Dices className="w-3 h-3" />
+                        <span>1d10</span>
+                      </button>
+                    </div>
+
+                    <select
+                      value={LIFEPATH_TABLES.culturalOrigins.includes(char.lifepath?.culturalOrigin || '') ? char.lifepath.culturalOrigin : ''}
+                      onChange={e => {
+                        if (e.target.value) handleUpdateLifepathField('culturalOrigin', e.target.value);
+                      }}
+                      className="w-full bg-[#121217] border border-zinc-800 rounded-lg p-2 text-xs text-zinc-200 focus:outline-none focus:border-rose-500"
+                    >
+                      <option value="">-- Escolher da Tabela Oficial (10 Regiões) --</option>
+                      {LIFEPATH_TABLES.culturalOrigins.map((opt, i) => (
+                        <option key={i} value={opt}>{i + 1}. {opt}</option>
+                      ))}
+                    </select>
+
+                    <input
+                      type="text"
+                      value={char.lifepath?.culturalOrigin || ''}
+                      onChange={e => handleUpdateLifepathField('culturalOrigin', e.target.value)}
+                      placeholder="Personalize a origem cultural e idioma nativo..."
+                      className="w-full bg-[#121217] border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-100 focus:outline-none focus:border-rose-500 font-sans"
+                    />
+                  </div>
+
+                  {/* Field 2: Clothing Style */}
+                  <div className="p-4 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-mono uppercase text-zinc-300 font-bold flex items-center gap-1.5">
+                        <Shirt className="w-3.5 h-3.5 text-rose-400" />
+                        <span>Estilo de Roupa & Visual</span>
+                      </span>
+                      <button
+                        onClick={() => handleRollSingleField('clothingStyle', 'clothingStyles')}
+                        className="flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-900 hover:bg-zinc-800 text-[10px] font-mono text-rose-400 border border-zinc-800 transition"
+                        title="Rolar 1d10 na tabela de Estilo de Roupa"
+                      >
+                        <Dices className="w-3 h-3" />
+                        <span>1d10</span>
+                      </button>
+                    </div>
+
+                    <select
+                      value={LIFEPATH_TABLES.clothingStyles.includes(char.lifepath?.clothingStyle || '') ? char.lifepath.clothingStyle : ''}
+                      onChange={e => {
+                        if (e.target.value) handleUpdateLifepathField('clothingStyle', e.target.value);
+                      }}
+                      className="w-full bg-[#121217] border border-zinc-800 rounded-lg p-2 text-xs text-zinc-200 focus:outline-none focus:border-rose-500"
+                    >
+                      <option value="">-- Escolher da Tabela Oficial (10 Estilos) --</option>
+                      {LIFEPATH_TABLES.clothingStyles.map((opt, i) => (
+                        <option key={i} value={opt}>{i + 1}. {opt}</option>
+                      ))}
+                    </select>
+
+                    <input
+                      type="text"
+                      value={char.lifepath?.clothingStyle || ''}
+                      onChange={e => handleUpdateLifepathField('clothingStyle', e.target.value)}
+                      placeholder="Personalize seu estilo de vestimenta..."
+                      className="w-full bg-[#121217] border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-100 focus:outline-none focus:border-rose-500 font-sans"
+                    />
+                  </div>
+
+                  {/* Field 3: Hairstyle */}
+                  <div className="p-4 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-mono uppercase text-zinc-300 font-bold flex items-center gap-1.5">
+                        <Scissors className="w-3.5 h-3.5 text-rose-400" />
+                        <span>Penteado & Cabelo</span>
+                      </span>
+                      <button
+                        onClick={() => handleRollSingleField('hairstyle', 'hairstyles')}
+                        className="flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-900 hover:bg-zinc-800 text-[10px] font-mono text-rose-400 border border-zinc-800 transition"
+                        title="Rolar 1d10 na tabela de Penteado"
+                      >
+                        <Dices className="w-3 h-3" />
+                        <span>1d10</span>
+                      </button>
+                    </div>
+
+                    <select
+                      value={LIFEPATH_TABLES.hairstyles.includes(char.lifepath?.hairstyle || '') ? char.lifepath.hairstyle : ''}
+                      onChange={e => {
+                        if (e.target.value) handleUpdateLifepathField('hairstyle', e.target.value);
+                      }}
+                      className="w-full bg-[#121217] border border-zinc-800 rounded-lg p-2 text-xs text-zinc-200 focus:outline-none focus:border-rose-500"
+                    >
+                      <option value="">-- Escolher da Tabela Oficial (10 Cortes) --</option>
+                      {LIFEPATH_TABLES.hairstyles.map((opt, i) => (
+                        <option key={i} value={opt}>{i + 1}. {opt}</option>
+                      ))}
+                    </select>
+
+                    <input
+                      type="text"
+                      value={char.lifepath?.hairstyle || ''}
+                      onChange={e => handleUpdateLifepathField('hairstyle', e.target.value)}
+                      placeholder="Personalize seu corte ou cabelo neon..."
+                      className="w-full bg-[#121217] border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-100 focus:outline-none focus:border-rose-500 font-sans"
+                    />
+                  </div>
+
+                  {/* Field 4: Personality */}
+                  <div className="p-4 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-mono uppercase text-zinc-300 font-bold flex items-center gap-1.5">
+                        <Smile className="w-3.5 h-3.5 text-rose-400" />
+                        <span>Personalidade & Postura</span>
+                      </span>
+                      <button
+                        onClick={() => handleRollSingleField('personality', 'personalities')}
+                        className="flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-900 hover:bg-zinc-800 text-[10px] font-mono text-rose-400 border border-zinc-800 transition"
+                        title="Rolar 1d10 na tabela de Personalidade"
+                      >
+                        <Dices className="w-3 h-3" />
+                        <span>1d10</span>
+                      </button>
+                    </div>
+
+                    <select
+                      value={LIFEPATH_TABLES.personalities.includes(char.lifepath?.personality || '') ? char.lifepath.personality : ''}
+                      onChange={e => {
+                        if (e.target.value) handleUpdateLifepathField('personality', e.target.value);
+                      }}
+                      className="w-full bg-[#121217] border border-zinc-800 rounded-lg p-2 text-xs text-zinc-200 focus:outline-none focus:border-rose-500"
+                    >
+                      <option value="">-- Escolher da Tabela Oficial (10 Traços) --</option>
+                      {LIFEPATH_TABLES.personalities.map((opt, i) => (
+                        <option key={i} value={opt}>{i + 1}. {opt}</option>
+                      ))}
+                    </select>
+
+                    <input
+                      type="text"
+                      value={char.lifepath?.personality || ''}
+                      onChange={e => handleUpdateLifepathField('personality', e.target.value)}
+                      placeholder="Personalize a atitude e temperamento..."
+                      className="w-full bg-[#121217] border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-100 focus:outline-none focus:border-rose-500 font-sans"
+                    />
+                  </div>
                 </div>
-                <div className="p-3.5 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-1">
-                  <span className="text-[10px] font-mono uppercase text-zinc-500 block">Arqui-Inimigo (Nemesis)</span>
-                  <strong className="text-red-400">{char.lifepath.nemesis}</strong>
+              </div>
+
+              {/* ======================================================== */}
+              {/* SEÇÃO 2: CÓDIGO MORAL & VÍNCULOS                         */}
+              {/* ======================================================== */}
+              <div className="p-5 rounded-2xl bg-[#121217] border border-[#27272a] space-y-4">
+                <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
+                  <h4 className="text-xs font-mono uppercase text-zinc-300 font-bold flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-amber-500" />
+                    <span>2. Código Moral, Vínculos & Valores (Core Values & People)</span>
+                  </h4>
+                  <span className="text-[10px] font-mono text-zinc-500">Tabelas 5 a 8</span>
                 </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Field 5: Value Most */}
+                  <div className="p-4 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-mono uppercase text-zinc-300 font-bold flex items-center gap-1.5">
+                        <Heart className="w-3.5 h-3.5 text-amber-400" />
+                        <span>O Que Mais Valoriza?</span>
+                      </span>
+                      <button
+                        onClick={() => handleRollSingleField('valueMost', 'valueMost')}
+                        className="flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-900 hover:bg-zinc-800 text-[10px] font-mono text-amber-400 border border-zinc-800 transition"
+                        title="Rolar 1d10 na tabela de Valores"
+                      >
+                        <Dices className="w-3 h-3" />
+                        <span>1d10</span>
+                      </button>
+                    </div>
+
+                    <select
+                      value={LIFEPATH_TABLES.valueMost.includes(char.lifepath?.valueMost || '') ? char.lifepath.valueMost : ''}
+                      onChange={e => {
+                        if (e.target.value) handleUpdateLifepathField('valueMost', e.target.value);
+                      }}
+                      className="w-full bg-[#121217] border border-zinc-800 rounded-lg p-2 text-xs text-zinc-200 focus:outline-none focus:border-amber-500"
+                    >
+                      <option value="">-- Escolher da Tabela Oficial (10 Valores) --</option>
+                      {LIFEPATH_TABLES.valueMost.map((opt, i) => (
+                        <option key={i} value={opt}>{i + 1}. {opt}</option>
+                      ))}
+                    </select>
+
+                    <input
+                      type="text"
+                      value={char.lifepath?.valueMost || ''}
+                      onChange={e => handleUpdateLifepathField('valueMost', e.target.value)}
+                      placeholder="O que move seu personagem..."
+                      className="w-full bg-[#121217] border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-100 focus:outline-none focus:border-amber-500 font-sans"
+                    />
+                  </div>
+
+                  {/* Field 6: Feelings About People */}
+                  <div className="p-4 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-mono uppercase text-zinc-300 font-bold flex items-center gap-1.5">
+                        <Users className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Sentimento Sobre as Pessoas</span>
+                      </span>
+                      <button
+                        onClick={() => handleRollSingleField('feelingsAboutPeople', 'feelingsAboutPeople')}
+                        className="flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-900 hover:bg-zinc-800 text-[10px] font-mono text-amber-400 border border-zinc-800 transition"
+                        title="Rolar 1d10 na tabela de Sentimentos"
+                      >
+                        <Dices className="w-3 h-3" />
+                        <span>1d10</span>
+                      </button>
+                    </div>
+
+                    <select
+                      value={LIFEPATH_TABLES.feelingsAboutPeople.includes(char.lifepath?.feelingsAboutPeople || '') ? char.lifepath.feelingsAboutPeople : ''}
+                      onChange={e => {
+                        if (e.target.value) handleUpdateLifepathField('feelingsAboutPeople', e.target.value);
+                      }}
+                      className="w-full bg-[#121217] border border-zinc-800 rounded-lg p-2 text-xs text-zinc-200 focus:outline-none focus:border-amber-500"
+                    >
+                      <option value="">-- Escolher da Tabela Oficial (10 Posturas) --</option>
+                      {LIFEPATH_TABLES.feelingsAboutPeople.map((opt, i) => (
+                        <option key={i} value={opt}>{i + 1}. {opt}</option>
+                      ))}
+                    </select>
+
+                    <input
+                      type="text"
+                      value={char.lifepath?.feelingsAboutPeople || ''}
+                      onChange={e => handleUpdateLifepathField('feelingsAboutPeople', e.target.value)}
+                      placeholder="Como você enxerga a humanidade ao redor..."
+                      className="w-full bg-[#121217] border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-100 focus:outline-none focus:border-amber-500 font-sans"
+                    />
+                  </div>
+
+                  {/* Field 7: Valued Person */}
+                  <div className="p-4 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-mono uppercase text-zinc-300 font-bold flex items-center gap-1.5">
+                        <User className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Pessoa Mais Valorizada</span>
+                      </span>
+                      <button
+                        onClick={() => handleRollSingleField('valuedPerson', 'valuedPersons')}
+                        className="flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-900 hover:bg-zinc-800 text-[10px] font-mono text-amber-400 border border-zinc-800 transition"
+                        title="Rolar 1d10 na tabela de Pessoa Valorizada"
+                      >
+                        <Dices className="w-3 h-3" />
+                        <span>1d10</span>
+                      </button>
+                    </div>
+
+                    <select
+                      value={LIFEPATH_TABLES.valuedPersons.includes(char.lifepath?.valuedPerson || '') ? char.lifepath.valuedPerson : ''}
+                      onChange={e => {
+                        if (e.target.value) handleUpdateLifepathField('valuedPerson', e.target.value);
+                      }}
+                      className="w-full bg-[#121217] border border-zinc-800 rounded-lg p-2 text-xs text-zinc-200 focus:outline-none focus:border-amber-500"
+                    >
+                      <option value="">-- Escolher da Tabela Oficial (10 Figuras) --</option>
+                      {LIFEPATH_TABLES.valuedPersons.map((opt, i) => (
+                        <option key={i} value={opt}>{i + 1}. {opt}</option>
+                      ))}
+                    </select>
+
+                    <input
+                      type="text"
+                      value={char.lifepath?.valuedPerson || ''}
+                      onChange={e => handleUpdateLifepathField('valuedPerson', e.target.value)}
+                      placeholder="Nome ou papel da pessoa que mais importa..."
+                      className="w-full bg-[#121217] border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-100 focus:outline-none focus:border-amber-500 font-sans"
+                    />
+                  </div>
+
+                  {/* Field 8: Valued Possession */}
+                  <div className="p-4 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-mono uppercase text-zinc-300 font-bold flex items-center gap-1.5">
+                        <Package className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Posse Mais Estimada (Relíquia)</span>
+                      </span>
+                      <button
+                        onClick={() => handleRollSingleField('valuedPossession', 'valuedPossessions')}
+                        className="flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-900 hover:bg-zinc-800 text-[10px] font-mono text-amber-400 border border-zinc-800 transition"
+                        title="Rolar 1d10 na tabela de Posse Estimada"
+                      >
+                        <Dices className="w-3 h-3" />
+                        <span>1d10</span>
+                      </button>
+                    </div>
+
+                    <select
+                      value={LIFEPATH_TABLES.valuedPossessions.includes(char.lifepath?.valuedPossession || '') ? char.lifepath.valuedPossession : ''}
+                      onChange={e => {
+                        if (e.target.value) handleUpdateLifepathField('valuedPossession', e.target.value);
+                      }}
+                      className="w-full bg-[#121217] border border-zinc-800 rounded-lg p-2 text-xs text-zinc-200 focus:outline-none focus:border-amber-500"
+                    >
+                      <option value="">-- Escolher da Tabela Oficial (10 Itens) --</option>
+                      {LIFEPATH_TABLES.valuedPossessions.map((opt, i) => (
+                        <option key={i} value={opt}>{i + 1}. {opt}</option>
+                      ))}
+                    </select>
+
+                    <input
+                      type="text"
+                      value={char.lifepath?.valuedPossession || ''}
+                      onChange={e => handleUpdateLifepathField('valuedPossession', e.target.value)}
+                      placeholder="O item físico que você jamais venderia..."
+                      className="w-full bg-[#121217] border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-100 focus:outline-none focus:border-amber-500 font-sans"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* ======================================================== */}
+              {/* SEÇÃO 3: ORIGEM FAMILIAR & INFÂNCIA                      */}
+              {/* ======================================================== */}
+              <div className="p-5 rounded-2xl bg-[#121217] border border-[#27272a] space-y-4">
+                <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
+                  <h4 className="text-xs font-mono uppercase text-zinc-300 font-bold flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-purple-500" />
+                    <span>3. Origem Familiar, Infância & Crises (Family & Upbringing)</span>
+                  </h4>
+                  <span className="text-[10px] font-mono text-zinc-500">Tabelas 9 a 11</span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Field 9: Family Background */}
+                  <div className="p-4 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-mono uppercase text-zinc-300 font-bold flex items-center gap-1.5">
+                        <Home className="w-3.5 h-3.5 text-purple-400" />
+                        <span>Origem Familiar</span>
+                      </span>
+                      <button
+                        onClick={() => handleRollSingleField('familyBackground', 'familyBackgrounds')}
+                        className="flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-900 hover:bg-zinc-800 text-[10px] font-mono text-purple-400 border border-zinc-800 transition"
+                        title="Rolar 1d10 na tabela de Origem Familiar"
+                      >
+                        <Dices className="w-3 h-3" />
+                        <span>1d10</span>
+                      </button>
+                    </div>
+
+                    <select
+                      value={LIFEPATH_TABLES.familyBackgrounds.includes(char.lifepath?.familyBackground || '') ? char.lifepath.familyBackground : ''}
+                      onChange={e => {
+                        if (e.target.value) handleUpdateLifepathField('familyBackground', e.target.value);
+                      }}
+                      className="w-full bg-[#121217] border border-zinc-800 rounded-lg p-2 text-xs text-zinc-200 focus:outline-none focus:border-purple-500"
+                    >
+                      <option value="">-- Escolher da Tabela Oficial --</option>
+                      {LIFEPATH_TABLES.familyBackgrounds.map((opt, i) => (
+                        <option key={i} value={opt}>{i + 1}. {opt}</option>
+                      ))}
+                    </select>
+
+                    <textarea
+                      rows={2}
+                      value={char.lifepath?.familyBackground || ''}
+                      onChange={e => handleUpdateLifepathField('familyBackground', e.target.value)}
+                      placeholder="De onde veio sua família..."
+                      className="w-full bg-[#121217] border border-zinc-800 rounded-lg p-2 text-xs text-zinc-100 focus:outline-none focus:border-purple-500 font-sans leading-relaxed"
+                    />
+                  </div>
+
+                  {/* Field 10: Childhood Environment */}
+                  <div className="p-4 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-mono uppercase text-zinc-300 font-bold flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5 text-purple-400" />
+                        <span>Ambiente de Infância</span>
+                      </span>
+                      <button
+                        onClick={() => handleRollSingleField('childhoodEnvironment', 'childhoodEnvironments')}
+                        className="flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-900 hover:bg-zinc-800 text-[10px] font-mono text-purple-400 border border-zinc-800 transition"
+                        title="Rolar 1d10 na tabela de Ambiente"
+                      >
+                        <Dices className="w-3 h-3" />
+                        <span>1d10</span>
+                      </button>
+                    </div>
+
+                    <select
+                      value={LIFEPATH_TABLES.childhoodEnvironments.includes(char.lifepath?.childhoodEnvironment || '') ? char.lifepath.childhoodEnvironment : ''}
+                      onChange={e => {
+                        if (e.target.value) handleUpdateLifepathField('childhoodEnvironment', e.target.value);
+                      }}
+                      className="w-full bg-[#121217] border border-zinc-800 rounded-lg p-2 text-xs text-zinc-200 focus:outline-none focus:border-purple-500"
+                    >
+                      <option value="">-- Escolher da Tabela Oficial --</option>
+                      {LIFEPATH_TABLES.childhoodEnvironments.map((opt, i) => (
+                        <option key={i} value={opt}>{i + 1}. {opt}</option>
+                      ))}
+                    </select>
+
+                    <textarea
+                      rows={2}
+                      value={char.lifepath?.childhoodEnvironment || ''}
+                      onChange={e => handleUpdateLifepathField('childhoodEnvironment', e.target.value)}
+                      placeholder="Onde você cresceu e aprendeu a sobreviver..."
+                      className="w-full bg-[#121217] border border-zinc-800 rounded-lg p-2 text-xs text-zinc-100 focus:outline-none focus:border-purple-500 font-sans leading-relaxed"
+                    />
+                  </div>
+
+                  {/* Field 11: Family Crisis */}
+                  <div className="p-4 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-mono uppercase text-zinc-300 font-bold flex items-center gap-1.5">
+                        <AlertTriangle className="w-3.5 h-3.5 text-purple-400" />
+                        <span>Crise & Tragédia Familiar</span>
+                      </span>
+                      <button
+                        onClick={() => handleRollSingleField('familyCrisis', 'familyCrises')}
+                        className="flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-900 hover:bg-zinc-800 text-[10px] font-mono text-purple-400 border border-zinc-800 transition"
+                        title="Rolar 1d10 na tabela de Crise Familiar"
+                      >
+                        <Dices className="w-3 h-3" />
+                        <span>1d10</span>
+                      </button>
+                    </div>
+
+                    <select
+                      value={LIFEPATH_TABLES.familyCrises.includes(char.lifepath?.familyCrisis || '') ? char.lifepath.familyCrisis : ''}
+                      onChange={e => {
+                        if (e.target.value) handleUpdateLifepathField('familyCrisis', e.target.value);
+                      }}
+                      className="w-full bg-[#121217] border border-zinc-800 rounded-lg p-2 text-xs text-zinc-200 focus:outline-none focus:border-purple-500"
+                    >
+                      <option value="">-- Escolher da Tabela Oficial --</option>
+                      {LIFEPATH_TABLES.familyCrises.map((opt, i) => (
+                        <option key={i} value={opt}>{i + 1}. {opt}</option>
+                      ))}
+                    </select>
+
+                    <textarea
+                      rows={2}
+                      value={char.lifepath?.familyCrisis || ''}
+                      onChange={e => handleUpdateLifepathField('familyCrisis', e.target.value)}
+                      placeholder="O trauma que separou ou abalou sua família..."
+                      className="w-full bg-[#121217] border border-zinc-800 rounded-lg p-2 text-xs text-zinc-100 focus:outline-none focus:border-purple-500 font-sans leading-relaxed"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* ======================================================== */}
+              {/* SEÇÃO 4: DESTINO SUPREMO, AMORES & NÊMESIS              */}
+              {/* ======================================================== */}
+              <div className="p-5 rounded-2xl bg-[#121217] border border-[#27272a] space-y-4">
+                <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
+                  <h4 className="text-xs font-mono uppercase text-zinc-300 font-bold flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-cyan-500" />
+                    <span>4. Destino Supremo, Amores & Conflitos (Life Goals & Enemies)</span>
+                  </h4>
+                  <span className="text-[10px] font-mono text-zinc-500">Tabelas 12 a 14</span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Field 12: Life Goals */}
+                  <div className="p-4 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-mono uppercase text-zinc-300 font-bold flex items-center gap-1.5">
+                        <Target className="w-3.5 h-3.5 text-cyan-400" />
+                        <span>Objetivo de Vida Supremo</span>
+                      </span>
+                      <button
+                        onClick={() => handleRollSingleField('lifeGoals', 'lifeGoals')}
+                        className="flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-900 hover:bg-zinc-800 text-[10px] font-mono text-cyan-400 border border-zinc-800 transition"
+                        title="Rolar 1d10 na tabela de Objetivos de Vida"
+                      >
+                        <Dices className="w-3 h-3" />
+                        <span>1d10</span>
+                      </button>
+                    </div>
+
+                    <select
+                      value={LIFEPATH_TABLES.lifeGoals.includes(char.lifepath?.lifeGoals || '') ? char.lifepath.lifeGoals : ''}
+                      onChange={e => {
+                        if (e.target.value) handleUpdateLifepathField('lifeGoals', e.target.value);
+                      }}
+                      className="w-full bg-[#121217] border border-zinc-800 rounded-lg p-2 text-xs text-zinc-200 focus:outline-none focus:border-cyan-500"
+                    >
+                      <option value="">-- Escolher da Tabela Oficial --</option>
+                      {LIFEPATH_TABLES.lifeGoals.map((opt, i) => (
+                        <option key={i} value={opt}>{i + 1}. {opt}</option>
+                      ))}
+                    </select>
+
+                    <textarea
+                      rows={2}
+                      value={char.lifepath?.lifeGoals || ''}
+                      onChange={e => handleUpdateLifepathField('lifeGoals', e.target.value)}
+                      placeholder="O que fará você se sentir realizado..."
+                      className="w-full bg-[#121217] border border-zinc-800 rounded-lg p-2 text-xs text-zinc-100 focus:outline-none focus:border-cyan-500 font-sans leading-relaxed"
+                    />
+                  </div>
+
+                  {/* Field 13: Tragic Love Affair */}
+                  <div className="p-4 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-mono uppercase text-zinc-300 font-bold flex items-center gap-1.5">
+                        <Flame className="w-3.5 h-3.5 text-rose-400" />
+                        <span>Caso de Amor Trágico</span>
+                      </span>
+                      <button
+                        onClick={() => handleRollSingleField('tragicLoveAffair', 'tragicLoveAffairs')}
+                        className="flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-900 hover:bg-zinc-800 text-[10px] font-mono text-rose-400 border border-zinc-800 transition"
+                        title="Rolar 1d10 na tabela de Amor Trágico"
+                      >
+                        <Dices className="w-3 h-3" />
+                        <span>1d10</span>
+                      </button>
+                    </div>
+
+                    <select
+                      value={LIFEPATH_TABLES.tragicLoveAffairs.includes(char.lifepath?.tragicLoveAffair || '') ? char.lifepath.tragicLoveAffair : ''}
+                      onChange={e => {
+                        if (e.target.value) handleUpdateLifepathField('tragicLoveAffair', e.target.value);
+                      }}
+                      className="w-full bg-[#121217] border border-zinc-800 rounded-lg p-2 text-xs text-zinc-200 focus:outline-none focus:border-rose-500"
+                    >
+                      <option value="">-- Escolher da Tabela Oficial --</option>
+                      {LIFEPATH_TABLES.tragicLoveAffairs.map((opt, i) => (
+                        <option key={i} value={opt}>{i + 1}. {opt}</option>
+                      ))}
+                    </select>
+
+                    <textarea
+                      rows={2}
+                      value={char.lifepath?.tragicLoveAffair || ''}
+                      onChange={e => handleUpdateLifepathField('tragicLoveAffair', e.target.value)}
+                      placeholder="A cicatriz deixada por um amor do passado..."
+                      className="w-full bg-[#121217] border border-zinc-800 rounded-lg p-2 text-xs text-zinc-100 focus:outline-none focus:border-rose-500 font-sans leading-relaxed"
+                    />
+                  </div>
+
+                  {/* Field 14: Nemesis */}
+                  <div className="p-4 rounded-xl bg-[#0a0a0d] border border-red-950/40 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-mono uppercase text-red-400 font-bold flex items-center gap-1.5">
+                        <Skull className="w-3.5 h-3.5" />
+                        <span>Arqui-Inimigo (Nemesis Mortal)</span>
+                      </span>
+                      <button
+                        onClick={() => handleRollSingleField('nemesis', 'nemeses')}
+                        className="flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-900 hover:bg-zinc-800 text-[10px] font-mono text-red-400 border border-zinc-800 transition"
+                        title="Rolar 1d10 na tabela de Inimigos"
+                      >
+                        <Dices className="w-3 h-3" />
+                        <span>1d10</span>
+                      </button>
+                    </div>
+
+                    <select
+                      value={LIFEPATH_TABLES.nemeses.includes(char.lifepath?.nemesis || '') ? char.lifepath.nemesis : ''}
+                      onChange={e => {
+                        if (e.target.value) handleUpdateLifepathField('nemesis', e.target.value);
+                      }}
+                      className="w-full bg-[#121217] border border-zinc-800 rounded-lg p-2 text-xs text-red-200 focus:outline-none focus:border-red-500"
+                    >
+                      <option value="">-- Escolher da Tabela Oficial --</option>
+                      {LIFEPATH_TABLES.nemeses.map((opt, i) => (
+                        <option key={i} value={opt}>{i + 1}. {opt}</option>
+                      ))}
+                    </select>
+
+                    <textarea
+                      rows={2}
+                      value={char.lifepath?.nemesis || ''}
+                      onChange={e => handleUpdateLifepathField('nemesis', e.target.value)}
+                      placeholder="Quem jurou matar você ou arruinar sua vida..."
+                      className="w-full bg-[#121217] border border-red-950/60 rounded-lg p-2 text-xs text-red-200 focus:outline-none focus:border-red-500 font-sans leading-relaxed"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* ======================================================== */}
+              {/* CRÔNICA NARRATIVA & BIOGRAFIA DO PERSONAGEM              */}
+              {/* ======================================================== */}
+              <div className="p-5 rounded-2xl bg-[#121217] border border-[#27272a] space-y-3">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-zinc-800 pb-2">
+                  <h4 className="text-xs font-mono uppercase text-zinc-300 font-bold flex items-center gap-2">
+                    <BookOpen className="w-4 h-4 text-rose-500" />
+                    <span>Crônica Pessoal & Anotações Livres do Personagem</span>
+                  </h4>
+
+                  <button
+                    onClick={() => {
+                      if (char.notes) {
+                        navigator.clipboard.writeText(char.notes);
+                        setBioToast('Histórico copiado para a área de transferência!');
+                        setTimeout(() => setBioToast(null), 2000);
+                      }
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-mono text-zinc-300 transition"
+                  >
+                    <Copy className="w-3.5 h-3.5 text-zinc-400" />
+                    <span>Copiar Histórico</span>
+                  </button>
+                </div>
+
+                <p className="text-[11px] text-zinc-400 leading-relaxed">
+                  Este espaço armazena a história compilada do seu Edgerunner, contatos, dívidas e a crônica gerada por IA. Qualquer alteração aqui é sincronizada em tempo real com a ficha.
+                </p>
+
+                <textarea
+                  rows={6}
+                  value={char.notes || ''}
+                  onChange={e => savePlayerCharacter({ ...char, notes: e.target.value })}
+                  placeholder="Escreva livremente o histórico do seu personagem ou clique em 'Gerar Crônica IA' acima..."
+                  className="w-full bg-[#0a0a0d] border border-zinc-800 rounded-xl p-3 text-xs text-zinc-200 focus:outline-none focus:border-rose-500 leading-relaxed font-sans"
+                />
               </div>
             </div>
           )}

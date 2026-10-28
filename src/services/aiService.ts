@@ -998,3 +998,56 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido com a seguinte estrutura:
     isAi: true,
   };
 }
+
+// 11. Lifepath Backstory Narrative Generator with AI
+export async function generateAILifepathBackstory(
+  characterName: string,
+  role: string,
+  lifepath: Record<string, string>,
+  apiKey?: string
+): Promise<string> {
+  const activeKey = getEffectiveApiKey(apiKey);
+  if (!activeKey) {
+    return `Nasci sob o céu cinzento e tempestuoso de ${lifepath.culturalOrigin || 'Night City'}. Minha infância foi forjada em ${lifepath.childhoodEnvironment || 'ruas violentas e becos escuros'}, onde aprendi desde cedo que ${lifepath.personality || 'apenas os mais rápidos sobrevivem'}. Minha família enfrentou um golpe devastador quando ${lifepath.familyCrisis || 'perdemos tudo para o moedor de carne corporativo'}.\n\nHoje ganho a vida como ${role || 'Edgerunner'}. O que mais valorizo acima de qualquer eddie é ${lifepath.valueMost || 'minha honra e liberdade'}. Carrego sempre comigo ${lifepath.valuedPossession || 'minha arma de estimação'}, relíquia que me liga a ${lifepath.valuedPerson || 'quem me ensinou o ofício'}.\n\nMas Night City cobra seu preço em sangue: no passado, ${lifepath.tragicLoveAffair || 'uma tragédia amorosa me deixou cicatrizes incuráveis'}. E para piorar, ${lifepath.nemesis || 'um inimigo mortal'} segue no meu encalço. Mas nada vai me parar até eu ${lifepath.lifeGoals || 'me tornar uma lenda viva do Afterlife'}.`;
+  }
+
+  const prompt = `Você é o Co-Mestre Neural de Cyberpunk RED. Escreva uma crônica narrativa emocionante e visceral em primeira pessoa (3 parágrafos curtos) para o personagem "${characterName}" (${role}) com base nas seguintes escolhas oficiais de Lifepath:
+- Origem Cultural: ${lifepath.culturalOrigin}
+- Estilo & Penteado: ${lifepath.clothingStyle} com ${lifepath.hairstyle}
+- Personalidade & Postura: ${lifepath.personality}
+- Origem Familiar & Crise: ${lifepath.familyBackground} | ${lifepath.familyCrisis}
+- Ambiente de Infância: ${lifepath.childhoodEnvironment}
+- Valores & Pessoa Importante: ${lifepath.valueMost} | ${lifepath.valuedPerson}
+- Posse Estimada: ${lifepath.valuedPossession}
+- Caso de Amor Trágico: ${lifepath.tragicLoveAffair}
+- Arqui-Inimigo (Nemesis): ${lifepath.nemesis}
+- Objetivo de Vida Supremo: ${lifepath.lifeGoals}
+
+Retorne exclusivamente o texto da biografia formatado em Markdown com parágrafos fluidos, tom noir visceral, gírias do universo (eddies, choomba, cromo) e pronto para ser usado na mesa de RPG.`;
+
+  if (activeKey) {
+    try {
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeKey}`;
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) {
+          return text.trim();
+        }
+      }
+    } catch (err) {
+      console.error('Error generating AI lifepath backstory:', err);
+    }
+  }
+
+  // Fallback se sem chave ou erro
+  return `Nasci sob o céu tóxico de ${lifepath.culturalOrigin || 'Night City'}. Cresci aprendendo que ${lifepath.feelingsAboutPeople || 'ninguém é confiável nas ruas'}. Meu bem mais precioso sempre foi ${lifepath.valuedPossession || 'minha arma'}, e nunca esqueci a lição de ${lifepath.familyCrisis || 'quando tudo desmoronou'}. Meu objetivo supremo é ${lifepath.lifeGoals || 'fazer meu nome nas ruas e virar uma lenda'}. Com ${lifepath.nemesis || 'meus inimigos'} caçando meus passos, cada trabalho na Zona de Combate é uma questão de vida ou morte.`;
+}
