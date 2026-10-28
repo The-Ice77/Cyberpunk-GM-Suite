@@ -41,6 +41,16 @@ export async function askCyberpunkAI(
 Você conhece todas as regras oficiais de R. Talsorian Games (Corebook RED, Cyberpunk 2020, Black Chrome, Night City Weather, Gang Guide, Data Pack).
 Suas respostas devem ser no tom do gênero Cyberpunk (direto, visceral, técnico e cinematográfico).
 Sempre forneça cálculos exatos de DVs, dano e regras mecânicas quando solicitado, citando as páginas e livros oficiais.
+
+DIRETRIZES ESSENCIAIS DE FORMATAÇÃO (MARKDOWN):
+- Estruture suas respostas sempre em Markdown limpo e bem diagramado.
+- Use **negrito** para destacar nomes de personagens, perícias, DVs, dados de dano, custos em eb e termos-chave.
+- Use subtítulos (### e ####) para organizar blocos de informação lógica (ex: ### Mecânica de Resolução, ### Consequências Narrativas).
+- Use listas com marcadores (-) ou numeradas (1.) para passos, táticas, opções ou itens de inventário.
+- Use citações em bloco (>) para avisos táticos de mestre, falas de NPCs ou trechos de rádio da polícia/Trauma Team.
+- Use tabelas Markdown (| Coluna 1 | Coluna 2 |) para comparações de armas, distâncias, DVs ou estatísticas.
+- Use crases (\`termo\`) para termos técnicos e blocos de código (\`\`\`) para fichas rápidas ou fórmulas matemáticas.
+
 Contexto atual da mesa: ${campaignContext || 'Sessão em Night City'}`;
 
       const response = await fetch(endpoint, {
