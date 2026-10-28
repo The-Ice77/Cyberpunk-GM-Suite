@@ -29,6 +29,9 @@ import {
   Flame,
   Check,
   Info,
+  ChevronDown,
+  ChevronUp,
+  Dices,
 } from 'lucide-react';
 import { useSystem } from '../context/SystemContext';
 import { useUserRole } from '../context/UserRoleContext';
@@ -38,7 +41,7 @@ import { NIGHT_CITY_BARS, BarVenue } from '../data/barsData';
 import { DATING_KEYWORDS, DATING_LOCATIONS, DATING_COMPLICATIONS } from '../data/datingData';
 import { SCREAMSHEET_NETWORKS, SCREAMSHEET_TEMPLATES } from '../data/screamsheetData';
 import { GANGS_LIST, GangProfile } from '../data/gangsData';
-import { generateAIExtendedEncounter, generateAIScreamsheet, generateAICustomBar } from '../services/aiService';
+import { generateAIExtendedEncounter, generateAIScreamsheet, generateAICustomBar, generateAIDate, AIDateResult } from '../services/aiService';
 
 // Gang Map Overlay Data
 interface MapGangSpot {
@@ -284,7 +287,14 @@ export const WorldPage: React.FC = () => {
   const [drinkOrderedToast, setDrinkOrderedToast] = useState<{ drinkName: string; tastingNotes: string; effect: string; glassware?: string } | null>(null);
   const [newBarRumor, setNewBarRumor] = useState<string>('Dizem que mercenários da Arasaka estão recrutando nas mesas do fundo.');
 
-  const [generatedDate, setGeneratedDate] = useState<any | null>(null);
+  const [generatedDate, setGeneratedDate] = useState<AIDateResult | any | null>(null);
+  const [isDateAiLoading, setIsDateAiLoading] = useState<boolean>(false);
+  const [dateAiPrompt, setDateAiPrompt] = useState<string>('');
+  const [showDateAiOptions, setShowDateAiOptions] = useState<boolean>(false);
+  const [dateAiDistrict, setDateAiDistrict] = useState<string>('Qualquer');
+  const [dateAiPartnerRole, setDateAiPartnerRole] = useState<string>('Qualquer');
+
+  const [showScreamsheetAiOptions, setShowScreamsheetAiOptions] = useState<boolean>(false);
 
   // Delete single custom bar
   const handleDeleteCustomBar = (id: string) => {
@@ -336,6 +346,44 @@ export const WorldPage: React.FC = () => {
       complicationTitle: comp.title,
       complicationDesc: comp.description,
       complicationHook: comp.mechanicalHook,
+      isAi: false,
+    });
+  };
+
+  // AI Romance Date Generator
+  const handleGenerateAIDate = async () => {
+    setIsDateAiLoading(true);
+    try {
+      const res = await generateAIDate({
+        district: dateAiDistrict === 'Qualquer' ? undefined : dateAiDistrict,
+        partnerType: dateAiPartnerRole === 'Qualquer' ? undefined : dateAiPartnerRole,
+        prompt: dateAiPrompt.trim() || undefined,
+      });
+      setGeneratedDate(res);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsDateAiLoading(false);
+    }
+  };
+
+  // Procedural Screamsheet Roll
+  const handleRollScreamsheet = () => {
+    const net = SCREAMSHEET_NETWORKS[Math.floor(Math.random() * SCREAMSHEET_NETWORKS.length)];
+    const tmpl = SCREAMSHEET_TEMPLATES[Math.floor(Math.random() * SCREAMSHEET_TEMPLATES.length)];
+    const headline = tmpl.headlines[Math.floor(Math.random() * tmpl.headlines.length)];
+    const intro = tmpl.intros[Math.floor(Math.random() * tmpl.intros.length)];
+    const body = tmpl.bodies[Math.floor(Math.random() * tmpl.bodies.length)];
+    const conclusion = tmpl.conclusions[Math.floor(Math.random() * tmpl.conclusions.length)];
+    const gig = tmpl.gigs[Math.floor(Math.random() * tmpl.gigs.length)];
+
+    setGeneratedScreamsheet({
+      network: `${net.name} [${net.bias}]`,
+      headline,
+      article: `${intro} ${body} ${conclusion}`,
+      hiddenGig: `${gig.objective} (Cliente: ${gig.client} | Alvo: ${gig.target} | Perigo: ${gig.dangerLevel})`,
+      payout: gig.payout,
+      isAi: false,
     });
   };
   const [generatedScreamsheet, setGeneratedScreamsheet] = useState<any | null>(null);
@@ -509,7 +557,10 @@ export const WorldPage: React.FC = () => {
     setIsScreamsheetAiLoading(true);
     try {
       const res = await generateAIScreamsheet(screamsheetTopic);
-      setGeneratedScreamsheet(res);
+      setGeneratedScreamsheet({
+        ...res,
+        isAi: true,
+      });
     } catch (e) {
       console.error(e);
     } finally {
@@ -2480,7 +2531,7 @@ export const WorldPage: React.FC = () => {
 
           {/* 2. DATING */}
           {venueSubTab === 'dating' && (
-            <div className="p-6 rounded-2xl bg-[#121217] border border-[#27272a] max-w-2xl mx-auto space-y-4">
+            <div className="p-6 rounded-2xl bg-[#121217] border border-[#27272a] max-w-2xl mx-auto space-y-5">
               <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
                 <div>
                   <h3 className="text-base font-bold text-zinc-100 flex items-center gap-2">
@@ -2493,20 +2544,113 @@ export const WorldPage: React.FC = () => {
                 </div>
               </div>
 
-              <button
-                onClick={handleRollDate}
-                className="w-full py-3 rounded-xl bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500 text-white font-bold text-xs uppercase tracking-wider transition shadow-lg flex items-center justify-center gap-2"
-              >
-                <Heart className="w-4 h-4 fill-white" />
-                <span>Sortear Encontro Romântico (Datepath)</span>
-              </button>
+              {/* Action Buttons */}
+              <div className="space-y-3">
+                {/* 1. Standard Button: Procedural Date Roll */}
+                <button
+                  onClick={handleRollDate}
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500 text-white font-bold text-xs uppercase tracking-wider transition shadow-lg flex items-center justify-center gap-2"
+                >
+                  <Dices className="w-4 h-4" />
+                  <span>Sortear Encontro Romântico (Datepath Oficial)</span>
+                </button>
 
+                {/* 2. Extra Option: AI Date Generator */}
+                <div className="rounded-xl border border-pink-900/40 bg-pink-950/15 p-3.5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Bot className="w-4 h-4 text-pink-400" />
+                      <span className="text-xs font-bold text-zinc-200">Opção Extra: Gerar com IA (Gemini)</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowDateAiOptions(!showDateAiOptions)}
+                      className="text-[11px] font-mono text-pink-400 hover:text-pink-300 transition flex items-center gap-1"
+                    >
+                      <span>{showDateAiOptions ? 'Ocultar Opções' : 'Personalizar Date'}</span>
+                      {showDateAiOptions ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+
+                  {showDateAiOptions && (
+                    <div className="space-y-2.5 pt-2 border-t border-pink-950/50 animate-in fade-in duration-150">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <label className="text-[10px] font-mono text-zinc-400 block mb-1">Distrito Desejado:</label>
+                          <select
+                            value={dateAiDistrict}
+                            onChange={e => setDateAiDistrict(e.target.value)}
+                            className="w-full bg-[#0a0a0d] border border-zinc-800 rounded-lg p-2 text-xs text-zinc-200 focus:outline-none focus:border-pink-500"
+                          >
+                            <option value="Qualquer">Qualquer Distrito</option>
+                            {NIGHT_CITY_DISTRICTS.map(d => (
+                              <option key={d.id} value={d.name}>{d.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-mono text-zinc-400 block mb-1">Papel do Par:</label>
+                          <select
+                            value={dateAiPartnerRole}
+                            onChange={e => setDateAiPartnerRole(e.target.value)}
+                            className="w-full bg-[#0a0a0d] border border-zinc-800 rounded-lg p-2 text-xs text-zinc-200 focus:outline-none focus:border-pink-500"
+                          >
+                            <option value="Qualquer">Qualquer Perfil</option>
+                            <option value="Netrunner">Netrunner Freelancer</option>
+                            <option value="Solo">Solo de Aluguel</option>
+                            <option value="Techie">Técnico(a) / Engenheiro(a)</option>
+                            <option value="Medtech">Médico(a) Clandestino(a)</option>
+                            <option value="Rockerboy">Rockerboy / Artista Rebelde</option>
+                            <option value="Executivo(a)">Executivo(a) Corporativo(a)</option>
+                            <option value="Fixer">Fixer Conectado(a)</option>
+                            <option value="Nômade">Nômade das Estradas</option>
+                            <option value="Bartender">Bartender do Submundo</option>
+                            <option value="Cidadão">Cidadão Comum</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-mono text-zinc-400 block mb-1">
+                          Instruções / Vibe Específica (Opcional):
+                        </label>
+                        <input
+                          type="text"
+                          value={dateAiPrompt}
+                          onChange={e => setDateAiPrompt(e.target.value)}
+                          placeholder="Ex: Solo veterano com cicatrizes em um diner decadente de Heywood..."
+                          className="w-full bg-[#0a0a0d] border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-pink-500"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={handleGenerateAIDate}
+                    disabled={isDateAiLoading}
+                    className="w-full py-2.5 rounded-xl bg-pink-700 hover:bg-pink-600 disabled:opacity-50 text-white font-semibold text-xs transition flex items-center justify-center gap-2 shadow"
+                  >
+                    <Bot className={`w-3.5 h-3.5 ${isDateAiLoading ? 'animate-spin' : ''}`} />
+                    <span>{isDateAiLoading ? 'IA Elaborando Encontro...' : 'Gerar Encontro com IA'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Date Card Result */}
               {generatedDate && (
                 <div className="p-5 rounded-2xl bg-[#0a0a0d] border border-pink-900/40 space-y-4 text-xs animate-in fade-in duration-200">
                   <div className="flex items-start justify-between border-b border-zinc-800 pb-3">
                     <div>
-                      <span className="text-[10px] font-mono uppercase text-pink-400 font-bold">Perfil do Match Encontrado</span>
-                      <h4 className="text-base font-bold text-zinc-100 mt-0.5">{generatedDate.partnerName}</h4>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`text-[9px] font-mono uppercase px-2 py-0.5 rounded font-bold ${
+                          generatedDate.isAi
+                            ? 'bg-purple-950 text-purple-300 border border-purple-800/50'
+                            : 'bg-pink-950 text-pink-300 border border-pink-800/50'
+                        }`}>
+                          {generatedDate.isAi ? '🤖 Gerado com IA (Gemini)' : '🎲 Sorteado (Datepath DLC)'}
+                        </span>
+                      </div>
+                      <h4 className="text-base font-bold text-zinc-100">{generatedDate.partnerName}</h4>
                       <span className="text-xs text-zinc-400 font-mono">{generatedDate.partnerRole}</span>
                     </div>
                     <span className="text-[10px] font-mono px-2.5 py-1 rounded bg-zinc-800 text-zinc-300">
@@ -2524,7 +2668,7 @@ export const WorldPage: React.FC = () => {
                     <div className="flex flex-wrap gap-1.5">
                       {generatedDate.keywords.map((k: string, i: number) => (
                         <span key={i} className="px-2.5 py-0.5 rounded-full bg-pink-950/60 border border-pink-800/50 text-pink-300 text-[10px] font-mono font-bold">
-                          #{k}
+                          #{k.replace('#', '')}
                         </span>
                       ))}
                     </div>
@@ -2539,6 +2683,21 @@ export const WorldPage: React.FC = () => {
                       <strong className="text-cyan-400 font-normal">Atividade Planejada:</strong> {generatedDate.activity}
                     </p>
                   </div>
+
+                  {/* AI Extra fields if present */}
+                  {generatedDate.conversationStarter && (
+                    <div className="p-3 rounded-xl bg-pink-950/25 border border-pink-900/40 text-xs space-y-1">
+                      <span className="text-[10px] font-mono uppercase text-pink-400 font-bold block">Assunto para Puxar Conversa:</span>
+                      <p className="text-pink-200 italic">{generatedDate.conversationStarter}</p>
+                    </div>
+                  )}
+
+                  {generatedDate.secretAgenda && (
+                    <div className="p-3 rounded-xl bg-purple-950/25 border border-purple-900/40 text-xs space-y-1">
+                      <span className="text-[10px] font-mono uppercase text-purple-400 font-bold block">Agenda Oculta / Segredo do Par (Mestre):</span>
+                      <p className="text-purple-200">{generatedDate.secretAgenda}</p>
+                    </div>
+                  )}
 
                   <div className="p-3.5 rounded-xl bg-red-950/30 border border-red-800/50 text-xs space-y-1.5">
                     <div className="flex items-center gap-1.5 text-red-400 font-bold font-mono">
@@ -2569,34 +2728,74 @@ export const WorldPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Screamsheet AI Generator Input */}
-              <div className="space-y-2">
-                <label className="block text-xs font-mono text-zinc-400">
-                  Tópico / Acontecimento da Notícia:
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={screamsheetTopic}
-                    onChange={e => setScreamsheetTopic(e.target.value)}
-                    placeholder="Ex: Escândalo da Arasaka, Apagão em Heywood..."
-                    className="flex-1 bg-[#0a0a0d] border border-[#27272a] rounded-xl px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-red-500"
-                  />
+              {/* Action Buttons */}
+              <div className="space-y-3">
+                {/* 1. Standard Button: Procedural Screamsheet Roll */}
+                <button
+                  onClick={handleRollScreamsheet}
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-red-700 to-rose-700 hover:from-red-600 hover:to-rose-600 text-white font-bold text-xs uppercase tracking-wider transition shadow-lg flex items-center justify-center gap-2"
+                >
+                  <Dices className="w-4 h-4" />
+                  <span>Sortear Notícia dos Arquivos (Screamsheet DLC)</span>
+                </button>
+
+                {/* 2. Extra Option: AI Screamsheet Generator */}
+                <div className="rounded-xl border border-red-900/40 bg-red-950/15 p-3.5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Bot className="w-4 h-4 text-red-400" />
+                      <span className="text-xs font-bold text-zinc-200">Opção Extra: Gerar Notícia com IA (Gemini)</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowScreamsheetAiOptions(!showScreamsheetAiOptions)}
+                      className="text-[11px] font-mono text-red-400 hover:text-red-300 transition flex items-center gap-1"
+                    >
+                      <span>{showScreamsheetAiOptions ? 'Ocultar Opções' : 'Digitar Tema com IA'}</span>
+                      {showScreamsheetAiOptions ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+
+                  {showScreamsheetAiOptions && (
+                    <div className="space-y-2 pt-2 border-t border-red-950/50 animate-in fade-in duration-150">
+                      <label className="block text-[10px] font-mono text-zinc-400">
+                        Tópico / Acontecimento Específico para a Notícia:
+                      </label>
+                      <input
+                        type="text"
+                        value={screamsheetTopic}
+                        onChange={e => setScreamsheetTopic(e.target.value)}
+                        placeholder="Ex: Escândalo da Arasaka, Apagão em Heywood, Maelstrom invadindo Kabuki..."
+                        className="w-full bg-[#0a0a0d] border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-red-500"
+                      />
+                    </div>
+                  )}
+
                   <button
                     onClick={handleGenerateAIScreamsheet}
                     disabled={isScreamsheetAiLoading}
-                    className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-medium text-xs flex items-center gap-1.5 transition shadow disabled:opacity-50"
+                    className="w-full py-2.5 rounded-xl bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-semibold text-xs flex items-center justify-center gap-2 transition shadow"
                   >
                     <Bot className={`w-3.5 h-3.5 ${isScreamsheetAiLoading ? 'animate-spin' : ''}`} />
-                    <span>{isScreamsheetAiLoading ? 'Gerando...' : 'Gerar com IA'}</span>
+                    <span>{isScreamsheetAiLoading ? 'Redigindo Notícia com IA...' : 'Gerar Notícia com IA'}</span>
                   </button>
                 </div>
               </div>
 
+              {/* Screamsheet Result Display */}
               {generatedScreamsheet && (
-                <div className="p-6 rounded-2xl bg-[#0a0a0d] border border-[#27272a] space-y-4 text-xs font-mono">
+                <div className="p-6 rounded-2xl bg-[#0a0a0d] border border-[#27272a] space-y-4 text-xs font-mono animate-in fade-in duration-200">
                   <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
-                    <span className="text-red-400 font-bold uppercase">{generatedScreamsheet.network}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-red-400 font-bold uppercase">{generatedScreamsheet.network}</span>
+                      <span className={`text-[9px] font-mono uppercase px-2 py-0.5 rounded font-bold ${
+                        generatedScreamsheet.isAi
+                          ? 'bg-purple-950 text-purple-300 border border-purple-800/50'
+                          : 'bg-zinc-800 text-zinc-300 border border-zinc-700'
+                      }`}>
+                        {generatedScreamsheet.isAi ? '🤖 IA Gemini' : '🎲 Arquivo DLC'}
+                      </span>
+                    </div>
                     <span className="text-[10px] text-zinc-500">EDIÇÃO DIGITAL NOTURNA</span>
                   </div>
 

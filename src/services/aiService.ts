@@ -692,3 +692,98 @@ Retorne em JSON:
     ],
   };
 }
+
+// 9. Digital Dating & Datepath Generator with AI
+export interface AIDateResult {
+  partnerName: string;
+  partnerRole: string;
+  partnerStyle: string;
+  keywords: string[];
+  locationName: string;
+  district: string;
+  activity: string;
+  complicationTitle: string;
+  complicationDesc: string;
+  complicationHook: string;
+  conversationStarter?: string;
+  secretAgenda?: string;
+  isAi?: boolean;
+}
+
+export async function generateAIDate(
+  preferences?: {
+    district?: string;
+    partnerType?: string;
+    vibe?: string;
+    prompt?: string;
+  },
+  apiKey?: string
+): Promise<AIDateResult> {
+  const activeKey = getEffectiveApiKey(apiKey);
+  const contextDesc = [
+    preferences?.district ? `Distrito: ${preferences.district}` : '',
+    preferences?.partnerType ? `Tipo de Parceiro(a): ${preferences.partnerType}` : '',
+    preferences?.vibe ? `Clima / Estilo: ${preferences.vibe}` : '',
+    preferences?.prompt ? `Instruções adicionais: ${preferences.prompt}` : '',
+  ].filter(Boolean).join(' | ');
+
+  const prompt = `Você é o Co-Mestre de Cyberpunk RED especialista no DLC oficial "Digital Dating & Datepath" (Garden Patch Dating).
+Gere um encontro romântico detalhado e atmosférico para um mercenário de Night City com base nos parâmetros: "${contextDesc || 'Encontro casual no submundo de Night City'}".
+
+Retorne EXCLUSIVAMENTE um objeto JSON válido com a seguinte estrutura:
+{
+  "partnerName": "Nome completo e apelido de rua entre aspas (ex: Kira \\"Nova\\" Chen ou Rex \\"Chrome\\" Morales)",
+  "partnerRole": "Papel do sistema (ex: Solo Freelancer, Netrunner de Aluguel, Executiva Júnior, Médica Clandestina, Rockerboy Rebelde, Nômade das Badlands)",
+  "partnerStyle": "Descrição detalhada do visual, roupas de estilo cyberpunk (Kitsch, Neotetro, High Fashion ou Militar), implantes visíveis e postura corporal",
+  "keywords": ["#PalavraChave1", "#PalavraChave2", "#PalavraChave3"],
+  "locationName": "Nome atmosférico do local do encontro (bar, restaurante subterrâneo, galeria de arcades, mirante de ferro-velho, estande de tiro)",
+  "district": "Distrito de Night City (Watson, Westbrook, Heywood, Pacifica, Centro Corporativo, Santo Domingo ou Badlands)",
+  "activity": "Atividade do encontro planejada pelo par",
+  "complicationTitle": "Título da Complicação inesperada do encontro (ex: Ex-Amante com Sandevistan, Tiroteio de Gangue na Saída, Cartão Clonado Recusado, Invasão da NCPD)",
+  "complicationDesc": "Narrativa da complicação que interrompe o date",
+  "complicationHook": "Regra mecânica para o Mestre resolver a complicação (teste de perícia com DV, ex: Conversação DV 15 ou Tática DV 13)",
+  "conversationStarter": "Frase de abertura ou assunto instigante que o par puxa na mesa",
+  "secretAgenda": "Motivação oculta ou segredo do par para este encontro"
+}`;
+
+  if (activeKey) {
+    try {
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeKey}`;
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: { responseMimeType: 'application/json' },
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) {
+          const parsed = JSON.parse(text);
+          return { ...parsed, isAi: true };
+        }
+      }
+    } catch (e) {
+      console.warn('AI Date fallback:', e);
+    }
+  }
+
+  return {
+    partnerName: 'Nyx "Glitch" Sterling',
+    partnerRole: 'Netrunner Freelancer & DJ de Rádio Pirata',
+    partnerStyle: 'Jaqueta bomber holográfica com fios de fibra óptica azuis pulsando no colarinho, cabelo raspado de um lado com tatuagem neural de circuito, olhos ópticos ciano e sorriso sarcástico.',
+    keywords: ['#Netrunning', '#Synth-Drinks', '#Música Subterrânea'],
+    locationName: 'Sub-Zero Arcade & Noodle Bar',
+    district: preferences?.district || 'Watson (Kabuki)',
+    activity: 'Desafiar uns aos outros no arcade retrô de combate enquanto dividem uma tigela fumegante de lámen sintético apimentado com cerveja de arroz.',
+    complicationTitle: 'Varredura Surpresa da NCPD',
+    complicationDesc: 'Duas viaturas do DPNC param com sirenes ligadas em frente ao bar buscando um hacker procurado. Nyx empalidece e enfia discretamente um chip de dados criptografado no seu bolso.',
+    complicationHook: 'Teste de Atuação DV 14 para fingir que são apenas um casal apaixonado e distrair os policiais, ou Furtividade DV 15 para sair pelos fundos.',
+    conversationStarter: '"Você prefere morrer de velhice no tédio ou virar uma lenda de Night City queimando antes dos trinta?"',
+    secretAgenda: 'Está sendo caçada pela NetWatch por quebrar um firewall corporativo e precisa de alguém com mira boa para cobrir sua retaguarda.',
+    isAi: true,
+  };
+}
