@@ -22,6 +22,8 @@ import {
   Dices,
   Eye,
   Lock,
+  Camera,
+  ImageIcon,
 } from 'lucide-react';
 import { useSystem } from '../context/SystemContext';
 import {
@@ -47,6 +49,8 @@ import { NPCTier, WeaponItem, CyberwareItem, ArmorItem, AttachmentItem, Ammuniti
 import { generateAICustomVehicle } from '../services/aiService';
 import { NightMarketSection } from '../components/world/NightMarketSection';
 import { CustomForgeSection } from '../components/arsenal/CustomForgeSection';
+import { getWeaponIcon, getCyberwareIcon, getGearIcon, getVehicleIcon } from '../utils/itemIcons';
+import { ImageUploadModal } from '../components/common/ImageUploadModal';
 
 type CatalogCategory =
   | 'all'
@@ -129,6 +133,21 @@ export const ArsenalPage: React.FC = () => {
 
   // UI state
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Image Upload Modal State for Arsenal & Vehicles
+  const [imageModalConfig, setImageModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    currentUrl?: string;
+    category?: 'all' | 'personagem' | 'inimigo' | 'pet' | 'veiculo' | 'arma' | 'cromo';
+    onSave: (url: string) => void;
+  }>({
+    isOpen: false,
+    title: 'Imagem',
+    currentUrl: '',
+    category: 'veiculo',
+    onSave: () => {},
+  });
 
   // Copy helper
   const handleCopy = (text: string, id: string) => {
@@ -484,9 +503,14 @@ export const ArsenalPage: React.FC = () => {
                   >
                     <div className="space-y-1.5">
                       <div className="flex items-start justify-between gap-1">
-                        <div>
-                          <strong className="text-zinc-100 text-sm block">{w.name}</strong>
-                          <span className="text-[10px] font-mono text-zinc-500">{w.category}</span>
+                        <div className="flex items-start gap-2.5">
+                          <div className="p-1.5 rounded-lg bg-red-950/40 border border-red-900/40 text-red-400 mt-0.5 shrink-0">
+                            {getWeaponIcon(w.category || w.name, "w-4 h-4 text-red-400")}
+                          </div>
+                          <div>
+                            <strong className="text-zinc-100 text-sm block">{w.name}</strong>
+                            <span className="text-[10px] font-mono text-zinc-500">{w.category}</span>
+                          </div>
                         </div>
                         <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-zinc-900 border border-zinc-800 text-zinc-400 shrink-0">
                           {w.system}
@@ -557,9 +581,14 @@ export const ArsenalPage: React.FC = () => {
                   >
                     <div className="space-y-1.5">
                       <div className="flex items-start justify-between gap-1">
-                        <div>
-                          <strong className="text-zinc-100 text-sm block">{c.name}</strong>
-                          <span className="text-[10px] font-mono text-cyan-400">{c.type}</span>
+                        <div className="flex items-start gap-2.5">
+                          <div className="p-1.5 rounded-lg bg-cyan-950/40 border border-cyan-900/40 text-cyan-400 mt-0.5 shrink-0">
+                            {getCyberwareIcon(c.type || c.name, "w-4 h-4 text-cyan-400")}
+                          </div>
+                          <div>
+                            <strong className="text-zinc-100 text-sm block">{c.name}</strong>
+                            <span className="text-[10px] font-mono text-cyan-400">{c.type}</span>
+                          </div>
                         </div>
                         <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-zinc-900 border border-zinc-800 text-zinc-400 shrink-0">
                           {c.install}
@@ -609,9 +638,14 @@ export const ArsenalPage: React.FC = () => {
                   >
                     <div className="space-y-1.5">
                       <div className="flex items-start justify-between gap-1">
-                        <div>
-                          <strong className="text-zinc-100 text-sm block">{a.name}</strong>
-                          <span className="text-[10px] font-mono text-blue-400">{a.covers}</span>
+                        <div className="flex items-start gap-2.5">
+                          <div className="p-1.5 rounded-lg bg-blue-950/40 border border-blue-900/40 text-blue-400 mt-0.5 shrink-0">
+                            {getGearIcon(a.name, "w-4 h-4 text-blue-400")}
+                          </div>
+                          <div>
+                            <strong className="text-zinc-100 text-sm block">{a.name}</strong>
+                            <span className="text-[10px] font-mono text-blue-400">{a.covers}</span>
+                          </div>
                         </div>
                         <span className="text-xs font-bold font-mono px-2 py-0.5 rounded bg-blue-950/60 border border-blue-800/40 text-blue-300">
                           SP {a.sp}
@@ -717,9 +751,14 @@ export const ArsenalPage: React.FC = () => {
                   >
                     <div className="space-y-1.5">
                       <div className="flex items-start justify-between gap-1">
-                        <div>
-                          <strong className="text-zinc-100 text-sm block">{ammo.name}</strong>
-                          <span className="text-[10px] font-mono text-orange-400">{ammo.type}</span>
+                        <div className="flex items-start gap-2.5">
+                          <div className="p-1.5 rounded-lg bg-orange-950/40 border border-orange-900/40 text-orange-400 mt-0.5 shrink-0">
+                            {getGearIcon('munição ' + ammo.type, "w-4 h-4 text-orange-400")}
+                          </div>
+                          <div>
+                            <strong className="text-zinc-100 text-sm block">{ammo.name}</strong>
+                            <span className="text-[10px] font-mono text-orange-400">{ammo.type}</span>
+                          </div>
                         </div>
                       </div>
 
@@ -769,9 +808,14 @@ export const ArsenalPage: React.FC = () => {
                   >
                     <div className="space-y-1.5">
                       <div className="flex items-start justify-between gap-1">
-                        <div>
-                          <strong className="text-zinc-100 text-sm block">{g.name}</strong>
-                          <span className="text-[10px] font-mono text-purple-400">{g.category}</span>
+                        <div className="flex items-start gap-2.5">
+                          <div className="p-1.5 rounded-lg bg-emerald-950/40 border border-emerald-900/40 text-emerald-400 mt-0.5 shrink-0">
+                            {getGearIcon(g.category || g.name, "w-4 h-4 text-emerald-400")}
+                          </div>
+                          <div>
+                            <strong className="text-zinc-100 text-sm block">{g.name}</strong>
+                            <span className="text-[10px] font-mono text-purple-400">{g.category}</span>
+                          </div>
                         </div>
                       </div>
 
@@ -814,9 +858,14 @@ export const ArsenalPage: React.FC = () => {
                   >
                     <div className="space-y-1.5">
                       <div className="flex items-start justify-between gap-1">
-                        <div>
-                          <strong className="text-zinc-100 text-sm block">{d.name}</strong>
-                          <span className="text-[10px] font-mono text-emerald-400 italic">"{d.slang}"</span>
+                        <div className="flex items-start gap-2.5">
+                          <div className="p-1.5 rounded-lg bg-pink-950/40 border border-pink-900/40 text-pink-400 mt-0.5 shrink-0">
+                            {getGearIcon('droga', "w-4 h-4 text-pink-400")}
+                          </div>
+                          <div>
+                            <strong className="text-zinc-100 text-sm block">{d.name}</strong>
+                            <span className="text-[10px] font-mono text-emerald-400 italic">"{d.slang}"</span>
+                          </div>
                         </div>
                         <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400">
                           {d.duration}
@@ -1491,18 +1540,27 @@ export const ArsenalPage: React.FC = () => {
                       setSelectedVehicle(v);
                       setInstalledUpgrades([]);
                     }}
-                    className={`w-full p-2.5 rounded-xl border text-left transition ${
+                    className={`w-full p-2.5 rounded-xl border text-left transition flex items-center gap-3 ${
                       selectedVehicle.id === v.id
                         ? 'bg-amber-950/40 border-amber-600/60 text-zinc-100 shadow-sm'
                         : 'bg-[#0a0a0d] border-[#27272a] text-zinc-400 hover:bg-zinc-800'
                     }`}
                   >
-                    <div className="text-xs font-semibold flex items-center justify-between">
-                      <span className="truncate max-w-[170px]">{v.name}</span>
-                      <span className="text-[10px] font-mono text-zinc-500 shrink-0">{v.type}</span>
+                    <div className="w-12 h-12 rounded-lg overflow-hidden bg-zinc-900 border border-zinc-800 shrink-0 flex items-center justify-center">
+                      {v.imageUrl ? (
+                        <img src={v.imageUrl} alt={v.name} className="w-full h-full object-cover" />
+                      ) : (
+                        getVehicleIcon(v.type, "w-5 h-5 text-amber-500/70")
+                      )}
                     </div>
-                    <div className="text-[10px] text-zinc-500 font-mono mt-0.5">
-                      SDP {v.sdp} • Lugares: {v.seats} • {v.costEb}
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs font-semibold flex items-center justify-between">
+                        <span className="truncate max-w-[150px]">{v.name}</span>
+                        <span className="text-[9px] font-mono text-zinc-500 shrink-0">{v.type}</span>
+                      </div>
+                      <div className="text-[10px] text-zinc-500 font-mono mt-0.5">
+                        SDP {v.sdp} • Lugares: {v.seats} • {v.costEb}
+                      </div>
                     </div>
                   </button>
                 ))}
@@ -1511,16 +1569,67 @@ export const ArsenalPage: React.FC = () => {
 
             {/* Vehicle Detail & Nomad Upgrades (8 cols) */}
             <div className="lg:col-span-8 p-6 rounded-2xl bg-[#121217] border border-[#27272a] space-y-6">
-              <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
-                <div>
-                  <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-amber-950/60 text-amber-300 border border-amber-800/40">
-                    {selectedVehicle.type}
+              {/* Vehicle Photo Banner */}
+              <div className="relative w-full h-52 sm:h-64 rounded-2xl overflow-hidden bg-zinc-950 border border-zinc-800 shadow-xl group">
+                {selectedVehicle.imageUrl ? (
+                  <img
+                    src={selectedVehicle.imageUrl}
+                    alt={selectedVehicle.name}
+                    className="w-full h-full object-cover object-center group-hover:scale-105 transition duration-500"
+                  />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center text-zinc-600">
+                    <Car className="w-16 h-16 text-amber-500/40 mb-2" />
+                    <span className="text-xs font-mono">Sem foto cadastrada</span>
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
+
+                <div className="absolute top-3 left-3">
+                  <span className="text-[10px] font-mono uppercase px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-md text-amber-300 border border-amber-600/40 font-bold flex items-center gap-1.5 shadow">
+                    {getVehicleIcon(selectedVehicle.type, "w-3.5 h-3.5 text-amber-400")}
+                    <span>{selectedVehicle.type}</span>
                   </span>
-                  <h2 className="text-lg font-bold text-zinc-100 mt-1">{selectedVehicle.name}</h2>
                 </div>
-                <div className="text-right font-mono">
-                  <span className="text-xs text-zinc-500 block">Preço de Mercado</span>
-                  <span className="text-sm font-bold text-emerald-400">{selectedVehicle.costEb}</span>
+
+                <div className="absolute top-3 right-3">
+                  <button
+                    type="button"
+                    onClick={() => setImageModalConfig({
+                      isOpen: true,
+                      title: `Foto do Veículo: ${selectedVehicle.name}`,
+                      currentUrl: selectedVehicle.imageUrl,
+                      category: 'veiculo',
+                      onSave: url => {
+                        setSelectedVehicle(prev => ({ ...prev, imageUrl: url }));
+                      },
+                    })}
+                    className="px-3 py-1.5 rounded-xl bg-black/70 hover:bg-black/90 backdrop-blur-md text-amber-300 border border-amber-500/50 text-xs font-mono font-medium flex items-center gap-1.5 transition shadow hover:scale-105"
+                  >
+                    <Camera className="w-3.5 h-3.5" />
+                    <span>Alterar Foto</span>
+                  </button>
+                </div>
+
+                <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between">
+                  <div>
+                    <h2 className="text-xl sm:text-2xl font-black text-white drop-shadow-md tracking-tight">
+                      {selectedVehicle.name}
+                    </h2>
+                    <div className="flex items-center gap-2 mt-1 font-mono text-[11px] text-zinc-300">
+                      <span className="px-2 py-0.5 rounded bg-black/60 backdrop-blur-md border border-zinc-700">
+                        SDP Total: <strong className="text-amber-400">{selectedVehicle.sdp + bonusSDP}</strong>
+                      </span>
+                      <span className="px-2 py-0.5 rounded bg-black/60 backdrop-blur-md border border-zinc-700">
+                        {selectedVehicle.speedMph} MPH &bull; {selectedVehicle.moveCombat} MOVE
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="text-right font-mono bg-black/70 backdrop-blur-md px-3 py-1.5 rounded-xl border border-zinc-700/80">
+                    <span className="text-[10px] text-zinc-400 block uppercase">Custo Médio</span>
+                    <span className="text-sm sm:text-base font-bold text-emerald-400">{selectedVehicle.costEb}</span>
+                  </div>
                 </div>
               </div>
 
@@ -1607,6 +1716,15 @@ export const ArsenalPage: React.FC = () => {
           </div>
         </div>
       )}
+      {/* MODAL: IMAGE UPLOADER / CYBERPUNK GALLERY */}
+      <ImageUploadModal
+        isOpen={imageModalConfig.isOpen}
+        onClose={() => setImageModalConfig(prev => ({ ...prev, isOpen: false }))}
+        currentImageUrl={imageModalConfig.currentUrl}
+        title={imageModalConfig.title}
+        presetCategory={imageModalConfig.category}
+        onSave={imageModalConfig.onSave}
+      />
     </div>
   );
 };

@@ -46,8 +46,11 @@ import {
   Target,
   Bot,
   MapPin,
+  Camera,
 } from 'lucide-react';
 import { useUserRole } from '../context/UserRoleContext';
+import { getWeaponIcon, getCyberwareIcon, getGearIcon, getVehicleIcon } from '../utils/itemIcons';
+import { ImageUploadModal } from '../components/common/ImageUploadModal';
 import { useSystem } from '../context/SystemContext';
 import { useCombat } from '../context/CombatContext';
 import {
@@ -336,6 +339,21 @@ export const PlayerSheetPage: React.FC = () => {
     useEvasion: boolean;
     targetCombatantId?: string;
   } | null>(null);
+
+  // Image Modal State
+  const [imageModalConfig, setImageModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    currentUrl?: string;
+    category?: 'all' | 'personagem' | 'inimigo' | 'pet' | 'veiculo' | 'arma' | 'cromo';
+    onSave: (url: string) => void;
+  }>({
+    isOpen: false,
+    title: 'Imagem / Avatar',
+    currentUrl: '',
+    category: 'personagem',
+    onSave: () => {},
+  });
 
   const [attackResult, setAttackResult] = useState<{
     roll: number;
@@ -1004,17 +1022,45 @@ export const PlayerSheetPage: React.FC = () => {
                 >
                   <div className="space-y-3">
                     <div className="flex items-start justify-between">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-red-950/60 text-red-300 border border-red-800/40 font-bold uppercase">
-                            {pc.role}
-                          </span>
-                          <span className="text-[10px] font-mono text-zinc-500">
-                            {pc.system}
-                          </span>
+                      <div className="flex items-center gap-3">
+                        <div className="relative group shrink-0">
+                          <div className="w-12 h-12 rounded-xl overflow-hidden bg-zinc-900 border border-zinc-700 flex items-center justify-center">
+                            {pc.imageUrl ? (
+                              <img src={pc.imageUrl} alt={pc.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <User className="w-6 h-6 text-cyan-400/80" />
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setImageModalConfig({
+                              isOpen: true,
+                              title: `Foto de ${pc.name}`,
+                              currentUrl: pc.imageUrl,
+                              category: 'personagem',
+                              onSave: url => {
+                                savePlayerCharacter({ ...pc, imageUrl: url });
+                              },
+                            })}
+                            className="absolute -bottom-1 -right-1 p-1 rounded bg-zinc-900 hover:bg-zinc-800 text-cyan-400 border border-cyan-500/40 shadow transition hover:scale-110"
+                            title="Alterar Retrato"
+                          >
+                            <Camera className="w-2.5 h-2.5" />
+                          </button>
                         </div>
-                        <h3 className="text-base font-bold text-zinc-100">{pc.name}</h3>
-                        <p className="text-xs text-cyan-400 font-mono">"{pc.handle}"</p>
+
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-red-950/60 text-red-300 border border-red-800/40 font-bold uppercase">
+                              {pc.role}
+                            </span>
+                            <span className="text-[10px] font-mono text-zinc-500">
+                              {pc.system}
+                            </span>
+                          </div>
+                          <h3 className="text-base font-bold text-zinc-100">{pc.name}</h3>
+                          <p className="text-xs text-cyan-400 font-mono">"{pc.handle}"</p>
+                        </div>
                       </div>
 
                       <div className="flex items-center gap-1">
@@ -1130,11 +1176,41 @@ export const PlayerSheetPage: React.FC = () => {
 
           {/* Character Header Banner */}
           <div className="p-6 rounded-2xl bg-[#121217] border border-[#27272a] flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-mono px-2.5 py-0.5 rounded bg-red-950/60 text-red-300 border border-red-800/40 font-bold uppercase">
-                  {char.role}
-                </span>
+            <div className="flex items-center gap-4">
+              <div className="relative group shrink-0">
+                <div className="w-18 h-18 sm:w-20 sm:h-20 rounded-2xl overflow-hidden bg-zinc-900 border border-zinc-700/80 shadow-md flex items-center justify-center">
+                  {char.imageUrl ? (
+                    <img src={char.imageUrl} alt={char.name} className="w-full h-full object-cover object-center group-hover:scale-105 transition duration-300" />
+                  ) : (
+                    <div className="text-zinc-600 flex flex-col items-center">
+                      <User className="w-8 h-8 text-cyan-400/80" />
+                      <span className="text-[9px] font-mono text-zinc-500 mt-0.5">Sem Foto</span>
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setImageModalConfig({
+                    isOpen: true,
+                    title: `Retrato de ${char.name}`,
+                    currentUrl: char.imageUrl,
+                    category: 'personagem',
+                    onSave: url => {
+                      savePlayerCharacter({ ...char, imageUrl: url });
+                    },
+                  })}
+                  className="absolute -bottom-1.5 -right-1.5 p-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-cyan-400 border border-cyan-500/40 shadow transition hover:scale-110"
+                  title="Alterar Retrato / Avatar do Personagem"
+                >
+                  <Camera className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono px-2.5 py-0.5 rounded bg-red-950/60 text-red-300 border border-red-800/40 font-bold uppercase">
+                    {char.role}
+                  </span>
                 <span className="text-xs font-mono text-zinc-400">
                   {char.system} // {char.lifepath?.culturalOrigin || 'Night City'}
                 </span>
@@ -1161,6 +1237,7 @@ export const PlayerSheetPage: React.FC = () => {
                 </span>
               </div>
             </div>
+          </div>
 
             {/* Quick Actions */}
             <div className="flex flex-wrap items-center gap-2">
@@ -1448,14 +1525,19 @@ export const PlayerSheetPage: React.FC = () => {
                     {char.weapons.map((w, idx) => (
                       <div key={idx} className="p-4 rounded-xl bg-[#0a0a0d] border border-[#27272a] space-y-3 text-xs">
                         <div className="flex items-center justify-between">
-                          <div>
-                            <strong className="text-zinc-100 text-sm">{w.name}</strong>
-                            <div className="flex items-center gap-2 text-[11px] font-mono text-zinc-400 mt-0.5">
-                              <span>Munição: {w.ammoType}</span>
-                              <span>&bull;</span>
-                              <span>CdT: {w.rof}</span>
-                              <span>&bull;</span>
-                              <span>Pente: <strong className="text-zinc-200">{w.magCurrent}/{w.magCapacity}</strong></span>
+                          <div className="flex items-center gap-2.5">
+                            <div className="p-1.5 rounded-lg bg-red-950/40 border border-red-900/40 text-red-400 shrink-0">
+                              {getWeaponIcon(w.name, "w-4 h-4 text-red-400")}
+                            </div>
+                            <div>
+                              <strong className="text-zinc-100 text-sm">{w.name}</strong>
+                              <div className="flex items-center gap-2 text-[11px] font-mono text-zinc-400 mt-0.5">
+                                <span>Munição: {w.ammoType}</span>
+                                <span>&bull;</span>
+                                <span>CdT: {w.rof}</span>
+                                <span>&bull;</span>
+                                <span>Pente: <strong className="text-zinc-200">{w.magCurrent}/{w.magCapacity}</strong></span>
+                              </div>
                             </div>
                           </div>
                           <span className="font-mono text-red-400 font-bold text-base">{w.damage}</span>
@@ -1875,7 +1957,12 @@ export const PlayerSheetPage: React.FC = () => {
                 {char.cyberware.map((c, idx) => (
                   <div key={idx} className="p-4 rounded-xl bg-[#0a0a0d] border border-[#27272a] space-y-2 text-xs">
                     <div className="flex items-center justify-between">
-                      <strong className="text-zinc-100 text-sm">{c.name}</strong>
+                      <div className="flex items-center gap-2.5">
+                        <div className="p-1.5 rounded-lg bg-cyan-950/40 border border-cyan-900/40 text-cyan-400 shrink-0">
+                          {getCyberwareIcon(c.type || c.name, "w-4 h-4 text-cyan-400")}
+                        </div>
+                        <strong className="text-zinc-100 text-sm">{c.name}</strong>
+                      </div>
                       <span className="text-[10px] font-mono text-purple-400 px-2 py-0.5 bg-zinc-900 rounded border border-purple-900/40">
                         {c.type}
                       </span>
@@ -3867,6 +3954,15 @@ export const PlayerSheetPage: React.FC = () => {
           </div>
         </div>
       )}
+      {/* MODAL: IMAGE UPLOADER / CYBERPUNK GALLERY */}
+      <ImageUploadModal
+        isOpen={imageModalConfig.isOpen}
+        onClose={() => setImageModalConfig(prev => ({ ...prev, isOpen: false }))}
+        currentImageUrl={imageModalConfig.currentUrl}
+        title={imageModalConfig.title}
+        presetCategory={imageModalConfig.category}
+        onSave={imageModalConfig.onSave}
+      />
     </div>
   );
 };

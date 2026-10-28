@@ -19,6 +19,7 @@ import {
   ChevronUp,
   AlertTriangle,
   Info,
+  Camera,
 } from 'lucide-react';
 import {
   HomebrewVehicle,
@@ -44,6 +45,8 @@ import {
   generateAICustomCyberwareDetailed,
   generateAICustomGearOrDrugDetailed,
 } from '../../services/aiService';
+import { getWeaponIcon, getCyberwareIcon, getGearIcon, getVehicleIcon } from '../../utils/itemIcons';
+import { ImageUploadModal } from '../common/ImageUploadModal';
 
 type ForgeCategory = 'vehicles' | 'weapons' | 'cyberware' | 'gear';
 
@@ -56,6 +59,21 @@ export const CustomForgeSection: React.FC = () => {
 
   // Common Prompt / Instructions
   const [customPrompt, setCustomPrompt] = useState<string>('');
+
+  // Image Upload Modal State
+  const [imageModalConfig, setImageModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    currentUrl?: string;
+    category?: 'all' | 'personagem' | 'inimigo' | 'pet' | 'veiculo' | 'arma' | 'cromo';
+    onSave: (url: string) => void;
+  }>({
+    isOpen: false,
+    title: 'Imagem',
+    currentUrl: '',
+    category: 'veiculo',
+    onSave: () => {},
+  });
 
   // 1. Vehicle State
   const [vehType, setVehType] = useState<string>('Picape / Van');
@@ -502,6 +520,42 @@ export const CustomForgeSection: React.FC = () => {
                 title="Copiar Ficha do Veículo"
               >
                 {copiedId === currentVehicle.id ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Vehicle Photo Banner */}
+          <div className="relative w-full h-48 sm:h-56 rounded-xl overflow-hidden bg-zinc-950 border border-zinc-800 shadow-md group">
+            {currentVehicle.imageUrl ? (
+              <img
+                src={currentVehicle.imageUrl}
+                alt={currentVehicle.name}
+                className="w-full h-full object-cover object-center group-hover:scale-105 transition duration-500"
+              />
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center text-zinc-600">
+                <Car className="w-12 h-12 text-amber-500/40 mb-1" />
+                <span className="text-[10px] font-mono">Sem foto definida (clique em Inserir Imagem)</span>
+              </div>
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+
+            <div className="absolute bottom-2.5 right-2.5">
+              <button
+                type="button"
+                onClick={() => setImageModalConfig({
+                  isOpen: true,
+                  title: `Foto do Veículo: ${currentVehicle.name}`,
+                  currentUrl: currentVehicle.imageUrl,
+                  category: 'veiculo',
+                  onSave: url => {
+                    setCurrentVehicle(prev => prev ? { ...prev, imageUrl: url } : prev);
+                  },
+                })}
+                className="px-2.5 py-1 rounded-lg bg-black/70 hover:bg-black/90 backdrop-blur-md text-amber-300 border border-amber-500/50 text-[11px] font-mono flex items-center gap-1.5 transition shadow"
+              >
+                <Camera className="w-3 h-3" />
+                <span>{currentVehicle.imageUrl ? 'Alterar Foto' : '+ Inserir Imagem / Upload'}</span>
               </button>
             </div>
           </div>
@@ -992,6 +1046,15 @@ export const CustomForgeSection: React.FC = () => {
           )
         )}
       </div>
+      {/* MODAL: IMAGE UPLOADER / CYBERPUNK GALLERY */}
+      <ImageUploadModal
+        isOpen={imageModalConfig.isOpen}
+        onClose={() => setImageModalConfig(prev => ({ ...prev, isOpen: false }))}
+        currentImageUrl={imageModalConfig.currentUrl}
+        title={imageModalConfig.title}
+        presetCategory={imageModalConfig.category}
+        onSave={imageModalConfig.onSave}
+      />
     </div>
   );
 };

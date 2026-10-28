@@ -3,6 +3,7 @@ export interface PlayerCharacter {
   name: string;
   handle: string;
   role: string;
+  imageUrl?: string;
   roleAbility: { name: string; rank: number; description: string };
   system: 'RED' | '2020';
   statsRED: {

@@ -48,6 +48,7 @@ export interface WeaponItem {
   cost?: string;
   rangeDVs?: number[];
   system: 'RED' | '2020' | 'BOTH';
+  imageUrl?: string;
   // 2020 specific:
   wa?: number;
   concealment?: string;
@@ -65,6 +66,7 @@ export interface CyberwareItem {
   install: string;
   description: string;
   system: 'RED' | '2020' | 'BOTH';
+  imageUrl?: string;
 }
 
 export interface ArmorItem {
@@ -76,6 +78,7 @@ export interface ArmorItem {
   covers: string;
   description: string;
   system: 'RED' | '2020' | 'BOTH';
+  imageUrl?: string;
   notes?: string;
 }
 
@@ -87,6 +90,7 @@ export interface AttachmentItem {
   effect: string;
   slotsUsed: number;
   system: 'RED' | '2020' | 'BOTH';
+  imageUrl?: string;
   notes?: string;
 }
 
@@ -99,6 +103,7 @@ export interface AmmunitionItem {
   damageModifier?: string;
   spAblationBonus?: number;
   system: 'RED' | '2020' | 'BOTH';
+  imageUrl?: string;
 }
 
 export interface GearItem {
@@ -108,6 +113,7 @@ export interface GearItem {
   cost: string;
   description: string;
   system: 'RED' | '2020' | 'BOTH';
+  imageUrl?: string;
 }
 
 export interface StreetDrugItem {
@@ -121,6 +127,7 @@ export interface StreetDrugItem {
   addictionDV: number;
   duration: string;
   citation: string;
+  imageUrl?: string;
 }
 
 export interface NPCSheet {
@@ -133,6 +140,7 @@ export interface NPCSheet {
   role: string;
   description: string;
   notes?: string;
+  imageUrl?: string;
   statsRED?: StatBlockRED;
   stats2020?: StatBlock2020;
   skills: { [skillName: string]: number };

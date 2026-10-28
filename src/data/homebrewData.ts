@@ -10,6 +10,7 @@ export interface HomebrewWeapon {
   reliability?: string;
   specialEffect: string;
   notes?: string;
+  imageUrl?: string;
   author?: string;
   createdAt: string;
 }
@@ -23,6 +24,7 @@ export interface HomebrewCyberware {
   install: string; // 'Clínica' | 'Hospital' | 'Mall'
   description: string;
   mechanicalBonus: string;
+  imageUrl?: string;
   author?: string;
   createdAt: string;
 }
@@ -48,6 +50,7 @@ export interface HomebrewEnemy {
   equipment: string[];
   tactics: string;
   specialAbility?: string;
+  imageUrl?: string;
   author?: string;
   createdAt: string;
 }
@@ -74,6 +77,7 @@ export interface HomebrewVehicle {
   visualAesthetic: string;
   quirk: string;
   notes?: string;
+  imageUrl?: string;
   author?: string;
   createdAt: string;
   isAiGenerated?: boolean;
@@ -92,6 +96,7 @@ export interface HomebrewGearOrDrug {
   duration?: string;
   visualAesthetic: string;
   notes?: string;
+  imageUrl?: string;
   author?: string;
   createdAt: string;
   isAiGenerated?: boolean;

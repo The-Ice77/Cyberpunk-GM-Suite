@@ -39,6 +39,7 @@ import {
   Sliders,
   Dices,
   Car,
+  Camera,
   PawPrint,
 } from 'lucide-react';
 import { useSystem } from '../context/SystemContext';
@@ -47,6 +48,8 @@ import { useCombat } from '../context/CombatContext';
 import { GANGS_LIST } from '../data/gangsData';
 import { FACTIONS_LIST } from '../data/factionsData';
 import { NPCSheet, NPCTier } from '../types/system';
+import { getWeaponIcon, getCyberwareIcon, getGearIcon, getVehicleIcon } from '../utils/itemIcons';
+import { ImageUploadModal } from '../components/common/ImageUploadModal';
 import {
   OFFICIAL_BESTIARY,
   SYSTEM_CREATION_GUIDELINES,
@@ -135,6 +138,36 @@ export const PeoplePage: React.FC = () => {
   const [npcToast, setNpcToast] = useState<string | null>(null);
   const [showEnemyAiOptions, setShowEnemyAiOptions] = useState<boolean>(false);
 
+  // Image Upload Modal State
+  const [imageModalConfig, setImageModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    currentUrl?: string;
+    category?: 'all' | 'personagem' | 'inimigo' | 'pet' | 'veiculo' | 'arma' | 'cromo';
+    onSave: (url: string) => void;
+  }>({
+    isOpen: false,
+    title: 'Imagem / Avatar',
+    currentUrl: '',
+    category: 'all',
+    onSave: () => {},
+  });
+
+  const openImageModal = (
+    title: string,
+    currentUrl: string | undefined,
+    category: 'all' | 'personagem' | 'inimigo' | 'pet' | 'veiculo' | 'arma' | 'cromo',
+    onSave: (url: string) => void
+  ) => {
+    setImageModalConfig({
+      isOpen: true,
+      title,
+      currentUrl: currentUrl || '',
+      category,
+      onSave,
+    });
+  };
+
   // Unified Edit & Manual Creation Modal State
   const [editingNPC, setEditingNPC] = useState<NPCSheet | null>(null);
   const [editSource, setEditSource] = useState<'enemy' | 'civilian' | 'pet' | 'library' | 'squad'>('enemy');
@@ -211,6 +244,7 @@ export const PeoplePage: React.FC = () => {
 
   // Manual Builder Form State
   const [manualType, setManualType] = useState<'enemy' | 'civilian' | 'pet'>('enemy');
+  const [manualImageUrl, setManualImageUrl] = useState<string>('');
   const [manualName, setManualName] = useState<string>('Novo Inimigo Tático');
   const [manualFaction, setManualFaction] = useState<string>('Maelstrom / Gangue Local');
   const [manualRole, setManualRole] = useState<string>('Solo / Combatente');
@@ -2418,25 +2452,54 @@ Táticas: ${generatedNPC.tactics}`;
               {generatedNPC ? (
                 <div className="p-6 rounded-2xl bg-[#121217] border border-[#27272a] space-y-5 shadow-lg">
                   {/* Top Sheet Header */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#27272a] gap-3">
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-cyan-950/80 text-cyan-300 border border-cyan-800/40 font-bold">
-                          {generatedNPC.tier.toUpperCase()}
-                        </span>
-                        {generatedNPC.archetype && (
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-950/60 text-purple-300 border border-purple-800/40">
-                            {generatedNPC.archetype}
-                          </span>
-                        )}
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-400">
-                          {generatedNPC.faction}
-                        </span>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#27272a] gap-4">
+                    <div className="flex items-center gap-3.5">
+                      <div className="relative group shrink-0">
+                        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden bg-zinc-900 border border-zinc-700/80 shadow-md flex items-center justify-center">
+                          {generatedNPC.imageUrl ? (
+                            <img
+                              src={generatedNPC.imageUrl}
+                              alt={generatedNPC.name}
+                              className="w-full h-full object-cover object-center group-hover:scale-105 transition duration-300"
+                            />
+                          ) : (
+                            <div className="text-zinc-600 flex flex-col items-center">
+                              <Skull className="w-7 h-7 text-red-500/70" />
+                              <span className="text-[9px] font-mono text-zinc-500 mt-0.5">Sem Foto</span>
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => openImageModal(`Foto de ${generatedNPC.name}`, generatedNPC.imageUrl, 'inimigo', url => {
+                            setGeneratedNPC(prev => prev ? { ...prev, imageUrl: url } : prev);
+                          })}
+                          className="absolute -bottom-1.5 -right-1.5 p-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-red-400 border border-red-500/40 shadow transition hover:scale-110"
+                          title="Alterar Foto do Inimigo (Upload ou Galeria)"
+                        >
+                          <Camera className="w-3.5 h-3.5" />
+                        </button>
                       </div>
-                      <h2 className="text-xl font-bold text-zinc-100 mt-1">
-                        {generatedNPC.name}
-                      </h2>
-                      <p className="text-xs text-zinc-400">{generatedNPC.role} &bull; Reputação {generatedNPC.reputation ?? 2}</p>
+
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-cyan-950/80 text-cyan-300 border border-cyan-800/40 font-bold">
+                            {generatedNPC.tier.toUpperCase()}
+                          </span>
+                          {generatedNPC.archetype && (
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-950/60 text-purple-300 border border-purple-800/40">
+                              {generatedNPC.archetype}
+                            </span>
+                          )}
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-400">
+                            {generatedNPC.faction}
+                          </span>
+                        </div>
+                        <h2 className="text-xl font-bold text-zinc-100 mt-1">
+                          {generatedNPC.name}
+                        </h2>
+                        <p className="text-xs text-zinc-400">{generatedNPC.role} &bull; Reputação {generatedNPC.reputation ?? 2}</p>
+                      </div>
                     </div>
 
                     {/* Actions: Edit, Save, Send to Combat, Copy */}
@@ -2623,6 +2686,7 @@ Táticas: ${generatedNPC.tactics}`;
                         {generatedNPC.weapons.map((w, idx) => (
                           <li key={idx} className="flex flex-wrap sm:flex-nowrap justify-between items-center gap-2 bg-zinc-900/80 px-2.5 py-1.5 rounded border border-zinc-800">
                             <div className="flex items-center gap-2 min-w-0 flex-1">
+                              {getWeaponIcon(w.name, "w-4 h-4 text-red-400 shrink-0")}
                               <span className="text-zinc-200 font-medium truncate">{w.name}</span>
                               <span className="font-mono text-amber-400 font-bold text-[11px] shrink-0">({w.damage})</span>
                             </div>
@@ -2645,8 +2709,9 @@ Táticas: ${generatedNPC.tactics}`;
                       </span>
                       <ul className="space-y-1 text-zinc-300">
                         {generatedNPC.cyberware.map((c, idx) => (
-                          <li key={idx} className="bg-zinc-900/60 px-2 py-1 rounded">
-                            {c}
+                          <li key={idx} className="bg-zinc-900/60 px-2.5 py-1.5 rounded flex items-center gap-2 border border-zinc-800/60">
+                            {getCyberwareIcon(c, "w-3.5 h-3.5 text-cyan-400 shrink-0")}
+                            <span className="text-zinc-200 truncate">{c}</span>
                           </li>
                         ))}
                       </ul>
@@ -2872,23 +2937,52 @@ Táticas: ${generatedNPC.tactics}`;
               {generatedCivilian ? (
                 <div className="p-6 rounded-2xl bg-[#121217] border border-[#27272a] space-y-5 shadow-lg">
                   {/* Top Sheet Header */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#27272a] gap-3">
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-cyan-950/80 text-cyan-300 border border-cyan-800/40 font-bold">
-                          CIVIL (EVERYDAY PEOPLE)
-                        </span>
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-300">
-                          {generatedCivilian.archetype}
-                        </span>
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-400">
-                          {generatedCivilian.faction}
-                        </span>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#27272a] gap-4">
+                    <div className="flex items-center gap-3.5">
+                      <div className="relative group shrink-0">
+                        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden bg-zinc-900 border border-zinc-700/80 shadow-md flex items-center justify-center">
+                          {generatedCivilian.imageUrl ? (
+                            <img
+                              src={generatedCivilian.imageUrl}
+                              alt={generatedCivilian.name}
+                              className="w-full h-full object-cover object-center group-hover:scale-105 transition duration-300"
+                            />
+                          ) : (
+                            <div className="text-zinc-600 flex flex-col items-center">
+                              <UserCheck className="w-7 h-7 text-cyan-400/80" />
+                              <span className="text-[9px] font-mono text-zinc-500 mt-0.5">Sem Foto</span>
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => openImageModal(`Foto de ${generatedCivilian.name}`, generatedCivilian.imageUrl, 'personagem', url => {
+                            setGeneratedCivilian(prev => prev ? { ...prev, imageUrl: url } : prev);
+                          })}
+                          className="absolute -bottom-1.5 -right-1.5 p-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-cyan-400 border border-cyan-500/40 shadow transition hover:scale-110"
+                          title="Alterar Foto do Cidadão (Upload ou Galeria)"
+                        >
+                          <Camera className="w-3.5 h-3.5" />
+                        </button>
                       </div>
-                      <h2 className="text-xl font-bold text-zinc-100 mt-1">
-                        {generatedCivilian.name}
-                      </h2>
-                      <p className="text-xs text-zinc-400">{generatedCivilian.role} &bull; Não-Combatente</p>
+
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-cyan-950/80 text-cyan-300 border border-cyan-800/40 font-bold">
+                            CIVIL (EVERYDAY PEOPLE)
+                          </span>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-300">
+                            {generatedCivilian.archetype}
+                          </span>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-400">
+                            {generatedCivilian.faction}
+                          </span>
+                        </div>
+                        <h2 className="text-xl font-bold text-zinc-100 mt-1">
+                          {generatedCivilian.name}
+                        </h2>
+                        <p className="text-xs text-zinc-400">{generatedCivilian.role} &bull; Não-Combatente</p>
+                      </div>
                     </div>
 
                     {/* Actions: Edit, Save, Copy */}
@@ -3849,23 +3943,52 @@ Táticas: ${generatedNPC.tactics}`;
               {generatedPet ? (
                 <div className="p-6 rounded-2xl bg-[#121217] border border-[#27272a] space-y-5 shadow-lg">
                   {/* Top Pet Header */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#27272a] gap-3">
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800/40 font-bold flex items-center gap-1">
-                          <span>🐾</span> Pet / Animal
-                        </span>
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-300">
-                          Porte {generatedPet.petSize}
-                        </span>
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-400">
-                          {generatedPet.faction}
-                        </span>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#27272a] gap-4">
+                    <div className="flex items-center gap-3.5">
+                      <div className="relative group shrink-0">
+                        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden bg-zinc-900 border border-zinc-700/80 shadow-md flex items-center justify-center">
+                          {generatedPet.imageUrl ? (
+                            <img
+                              src={generatedPet.imageUrl}
+                              alt={generatedPet.name}
+                              className="w-full h-full object-cover object-center group-hover:scale-105 transition duration-300"
+                            />
+                          ) : (
+                            <div className="text-zinc-600 flex flex-col items-center">
+                              <PawPrint className="w-7 h-7 text-emerald-400/80" />
+                              <span className="text-[9px] font-mono text-zinc-500 mt-0.5">Sem Foto</span>
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => openImageModal(`Foto de ${generatedPet.name}`, generatedPet.imageUrl, 'pet', url => {
+                            setGeneratedPet(prev => prev ? { ...prev, imageUrl: url } : prev);
+                          })}
+                          className="absolute -bottom-1.5 -right-1.5 p-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-emerald-400 border border-emerald-500/40 shadow transition hover:scale-110"
+                          title="Alterar Foto do Pet (Upload ou Galeria)"
+                        >
+                          <Camera className="w-3.5 h-3.5" />
+                        </button>
                       </div>
-                      <h2 className="text-xl font-bold text-zinc-100 mt-1 flex items-center gap-2">
-                        <span>{generatedPet.name}</span>
-                      </h2>
-                      <p className="text-xs text-zinc-400">{generatedPet.role}</p>
+
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800/40 font-bold flex items-center gap-1">
+                            <span>🐾</span> Pet / Animal
+                          </span>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-300">
+                            Porte {generatedPet.petSize}
+                          </span>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-400">
+                            {generatedPet.faction}
+                          </span>
+                        </div>
+                        <h2 className="text-xl font-bold text-zinc-100 mt-1 flex items-center gap-2">
+                          <span>{generatedPet.name}</span>
+                        </h2>
+                        <p className="text-xs text-zinc-400">{generatedPet.role}</p>
+                      </div>
                     </div>
 
                     {/* Actions: Edit, Combat, Save, Copy */}
@@ -4456,8 +4579,31 @@ Táticas: ${generatedNPC.tactics}`;
                       <span className="text-[10px] font-mono text-zinc-500">{npc.system}</span>
                     </div>
 
-                    <h3 className="text-sm font-bold text-zinc-100">{npc.name}</h3>
-                    <div className="text-xs text-zinc-400">{npc.faction} • {npc.role}</div>
+                    <div className="flex items-center gap-3">
+                      <div className="relative group shrink-0">
+                        <div className="w-12 h-12 rounded-xl overflow-hidden bg-zinc-900 border border-zinc-700 flex items-center justify-center">
+                          {npc.imageUrl ? (
+                            <img src={npc.imageUrl} alt={npc.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-lg">{npc.isPet ? '🐾' : '👤'}</span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => openImageModal(`Foto de ${npc.name}`, npc.imageUrl, npc.isPet ? 'pet' : 'personagem', url => {
+                            updateNPC(npc.id, { imageUrl: url });
+                          })}
+                          className="absolute -bottom-1 -right-1 p-1 rounded bg-zinc-900 hover:bg-zinc-800 text-purple-400 border border-purple-500/40 shadow transition hover:scale-110"
+                          title="Alterar Imagem"
+                        >
+                          <Camera className="w-2.5 h-2.5" />
+                        </button>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-sm font-bold text-zinc-100 truncate">{npc.name}</h3>
+                        <div className="text-xs text-zinc-400 truncate">{npc.faction} • {npc.role}</div>
+                      </div>
+                    </div>
 
                     <div className="flex items-center gap-3 font-mono text-xs pt-1">
                       <span className="text-zinc-300">HP: <strong className="text-zinc-100">{npc.statsRED?.HP}</strong></span>
@@ -4606,6 +4752,44 @@ Táticas: ${generatedNPC.tactics}`;
               {/* TAB 1: IDENTIDADE */}
               {editTab === 'identity' && (
                 <div className="space-y-4">
+                  {/* Photo / Avatar Selector */}
+                  <div className="flex flex-col sm:flex-row items-center gap-4 p-4 rounded-xl bg-[#0b0b0e] border border-zinc-800">
+                    <div className="relative group shrink-0">
+                      <div className="w-20 h-20 rounded-2xl overflow-hidden bg-zinc-900 border border-zinc-700 flex items-center justify-center shadow-inner">
+                        {editingNPC.imageUrl ? (
+                          <img src={editingNPC.imageUrl} alt="Avatar" className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-2xl">{editingNPC.isPet ? '🐾' : '👤'}</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex-1 space-y-2 w-full">
+                      <label className="block text-zinc-300 font-mono text-xs font-bold">Foto / Retrato da Ficha</label>
+                      <div className="flex flex-col sm:flex-row items-center gap-2">
+                        <input
+                          type="text"
+                          value={editingNPC.imageUrl || ''}
+                          onChange={e => setEditingNPC({ ...editingNPC, imageUrl: e.target.value })}
+                          placeholder="Cole uma URL da foto ou clique no botão para upload/galeria"
+                          className="w-full bg-[#121217] border border-zinc-700 rounded-lg p-2 text-xs text-zinc-100 font-mono focus:border-purple-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => openImageModal(
+                            `Escolher Foto para ${editingNPC.name}`,
+                            editingNPC.imageUrl,
+                            editingNPC.isPet || editingNPC.tier === 'pet' ? 'pet' : editSource === 'enemy' ? 'inimigo' : 'personagem',
+                            url => setEditingNPC({ ...editingNPC, imageUrl: url })
+                          )}
+                          className="w-full sm:w-auto px-3.5 py-2 rounded-lg bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500 text-purple-200 text-xs font-mono font-bold flex items-center justify-center gap-1.5 transition shrink-0"
+                        >
+                          <Camera className="w-3.5 h-3.5" />
+                          <span>Galeria / Upload</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-zinc-400 mb-1 font-mono">Nome Completo / Vulgo</label>
@@ -5040,6 +5224,16 @@ Táticas: ${generatedNPC.tactics}`;
           </div>
         </div>
       )}
+
+      {/* MODAL: IMAGE UPLOADER / CYBERPUNK GALLERY */}
+      <ImageUploadModal
+        isOpen={imageModalConfig.isOpen}
+        onClose={() => setImageModalConfig(prev => ({ ...prev, isOpen: false }))}
+        currentImageUrl={imageModalConfig.currentUrl}
+        title={imageModalConfig.title}
+        presetCategory={imageModalConfig.category}
+        onSave={imageModalConfig.onSave}
+      />
 
       {/* MODAL: INTERACTIVE NPC WEAPON ATTACK ROLLER */}
       {npcAttackModal?.isOpen && (

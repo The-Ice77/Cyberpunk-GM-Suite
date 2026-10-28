@@ -19,6 +19,7 @@ export interface VehicleModel {
   costEb: string;
   description: string;
   standardEquipment: string[];
+  imageUrl?: string;
 }
 
 export interface NomadUpgrade {
@@ -32,6 +33,7 @@ export const VEHICLES_LIST: VehicleModel[] = [
   // MOTOCICLETAS
   {
     id: 'motorcycle-kusanagi',
+    imageUrl: 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=700&auto=format&fit=crop&q=80',
     name: 'Yaiba Kusanagi CT-3X',
     type: 'Motocicleta',
     sdp: 35,
@@ -44,6 +46,7 @@ export const VEHICLES_LIST: VehicleModel[] = [
   },
   {
     id: 'motorcycle-apollo',
+    imageUrl: 'https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?w=700&auto=format&fit=crop&q=80',
     name: 'Brennan Apollo (Versão Badlands)',
     type: 'Motocicleta',
     sdp: 40,
@@ -56,6 +59,7 @@ export const VEHICLES_LIST: VehicleModel[] = [
   },
   {
     id: 'motorcycle-nazare',
+    imageUrl: 'https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=700&auto=format&fit=crop&q=80',
     name: 'ARCH Nazaré / Racer Custom',
     type: 'Motocicleta',
     sdp: 40,
@@ -70,6 +74,7 @@ export const VEHICLES_LIST: VehicleModel[] = [
   // CARROS COMPACTOS & SEDÃS
   {
     id: 'compact-hella',
+    imageUrl: 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=700&auto=format&fit=crop&q=80',
     name: 'Archer Hella EC-D i360',
     type: 'Carro Compacto',
     sdp: 50,
@@ -82,6 +87,7 @@ export const VEHICLES_LIST: VehicleModel[] = [
   },
   {
     id: 'compact-maimai',
+    imageUrl: 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=700&auto=format&fit=crop&q=80',
     name: 'Makigai Maimai P126',
     type: 'Carro Compacto',
     sdp: 35,
@@ -94,6 +100,7 @@ export const VEHICLES_LIST: VehicleModel[] = [
   },
   {
     id: 'compact-cortes',
+    imageUrl: 'https://images.unsplash.com/photo-1550355291-bbee04a92027?w=700&auto=format&fit=crop&q=80',
     name: 'Villefort Cortes V5000 Executive',
     type: 'Carro Compacto',
     sdp: 60,
@@ -108,6 +115,7 @@ export const VEHICLES_LIST: VehicleModel[] = [
   // MUSCLE & ESPORTIVOS
   {
     id: 'sportscar-turbo-r',
+    imageUrl: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=700&auto=format&fit=crop&q=80',
     name: 'Quadra Turbo-R V-Tech',
     type: 'Carro Esportivo de Luxo',
     sdp: 60,
@@ -120,6 +128,7 @@ export const VEHICLES_LIST: VehicleModel[] = [
   },
   {
     id: 'sportscar-type66',
+    imageUrl: 'https://images.unsplash.com/photo-1584345604476-8ec5e12e42dd?w=700&auto=format&fit=crop&q=80',
     name: 'Quadra Type-66 "Cthulhu / Jen Rowley"',
     type: 'Carro Esportivo de Luxo',
     sdp: 65,
@@ -132,6 +141,7 @@ export const VEHICLES_LIST: VehicleModel[] = [
   },
   {
     id: 'sportscar-caliburn',
+    imageUrl: 'https://images.unsplash.com/photo-1617788138017-80ad40651399?w=700&auto=format&fit=crop&q=80',
     name: 'Rayfield Caliburn / Aerondight',
     type: 'Carro Esportivo de Luxo',
     sdp: 70,
@@ -146,6 +156,7 @@ export const VEHICLES_LIST: VehicleModel[] = [
   // PICAPES & VANS
   {
     id: 'heavy-truck-mackinaw',
+    imageUrl: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=700&auto=format&fit=crop&q=80',
     name: 'Thorton Mackinaw MTL1',
     type: 'Picape / Van',
     sdp: 80,
@@ -158,6 +169,7 @@ export const VEHICLES_LIST: VehicleModel[] = [
   },
   {
     id: 'van-columbus',
+    imageUrl: 'https://images.unsplash.com/photo-1566008885218-90abf9200ddb?w=700&auto=format&fit=crop&q=80',
     name: 'Villefort Columbus V340-F Freight',
     type: 'Picape / Van',
     sdp: 75,
@@ -172,6 +184,7 @@ export const VEHICLES_LIST: VehicleModel[] = [
   // CAMINHÕES PESADOS & BLINDADOS
   {
     id: 'truck-bratsk',
+    imageUrl: 'https://images.unsplash.com/photo-1586191582056-a60d5b4a6256?w=700&auto=format&fit=crop&q=80',
     name: 'Kaukaz Bratsk U4020 / Caminhão Pesado',
     type: 'Caminhão Pesado / Blindado',
     sdp: 120,
@@ -184,6 +197,7 @@ export const VEHICLES_LIST: VehicleModel[] = [
   },
   {
     id: 'truck-behemoth',
+    imageUrl: 'https://images.unsplash.com/photo-1519003722824-194d4455a60c?w=700&auto=format&fit=crop&q=80',
     name: 'Militech Behemoth Armored Transport',
     type: 'Caminhão Pesado / Blindado',
     sdp: 150,
@@ -198,6 +212,7 @@ export const VEHICLES_LIST: VehicleModel[] = [
   // AERODINOS AV & AERONAVES
   {
     id: 'aerodyne-av4',
+    imageUrl: 'https://images.unsplash.com/photo-1541185933-ef5d8ed016c2?w=700&auto=format&fit=crop&q=80',
     name: 'Aerodino Tático AV-4 (Trauma Team / Militech)',
     type: 'Aerodino AV / Aeronave',
     sdp: 100,
@@ -210,6 +225,7 @@ export const VEHICLES_LIST: VehicleModel[] = [
   },
   {
     id: 'aerodyne-valgus',
+    imageUrl: 'https://images.unsplash.com/photo-1508614589041-895b88991e3e?w=700&auto=format&fit=crop&q=80',
     name: 'Zetatech Valgus Combat Gyro / Canhoneira Leve',
     type: 'Aerodino AV / Aeronave',
     sdp: 85,
@@ -224,6 +240,7 @@ export const VEHICLES_LIST: VehicleModel[] = [
   // BARCOS & AQUÁTICOS
   {
     id: 'boat-seasprite',
+    imageUrl: 'https://images.unsplash.com/photo-1569263979104-865ab7cd8d17?w=700&auto=format&fit=crop&q=80',
     name: 'Lancha Rápida Sea Sprite 32',
     type: 'Barco / Aquático',
     sdp: 60,
