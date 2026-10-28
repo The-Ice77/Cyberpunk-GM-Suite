@@ -311,7 +311,7 @@ export const ArsenalPage: React.FC = () => {
         </div>
 
         {/* Sub-tabs pills */}
-        <div className="flex items-center bg-[#14141a] border border-[#27272a] rounded-xl p-1 text-xs font-medium">
+        <div className="flex items-center gap-1 bg-[#14141a] border border-[#27272a] rounded-xl p-1 text-xs font-medium overflow-x-auto no-scrollbar max-w-full whitespace-nowrap">
           <button
             onClick={() => setActiveTab('catalog')}
             className={`px-3 py-1.5 rounded-lg transition ${

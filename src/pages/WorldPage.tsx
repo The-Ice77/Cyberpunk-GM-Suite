@@ -644,6 +644,14 @@ export const WorldPage: React.FC = () => {
     setDragStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
   };
 
+  const onTouchStartMap = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    setIsDragging(true);
+    setDragDistance(0);
+    setDragStart({ x: touch.clientX - panOffset.x, y: touch.clientY - panOffset.y });
+  };
+
   const onMouseMoveMap = (e: React.MouseEvent) => {
     // 1. Draggable Pin repositioning
     if (draggedPinId && viewportRef.current) {
@@ -670,7 +678,28 @@ export const WorldPage: React.FC = () => {
     });
   };
 
+  const onTouchMoveMap = (e: React.TouchEvent) => {
+    if (!isDragging || !viewportRef.current || e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    const rawX = touch.clientX - dragStart.x;
+    const rawY = touch.clientY - dragStart.y;
+    const dist = Math.hypot(rawX - panOffset.x, rawY - panOffset.y);
+    setDragDistance(prev => prev + dist);
+    const rect = viewportRef.current.getBoundingClientRect();
+    const maxPanX = (rect.width * (zoomLevel - 1)) / 2;
+    const maxPanY = (rect.height * (zoomLevel - 1)) / 2;
+    setPanOffset({
+      x: Math.max(-maxPanX, Math.min(maxPanX, rawX)),
+      y: Math.max(-maxPanY, Math.min(maxPanY, rawY)),
+    });
+  };
+
   const onMouseUpMap = () => {
+    setIsDragging(false);
+    setDraggedPinId(null);
+  };
+
+  const onTouchEndMap = () => {
     setIsDragging(false);
     setDraggedPinId(null);
   };
@@ -696,7 +725,7 @@ export const WorldPage: React.FC = () => {
         </div>
 
         {/* Sub-tabs pills */}
-        <div className="flex items-center bg-[#14141a] border border-[#27272a] rounded-lg p-0.5 text-xs font-medium">
+        <div className="flex items-center gap-1 bg-[#14141a] border border-[#27272a] rounded-xl p-1 text-xs font-medium overflow-x-auto no-scrollbar max-w-full whitespace-nowrap">
           <button
             onClick={() => setActiveTab('map')}
             className={`px-3 py-1.5 rounded-md transition ${activeTab === 'map' ? 'bg-zinc-800 text-zinc-100 font-bold' : 'text-zinc-400 hover:text-zinc-200'}`}
@@ -870,11 +899,14 @@ export const WorldPage: React.FC = () => {
               <div
                 ref={viewportRef}
                 className="relative w-full aspect-[4/3] bg-[#09090c] rounded-xl border border-[#1f1f26] overflow-hidden select-none shadow-inner"
-                style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
                 onMouseDown={onMouseDownMap}
                 onMouseMove={onMouseMoveMap}
                 onMouseUp={onMouseUpMap}
                 onMouseLeave={onMouseUpMap}
+                onTouchStart={onTouchStartMap}
+                onTouchMove={onTouchMoveMap}
+                onTouchEnd={onTouchEndMap}
+                style={{ cursor: isDragging ? 'grabbing' : 'grab', touchAction: 'none' }}
                 onClick={e => {
                   if (dragDistance > 6) return;
                   if (e.target === e.currentTarget || (e.target as HTMLElement).tagName === 'IMG') {
@@ -1312,7 +1344,7 @@ export const WorldPage: React.FC = () => {
           {/* CORP FACILITY MODAL */}
           {selectedCorp && (
             <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-              <div className="bg-[#121217] border border-[#27272a] rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+              <div className="bg-[#121217] border border-[#27272a] rounded-2xl max-w-lg w-full p-4 sm:p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
                 <div className="flex items-start justify-between border-b border-[#27272a] pb-3">
                   <div className="flex items-center gap-3">
                     <div className="p-2.5 rounded-xl bg-cyan-950/80 border border-cyan-700/60 text-cyan-400">
@@ -1348,7 +1380,7 @@ export const WorldPage: React.FC = () => {
           {/* GANG DETAILS MODAL */}
           {selectedGang && (
             <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-              <div className="bg-[#121217] border border-[#27272a] rounded-2xl max-w-xl w-full p-6 space-y-5 shadow-2xl">
+              <div className="bg-[#121217] border border-[#27272a] rounded-2xl max-w-xl w-full p-4 sm:p-6 space-y-5 shadow-2xl max-h-[92vh] overflow-y-auto">
                 <div className="flex items-start justify-between border-b border-[#27272a] pb-3">
                   <div className="flex items-center gap-3">
                     {selectedGang.logoFilename && (
@@ -1450,7 +1482,7 @@ export const WorldPage: React.FC = () => {
           {/* ADD CUSTOM PIN MODAL */}
           {showAddPinModal && (
             <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-              <div className="bg-[#121217] border border-[#27272a] rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+              <div className="bg-[#121217] border border-[#27272a] rounded-2xl max-w-lg w-full p-4 sm:p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
                 <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
                   <h3 className="text-sm font-bold text-zinc-100 flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-amber-500" />
@@ -1626,7 +1658,7 @@ export const WorldPage: React.FC = () => {
           {/* INSPECTOR MODAL FOR CUSTOM PIN */}
           {selectedCustomPin && (
             <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-              <div className="bg-[#121217] border border-[#27272a] rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+              <div className="bg-[#121217] border border-[#27272a] rounded-2xl max-w-lg w-full p-4 sm:p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
                 <div className="flex items-start justify-between border-b border-[#27272a] pb-3">
                   <div className="flex items-center gap-3">
                     <div className="p-2.5 rounded-xl bg-amber-950/80 border border-amber-600/60 text-amber-400">
@@ -2633,7 +2665,7 @@ export const WorldPage: React.FC = () => {
               {/* MODAL / TOAST: BEBER NO BALCÃO */}
               {drinkOrderedToast && (
                 <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-                  <div className="bg-[#121217] border border-amber-600/60 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl animate-in zoom-in-95 duration-200">
+                  <div className="bg-[#121217] border border-amber-600/60 rounded-2xl max-w-lg w-full p-4 sm:p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto animate-in zoom-in-95 duration-200">
                     <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
                       <div className="flex items-center gap-2">
                         <Wine className="w-5 h-5 text-amber-500" />

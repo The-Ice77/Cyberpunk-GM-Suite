@@ -521,7 +521,7 @@ export const NetrunningPage: React.FC = () => {
         </div>
 
         {/* Sub-tab Pills */}
-        <div className="flex items-center bg-[#14141a] border border-[#27272a] rounded-lg p-0.5 text-xs font-medium">
+        <div className="flex items-center gap-1 bg-[#14141a] border border-[#27272a] rounded-xl p-1 text-xs font-medium overflow-x-auto no-scrollbar max-w-full whitespace-nowrap">
           <button
             onClick={() => setActiveSubTab('architecture')}
             className={`px-3 py-1.5 rounded-md transition ${

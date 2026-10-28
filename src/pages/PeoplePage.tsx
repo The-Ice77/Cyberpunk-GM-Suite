@@ -680,7 +680,7 @@ Táticas: ${generatedNPC.tactics}`;
         </div>
 
         {/* Sub-tabs pills */}
-        <div className="flex items-center bg-[#14141a] border border-[#27272a] rounded-lg p-0.5 text-xs font-medium">
+        <div className="flex items-center gap-1 bg-[#14141a] border border-[#27272a] rounded-xl p-1 text-xs font-medium overflow-x-auto no-scrollbar max-w-full whitespace-nowrap">
           <button
             onClick={() => setActiveTab('dossier')}
             className={`px-3 py-1.5 rounded-md transition flex items-center gap-1.5 ${
@@ -1656,7 +1656,7 @@ Táticas: ${generatedNPC.tactics}`;
 
       {/* TAB 2: MANUAL BUILDER */}
       {activeTab === 'builder' && (
-        <div className="p-6 rounded-2xl bg-[#121217] border border-[#27272a] max-w-3xl mx-auto space-y-6">
+        <div className="p-6 rounded-2xl bg-[#121217] border border-[#27272a] max-w-3xl mx-auto space-y-6 max-h-[92vh] overflow-y-auto">
           <div className="border-b border-[#27272a] pb-3">
             <h2 className="text-base font-bold text-zinc-100">Construtor Manual de Ficha</h2>
             <p className="text-xs text-zinc-400">Crie ou customize um NPC com atributos e equipamentos livres.</p>
@@ -1904,7 +1904,7 @@ Táticas: ${generatedNPC.tactics}`;
       {/* MODAL: INTERACTIVE NPC WEAPON ATTACK ROLLER */}
       {npcAttackModal?.isOpen && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#121217] border border-[#27272a] rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl text-xs">
+          <div className="bg-[#121217] border border-[#27272a] rounded-2xl max-w-lg w-full p-4 sm:p-6 space-y-4 shadow-2xl text-xs max-h-[92vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
               <div className="flex items-center gap-2">

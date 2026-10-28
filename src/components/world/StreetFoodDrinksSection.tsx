@@ -202,7 +202,7 @@ ${
         </div>
 
         {/* Subtabs Selector */}
-        <div className="flex items-center bg-[#14141a] border border-[#27272a] rounded-xl p-1 text-xs font-medium shrink-0">
+        <div className="flex items-center gap-1 bg-[#14141a] border border-[#27272a] rounded-xl p-1 text-xs font-medium overflow-x-auto no-scrollbar max-w-full whitespace-nowrap shrink-0">
           <button
             onClick={() => setActiveSubTab('food')}
             className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${

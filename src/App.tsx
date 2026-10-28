@@ -5,6 +5,7 @@ import { CampaignProvider } from './context/CampaignContext';
 import { UserRoleProvider } from './context/UserRoleContext';
 import { Navbar } from './components/layout/Navbar';
 import { Sidebar, ActivePage } from './components/layout/Sidebar';
+import { MobileBottomNav } from './components/layout/MobileBottomNav';
 import { DiceDrawer } from './components/dice/DiceDrawer';
 import { CombatDrawer } from './components/combat/CombatDrawer';
 import { CyberpunkAICoGM } from './components/ai/CyberpunkAICoGM';
@@ -21,7 +22,9 @@ import { DigitalArchivePage } from './pages/DigitalArchivePage';
 
 export const AppContent: React.FC = () => {
   const [activePage, setActivePage] = useState<ActivePage>('hub');
-  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(() => {
+    return typeof window !== 'undefined' ? window.innerWidth >= 1024 : true;
+  });
   const [isDiceOpen, setIsDiceOpen] = useState<boolean>(false);
   const [isCombatOpen, setIsCombatOpen] = useState<boolean>(false);
   const [isAiOpen, setIsAiOpen] = useState<boolean>(false);
@@ -55,7 +58,7 @@ export const AppContent: React.FC = () => {
       />
 
       {/* Main Workspace: Sidebar + Content */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
         {/* Collapsible Minimalist Sidebar */}
         <Sidebar
           activePage={activePage}
@@ -64,8 +67,8 @@ export const AppContent: React.FC = () => {
           onToggle={() => setIsSidebarOpen(prev => !prev)}
         />
 
-        {/* Independent Page Display */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+        {/* Independent Page Display with Mobile Bottom Bar Clearance */}
+        <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 lg:p-8 pb-24 lg:pb-8">
           {activePage === 'hub' && <HubPage onNavigate={page => setActivePage(page)} />}
           {activePage === 'people' && <PeoplePage />}
           {activePage === 'world' && <WorldPage />}
@@ -77,6 +80,29 @@ export const AppContent: React.FC = () => {
           {activePage === 'archive' && <DigitalArchivePage />}
         </main>
       </div>
+
+      {/* Quick Mobile Bottom Navigation Bar (Thumb Friendly) */}
+      <MobileBottomNav
+        activePage={activePage}
+        onSelectPage={page => setActivePage(page)}
+        onToggleSidebar={() => setIsSidebarOpen(prev => !prev)}
+        onToggleCombat={() => {
+          setIsCombatOpen(prev => !prev);
+          if (!isCombatOpen) {
+            setIsDiceOpen(false);
+            setIsAiOpen(false);
+          }
+        }}
+        onToggleAi={() => {
+          setIsAiOpen(prev => !prev);
+          if (!isAiOpen) {
+            setIsDiceOpen(false);
+            setIsCombatOpen(false);
+          }
+        }}
+        isCombatOpen={isCombatOpen}
+        isAiOpen={isAiOpen}
+      />
 
       {/* Global Utilities Drawers */}
       <DiceDrawer

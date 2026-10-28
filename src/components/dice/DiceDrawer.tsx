@@ -217,9 +217,16 @@ export const DiceDrawer: React.FC<DiceDrawerProps> = ({ isOpen, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-y-0 right-0 z-50 w-full max-w-lg bg-[#0c0c10] border-l border-[#27272a] shadow-2xl flex flex-col transition-transform">
-      {/* Drawer Header */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-[#27272a] bg-[#121217]">
+    <>
+      {/* Mobile & Desktop Dimmer Backdrop */}
+      <div
+        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs transition-opacity"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-lg bg-[#0c0c10] border-l border-[#27272a] shadow-2xl flex flex-col transition-transform">
+        {/* Drawer Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#27272a] bg-[#121217]">
         <div className="flex items-center gap-2 text-zinc-100 font-semibold tracking-wide">
           <Dices className="w-5 h-5 text-red-500" />
           <span className="font-mono text-sm uppercase tracking-wider">Rolador Universal de Dados</span>
@@ -468,5 +475,6 @@ export const DiceDrawer: React.FC<DiceDrawerProps> = ({ isOpen, onClose }) => {
         </div>
       </div>
     </div>
+  </>
   );
 };

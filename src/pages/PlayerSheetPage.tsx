@@ -1085,57 +1085,57 @@ export const PlayerSheetPage: React.FC = () => {
           </div>
 
           {/* Sheet Navigation Tabs */}
-          <div className="flex flex-wrap items-center gap-2 border-b border-[#27272a] pb-2 text-xs font-medium">
+          <div className="flex items-center gap-1.5 border-b border-[#27272a] pb-2 text-xs font-medium overflow-x-auto no-scrollbar whitespace-nowrap max-w-full">
             <button
               onClick={() => setActiveSheetTab('stats')}
-              className={`px-3 py-1.5 rounded-lg transition ${
+              className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shrink-0 ${
                 activeSheetTab === 'stats'
                   ? 'bg-zinc-800 text-zinc-100 font-bold border border-zinc-700'
                   : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              Combate, Vitas & Atributos
+              Combate & Atributos
             </button>
             <button
               onClick={() => setActiveSheetTab('inventory')}
-              className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shrink-0 ${
                 activeSheetTab === 'inventory'
                   ? 'bg-zinc-800 text-amber-400 font-bold border border-zinc-700'
                   : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
               <Backpack className="w-3.5 h-3.5 text-amber-400" />
-              <span>Inventário, Armaduras & Arsenal ({char.weapons.length + (char.gear?.length || 0)})</span>
+              <span>Inventário & Arsenal ({char.weapons.length + (char.gear?.length || 0)})</span>
             </button>
             <button
               onClick={() => setActiveSheetTab('skills')}
-              className={`px-3 py-1.5 rounded-lg transition ${
+              className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shrink-0 ${
                 activeSheetTab === 'skills'
                   ? 'bg-zinc-800 text-zinc-100 font-bold border border-zinc-700'
                   : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              Perícias & Rolagens ({Object.keys(char.skills).length})
+              Perícias ({Object.keys(char.skills).length})
             </button>
             <button
               onClick={() => setActiveSheetTab('cyber')}
-              className={`px-3 py-1.5 rounded-lg transition ${
+              className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shrink-0 ${
                 activeSheetTab === 'cyber'
                   ? 'bg-zinc-800 text-zinc-100 font-bold border border-zinc-700'
                   : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              Ciberware & Implantes ({char.cyberware.length})
+              Ciberware ({char.cyberware.length})
             </button>
             <button
               onClick={() => setActiveSheetTab('lifepath')}
-              className={`px-3 py-1.5 rounded-lg transition ${
+              className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shrink-0 ${
                 activeSheetTab === 'lifepath'
                   ? 'bg-zinc-800 text-zinc-100 font-bold border border-zinc-700'
                   : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              Caminho de Vida (Lifepath)
+              Lifepath
             </button>
           </div>
 
@@ -1298,7 +1298,7 @@ export const PlayerSheetPage: React.FC = () => {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-5 gap-2 text-center font-mono">
+                  <div className="grid grid-cols-5 gap-1.5 sm:gap-2 text-center font-mono">
                     {Object.entries(char.statsRED).map(([stat, val]) => {
                       const isPenalized = activeArmorPenalty > 0 && (stat === 'REF' || stat === 'DEX' || stat === 'MOVE');
                       const effectiveVal = isPenalized ? Math.max(1, val - activeArmorPenalty) : val;
@@ -1307,7 +1307,7 @@ export const PlayerSheetPage: React.FC = () => {
                         <button
                           key={stat}
                           onClick={() => performD10Roll(`Teste de Atributo: ${stat}`, effectiveVal)}
-                          className={`p-2.5 rounded-xl border transition group text-left sm:text-center ${
+                          className={`p-1.5 sm:p-2.5 rounded-xl border transition group text-center ${
                             isPenalized
                               ? 'bg-amber-950/20 border-amber-800/40 hover:border-amber-500'
                               : 'bg-[#0a0a0d] hover:bg-zinc-800 border-zinc-800 hover:border-red-500/60'

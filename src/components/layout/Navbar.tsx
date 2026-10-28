@@ -53,12 +53,12 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <>
-      <header className="sticky top-0 z-40 h-14 bg-[#09090b]/90 backdrop-blur-md border-b border-[#27272a] px-4 lg:px-6 flex items-center justify-between">
+      <header className="sticky top-0 z-40 h-14 bg-[#09090b]/90 backdrop-blur-md border-b border-[#27272a] px-2.5 sm:px-4 lg:px-6 flex items-center justify-between gap-1.5">
         {/* Left: Mobile menu toggle + Brand Title */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <button
             onClick={onToggleSidebar}
-            className="p-1.5 rounded text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition lg:hidden"
+            className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition lg:hidden"
             aria-label="Alternar Menu Lateral"
           >
             <Menu className="w-5 h-5" />
@@ -73,12 +73,12 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Center: System Selector Pill & Role Selector */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
           {/* System RED vs 2020 */}
           <div className="flex items-center bg-[#14141a] border border-[#27272a] rounded-lg p-0.5 shadow-inner">
             <button
               onClick={() => setSystem('RED')}
-              className={`px-2.5 py-1 rounded text-xs font-mono font-medium transition ${
+              className={`px-2 sm:px-2.5 py-1 rounded text-xs font-mono font-medium transition ${
                 isRed
                   ? 'bg-red-600 text-white shadow-sm'
                   : 'text-zinc-400 hover:text-zinc-200'
@@ -88,7 +88,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
             <button
               onClick={() => setSystem('2020')}
-              className={`px-2.5 py-1 rounded text-xs font-mono font-medium transition ${
+              className={`px-2 sm:px-2.5 py-1 rounded text-xs font-mono font-medium transition ${
                 !isRed
                   ? 'bg-amber-600 text-white shadow-sm'
                   : 'text-zinc-400 hover:text-zinc-200'
@@ -98,11 +98,29 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           </div>
 
-          {/* User Role: GM vs Player */}
-          <div className="hidden sm:flex items-center bg-[#14141a] border border-[#27272a] rounded-lg p-0.5 shadow-inner">
+          {/* User Role: GM vs Player (Compact on mobile, full on tablet+) */}
+          <div className="flex items-center bg-[#14141a] border border-[#27272a] rounded-lg p-0.5 shadow-inner">
+            <button
+              onClick={() => setRole(role === 'GM' ? 'PLAYER' : 'GM')}
+              className="sm:hidden px-2 py-1 rounded text-[11px] font-mono font-bold flex items-center gap-1 transition active:scale-95"
+              title="Toque para alternar papel (Mestre / Jogador)"
+            >
+              {role === 'GM' ? (
+                <>
+                  <Crown className="w-3.5 h-3.5 text-red-400" />
+                  <span className="text-red-400">GM</span>
+                </>
+              ) : (
+                <>
+                  <UserCheck className="w-3.5 h-3.5 text-cyan-400" />
+                  <span className="text-cyan-400">PC</span>
+                </>
+              )}
+            </button>
+
             <button
               onClick={() => setRole('GM')}
-              className={`px-2.5 py-1 rounded text-xs font-medium flex items-center gap-1.5 transition ${
+              className={`hidden sm:flex px-2.5 py-1 rounded text-xs font-medium items-center gap-1.5 transition ${
                 role === 'GM'
                   ? 'bg-zinc-800 text-red-400 font-semibold shadow-sm'
                   : 'text-zinc-400 hover:text-zinc-200'
@@ -114,7 +132,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
             <button
               onClick={() => setRole('PLAYER')}
-              className={`px-2.5 py-1 rounded text-xs font-medium flex items-center gap-1.5 transition ${
+              className={`hidden sm:flex px-2.5 py-1 rounded text-xs font-medium items-center gap-1.5 transition ${
                 role === 'PLAYER'
                   ? 'bg-zinc-800 text-cyan-400 font-semibold shadow-sm'
                   : 'text-zinc-400 hover:text-zinc-200'
@@ -128,11 +146,11 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Right: AI Co-GM, Quick Drawers & Backup Buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
           {/* AI Neural Co-GM Trigger */}
           <button
             onClick={onToggleAi}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-[#14141a] hover:bg-zinc-800 text-zinc-200 border border-[#27272a] text-xs font-medium transition"
+            className="flex items-center gap-1.5 p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg bg-[#14141a] hover:bg-zinc-800 text-zinc-200 border border-[#27272a] text-xs font-medium transition"
             title="Abrir Assistente Neural Co-GM IA (Gemini / Oráculo)"
           >
             <Bot className="w-4 h-4 text-emerald-400" />
@@ -142,7 +160,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Dice Drawer Toggle */}
           <button
             onClick={onToggleDice}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-[#14141a] hover:bg-zinc-800 text-zinc-200 border border-[#27272a] text-xs font-medium transition"
+            className="flex items-center gap-1.5 p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg bg-[#14141a] hover:bg-zinc-800 text-zinc-200 border border-[#27272a] text-xs font-medium transition"
             title="Abrir Rolador de Dados"
           >
             <Dices className="w-4 h-4 text-red-500" />
@@ -152,7 +170,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Combat Tracker Drawer Toggle */}
           <button
             onClick={onToggleCombat}
-            className="relative flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-[#14141a] hover:bg-zinc-800 text-zinc-200 border border-[#27272a] text-xs font-medium transition"
+            className="relative flex items-center gap-1.5 p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg bg-[#14141a] hover:bg-zinc-800 text-zinc-200 border border-[#27272a] text-xs font-medium transition"
             title="Abrir Rastreador de Combate"
           >
             <ShieldAlert className="w-4 h-4 text-amber-500" />
@@ -167,7 +185,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Backup Modal Trigger */}
           <button
             onClick={() => setShowBackupModal(true)}
-            className="p-1.5 rounded bg-[#14141a] hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 border border-[#27272a] transition"
+            className="p-1.5 rounded-lg bg-[#14141a] hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 border border-[#27272a] transition"
             title="Exportar / Importar Dados da Campanha"
           >
             <Download className="w-4 h-4" />

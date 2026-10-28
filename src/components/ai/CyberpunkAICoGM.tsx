@@ -118,7 +118,14 @@ Sou seu copiloto tático e narrativo em Night City. Conheço todas as regras ofi
   ];
 
   return (
-    <div className="fixed inset-y-0 right-0 z-50 w-full max-w-xl bg-[#0c0c10] border-l border-[#27272a] shadow-2xl flex flex-col font-sans">
+    <>
+      {/* Mobile & Desktop Dimmer Backdrop */}
+      <div
+        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs transition-opacity"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-xl bg-[#0c0c10] border-l border-[#27272a] shadow-2xl flex flex-col font-sans">
       {/* Top Header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-[#27272a] bg-[#121217]">
         <div className="flex items-center gap-2.5">
@@ -385,8 +392,8 @@ Sou seu copiloto tático e narrativo em Night City. Conheço todas as regras ofi
 
       {/* API Key Modal */}
       {showKeyModal && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#121217] border border-[#27272a] rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-[#121217] border border-[#27272a] rounded-2xl max-w-md w-full p-4 sm:p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
               <h4 className="text-sm font-bold text-zinc-100 flex items-center gap-2 font-mono">
                 <Key className="w-4 h-4 text-red-500" />
@@ -433,5 +440,6 @@ Sou seu copiloto tático e narrativo em Night City. Conheço todas as regras ofi
         </div>
       )}
     </div>
+  </>
   );
 };

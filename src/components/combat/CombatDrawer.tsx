@@ -235,7 +235,14 @@ export const CombatDrawer: React.FC<CombatDrawerProps> = ({ isOpen, onClose }) =
   };
 
   return (
-    <div className="fixed inset-y-0 right-0 z-50 w-full max-w-xl bg-[#0e0e12] border-l border-[#27272a] shadow-2xl flex flex-col transition-transform">
+    <>
+      {/* Mobile & Desktop Dimmer Backdrop */}
+      <div
+        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs transition-opacity"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-xl bg-[#0e0e12] border-l border-[#27272a] shadow-2xl flex flex-col transition-transform">
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-[#27272a] bg-[#121217]">
         <div className="flex items-center gap-2 text-zinc-100 font-semibold">
@@ -672,8 +679,8 @@ export const CombatDrawer: React.FC<CombatDrawerProps> = ({ isOpen, onClose }) =
 
       {/* MODAL: INTERACTIVE ATTACK ROLLER */}
       {attackingCombatant && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#121217] border border-[#27272a] rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl text-xs">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-[#121217] border border-[#27272a] rounded-2xl max-w-lg w-full p-4 sm:p-6 space-y-4 shadow-2xl text-xs max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
               <div className="flex items-center gap-2">
                 <Crosshair className="w-5 h-5 text-red-500" />
@@ -849,8 +856,8 @@ export const CombatDrawer: React.FC<CombatDrawerProps> = ({ isOpen, onClose }) =
 
       {/* MODAL: VISUAL DESCRIPTION EDITOR */}
       {editingAppearanceCombatant && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#121217] border border-[#27272a] rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl text-xs">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-[#121217] border border-[#27272a] rounded-2xl max-w-md w-full p-4 sm:p-6 space-y-4 shadow-2xl text-xs max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
               <div className="flex items-center gap-2">
                 <Eye className="w-5 h-5 text-amber-500" />
@@ -902,5 +909,6 @@ export const CombatDrawer: React.FC<CombatDrawerProps> = ({ isOpen, onClose }) =
         </div>
       )}
     </div>
+  </>
   );
 };
