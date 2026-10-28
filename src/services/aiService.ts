@@ -19,6 +19,11 @@ import {
   SPECIAL_SALVAGE_POOL,
 } from '../data/rewardsData';
 import {
+  generateCivilianOffline,
+  CivilianOccupationId,
+  CivilianDistrictOrigin,
+} from '../data/civilianGeneratorData';
+import {
   generateNarrativeNPCOffline,
   NarrativeArchetypeId,
 } from '../data/npcNarrativeGeneratorData';
@@ -1185,7 +1190,7 @@ Responda ESTRITAMENTE em formato JSON puro:
   "coGMVerdict": "Análise analítica e motivacional do Co-GM para o Mestre e jogadores justificando o IP e orientando a evolução das fichas."
 }`;
 
-  const parsed = await callGeminiJSON<any>(prompt, { apiKey: options.apiKey });
+  const parsed = await callGeminiJSON<any>(prompt, { apiKey: options.apiKey, temperature: 0.95 });
   if (parsed) {
     const partyCount = Math.max(1, options.partyMembers.length || 4);
     return {
@@ -1229,8 +1234,8 @@ Responda ESTRITAMENTE em formato JSON puro:
   };
 }
 
-// 13. GERADOR NARRATIVO DE NPCS COM IA (DANGER GAL DOSSIER & COREBOOK)
-export async function generateAINarrativeNPC(options: {
+// 13. GERADOR DE INIMIGOS & AMEAÇAS DE COMBATE COM IA (DANGER GAL DOSSIER & COREBOOK)
+export async function generateAIEnemyCombatant(options: {
   tier: NPCTier;
   archetypeId: NarrativeArchetypeId;
   factionCategory: 'gangs' | 'corps' | 'trauma' | 'police' | 'nomads' | 'independent';
@@ -1240,37 +1245,48 @@ export async function generateAINarrativeNPC(options: {
   apiKey?: string;
 }): Promise<NPCSheet> {
   const baseNPC = generateNarrativeNPCOffline(options);
+  const entropySeed = Math.floor(Math.random() * 90000) + 10000;
+  const combatStyles = ['Entropismo Violento de Beco', 'Militarismo Cerâmico Tático', 'Neo-Kitsch Ostentação Letal', 'Cromado Industrial Pesado', 'Camuglador Furtivo Subterrâneo', 'Guerreiro Tribal Badlands'];
+  const chosenStyle = combatStyles[Math.floor(Math.random() * combatStyles.length)];
 
-  const prompt = `Você é o "Cyberpunk Neural Co-GM", gerador oficial de NPCs com profundidade narrativa para Cyberpunk RED (Core Rulebook e Danger Gal Dossier).
-Crie um NPC marcante com foco em NARRATIVA, MOTIVAÇÕES, FRAQUEZAS E DIÁLOGOS NOIR.
-IMPORTANTE: Crie um personagem totalmente NOVO, único e memorável.
+  const prompt = `Você é o "Cyberpunk Neural Co-GM", gerador oficial de INIMIGOS E AMEAÇAS DE COMBATE para Cyberpunk RED (Core Rulebook e Danger Gal Dossier).
+Crie um INIMIGO HOSTIL marcante, perigoso e taticamente interessante.
+IMPORTANTE: Crie um oponente totalmente NOVO, único e memorável (Semente de Variedade #${entropySeed}).
 
 PARÂMETROS:
-- Escalão (Tier): ${options.tier.toUpperCase()}
-- Arquétipo Narrativo: ${options.archetypeId}
-- Facção: ${baseNPC.faction}
+- Escalão Tático (Tier): ${options.tier.toUpperCase()}
+- Função de Combate: ${options.archetypeId}
+- Facção / Organização: ${baseNPC.faction}
+- Estilo Visual & Moral: ${chosenStyle}
 - Sistema: ${options.system}
-- Contexto da Cena: ${options.extraContext || 'Encontro nas ruas de Night City'}
+- Contexto Tático da Cena: ${options.extraContext || 'Emboscada ou patrulha hostil nas ruas de Night City'}
 
-Retorne ESTRITAMENTE em formato JSON puro:
+DIRETRIZES DE COMBATE E DIVERSIDADE:
+- Nomes autênticos e variados com codinomes de rua agressivos ou profissionais.
+- Descreva ciberimplantes visíveis (olhos sensores, lâminas, blindagens subdérmicas, fiação neural exposta).
+- Diretriz tática INTELIGENTE (flanqueamento, uso de cobertura, fogo de supressão, retirada coordenada).
+- Gatilho de rendição / fuga específico e realista (ex: recua quando armadura for perfurada ou líder morrer).
+- Saque de bolso tático com credsticks, munição extra, drogas de combate ou shards criptografados.
+
+Retorne EXCLUSIVAMENTE em formato JSON puro:
 {
-  "name": "Nome e 'Alcunha' Sobrenome",
-  "role": "Papel específico de rua",
-  "appearance": "Descrição visual de 2 a 3 linhas (roupas, cromo visível, cicatrizes, estilo)",
-  "quirks": "Maneirismos, cacoetes ou tiques nervosos",
-  "motivation": "O que quer imediatamente da equipe ou na cena (Objetivo pessoal urgente)",
-  "weaknessOrSecret": "Segredo sujo, vício, dívida impagável ou ponto fraco que pode ser explorado",
-  "dialogueHook": "Uma frase de impacto em primeira pessoa para o Mestre falar em cena",
-  "surrenderTrigger": "Condição exata sob a qual foge, se rende ou tenta negociar a própria vida",
-  "tactics": "Diretriz tática em combate",
+  "name": "Nome e 'Codinome' Sobrenome",
+  "role": "Papel militar ou de rua específico",
+  "appearance": "Descrição visual de 2 a 3 linhas (roupas de combate, armadura, cromo, cicatrizes)",
+  "quirks": "Maneirismo tático ou tique nervoso sob tensão de combate",
+  "motivation": "O que deseja alcançar imediatamente neste confronto armado",
+  "weaknessOrSecret": "Ponto fraco explorável em combate ou vulnerabilidade psicológica",
+  "dialogueHook": "Uma frase de impacto ameaçadora ou profissional em primeira pessoa",
+  "surrenderTrigger": "Condição exata sob a qual foge, se rende ou aciona retirada tática",
+  "tactics": "Diretriz tática detalhada em combate",
   "pocketLoot": [
-    "Item pessoal narrativo 1",
+    "Item tático narrativo 1",
     "Item pessoal narrativo 2",
-    "Item pessoal narrativo 3"
+    "Item narrativo 3"
   ]
 }`;
 
-  const parsed = await callGeminiJSON<any>(prompt, { apiKey: options.apiKey });
+  const parsed = await callGeminiJSON<any>(prompt, { apiKey: options.apiKey, temperature: 0.95 });
   if (parsed) {
     return {
       ...baseNPC,
@@ -1292,6 +1308,79 @@ Retorne ESTRITAMENTE em formato JSON puro:
   return baseNPC;
 }
 
+// Mantém compatibilidade com código existente
+export const generateAINarrativeNPC = generateAIEnemyCombatant;
+
+// 13.5 GERADOR DEDICADO DE CIVIS & CIDADÃOS COM IA (EVERYDAY PEOPLE DLC)
+export async function generateAICivilian(options: {
+  occupationId?: CivilianOccupationId;
+  districtId?: CivilianDistrictOrigin;
+  system: GameSystem;
+  extraContext?: string;
+  apiKey?: string;
+}): Promise<NPCSheet> {
+  const baseCivilian = generateCivilianOffline(options);
+  const entropySeed = Math.floor(Math.random() * 90000) + 10000;
+  const civilianMoods = ['Trabalhador Cansado', 'Comerciante Desconfiado', 'Jovem Sonhador', 'Idoso Calejado de Beco', 'Refugiado Paranoico', 'Artista Excêntrico de Rua'];
+  const chosenMood = civilianMoods[Math.floor(Math.random() * civilianMoods.length)];
+
+  const prompt = `Você é o "Cyberpunk Neural Co-GM", gerador oficial de CIVIS E CIDADÃOS COMUNS (Everyday People) para Cyberpunk RED.
+Crie um CIDADÃO DE NIGHT CITY profundamente humano, vivo e autêntico.
+IMPORTANTE: Ele NÃO é um combatente nem mercenário. É uma pessoa comum tentando sobreviver ao dia a dia (Semente #${entropySeed}).
+
+PARÂMETROS:
+- Ocupação Civil: ${baseCivilian.role}
+- Distrito / Bairro: ${baseCivilian.faction}
+- Perfil / Tom: ${chosenMood}
+- Sistema: ${options.system}
+- Contexto da Cena: ${options.extraContext || 'Encontro cotidiano nas calçadas de Night City'}
+
+DIRETRIZES DE DIVERSIDADE E HUMANIDADE:
+- Crie um nome civil realista de variadas origens (latina, asiática, brasileira, europeia, etc.).
+- Descreva roupas do dia a dia (avental sujo, macacão operário, terno barato de fibra, touca, crachá funcional).
+- Reação ao Perigo REALISTA: Pânico absoluto, choro, implorar mostrando foto da família, esconder-se debaixo do balcão.
+- Segredo ou rumor útil do bairro que ouviu por acaso.
+- Gancho de favor ou necessidade desesperada para a qual pede ajuda aos Edgerunners.
+
+Retorne EXCLUSIVAMENTE em formato JSON puro:
+{
+  "name": "Nome e Sobrenome Civil",
+  "occupation": "Ocupação civil e local de trabalho",
+  "appearance": "Descrição visual de 2 a 3 linhas (roupas cotidianas, postura, marcas de cansaço)",
+  "quirks": "Maneirismo, tique ou cacoete do dia a dia",
+  "dailyStruggle": "Necessidade urgente ou drama pessoal para o qual busca ajuda",
+  "secretOrRumor": "Segredo perigoso ou rumor relevante que testemunhou recentemente",
+  "dialogueQuote": "Uma fala realista e comovente em primeira pessoa para o Mestre interpretar",
+  "panicReaction": "Reação exata de pânico se tiroteio ou violência estourar na cena",
+  "pocketLoot": [
+    "Item civil 1 (ex: passe de metrô NCART com 3 viagens)",
+    "Item civil 2 (ex: foto holográfica da família)",
+    "Item civil 3 (ex: credstick com 35 eb)"
+  ]
+}`;
+
+  const parsed = await callGeminiJSON<any>(prompt, { apiKey: options.apiKey, temperature: 0.95 });
+  if (parsed) {
+    return {
+      ...baseCivilian,
+      name: parsed.name || baseCivilian.name,
+      role: parsed.occupation || baseCivilian.role,
+      appearance: parsed.appearance || baseCivilian.appearance,
+      description: `${parsed.appearance || baseCivilian.appearance} Residente em ${baseCivilian.faction}.`,
+      quirks: parsed.quirks || baseCivilian.quirks,
+      motivation: parsed.dailyStruggle || baseCivilian.motivation,
+      weaknessOrSecret: parsed.secretOrRumor || baseCivilian.weaknessOrSecret,
+      dialogueHook: parsed.dialogueQuote || baseCivilian.dialogueHook,
+      surrenderTrigger: parsed.panicReaction || baseCivilian.surrenderTrigger,
+      tactics: `REACÃO SOB FOGO: ${parsed.panicReaction || baseCivilian.surrenderTrigger}`,
+      pocketLoot: parsed.pocketLoot?.length ? parsed.pocketLoot : baseCivilian.pocketLoot,
+      gear: parsed.pocketLoot?.length ? parsed.pocketLoot : baseCivilian.gear,
+    };
+  }
+
+  return baseCivilian;
+}
+
 // 14. GERADOR DEDICADO DE PETS & BIOCRIATURAS COM IA (CYBERPUNK RED)
 export async function generateAIPet(options: {
   natureId: PetNatureId;
@@ -1303,18 +1392,28 @@ export async function generateAIPet(options: {
   apiKey?: string;
 }): Promise<NPCSheet> {
   const basePet = generatePetOffline(options);
+  const entropySeed = Math.floor(Math.random() * 90000) + 10000;
+  const petPersonalities = ['Hiperativo e Curioso', 'Feroz e Protetor Obsessivo', 'Preguiçoso com Cacoetes Cibernéticos', 'Assustado com Luzes Neon', 'Extremamente Treinado e Silencioso', 'Glitchado / Imprevisível'];
+  const chosenPersonality = petPersonalities[Math.floor(Math.random() * petPersonalities.length)];
 
-  const prompt = `Você é o "Cyberpunk Neural Co-GM", gerador de animais cibernéticos e biocriaturas para Cyberpunk RED (p. 317 Animals & Interface RED Vol. 2 Pet Shop).
-Crie um Pet / Animal Cibernético único e cinematográfico.
+  const prompt = `Você é o "Cyberpunk Neural Co-GM", gerador oficial de animais cibernéticos e biocriaturas para Cyberpunk RED (p. 317 Animals & Interface RED Vol. 2 Pet Shop).
+Crie um Pet / Biocriatura / Drone-Mascote totalmente ÚNICO, cinematográfico e memorável (Semente de Variabilidade #${entropySeed}).
 
 PARÂMETROS:
 - Natureza: ${options.natureId}
 - Porte: ${options.sizeId}
 - Adestramento: ${options.trainingId}
-- Dono / Facção: ${options.ownerFaction || 'NCPD ou Mercenários'}
-- Contexto: ${options.extraContext || 'Animal de guarda ou companhia em Night City'}
+- Personalidade Dominante: ${chosenPersonality}
+- Dono / Organização: ${options.ownerFaction || 'NCPD ou Mercenários'}
+- Contexto Especial: ${options.extraContext || 'Mascote de guarda, rastreamento ou estimação em Night City'}
 
-Retorne ESTRITAMENTE em formato JSON puro:
+DIRETRIZES DE DIVERSIDADE:
+- Crie um nome sonoro ou apelido afetuoso/militar com indicação de linhagem ou modelo (ex: "Bones (Doberman K-9 Mark IV)" ou "Whiskers (Drone Esfinge Biotechnica)").
+- Descreva carcaça, cicatrizes, fiação ou pelagem luminescente de forma rica.
+- Crie um instinto dominante e uma reação peculiar a estranhos.
+- Ciberware animal ou mutação genética autêntica.
+
+Retorne EXCLUSIVAMENTE em formato JSON puro:
 {
   "name": "Nome e (Raça ou Linhagem)",
   "appearance": "Descrição sensorial detalhada da carcaça, pelagem, cromo visível e olhos",

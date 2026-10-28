@@ -35,6 +35,7 @@ import {
   Flame,
   CheckCircle2,
   Layers,
+  Bot,
   Sliders,
   Dices,
   Car,
@@ -67,9 +68,18 @@ import {
 } from '../data/petGeneratorData';
 import {
   generateAINarrativeNPC,
+  generateAIEnemyCombatant,
+  generateAICivilian,
   generateAIPet,
   generateAIEnemySquad,
 } from '../services/aiService';
+import {
+  CIVILIAN_OCCUPATIONS,
+  CIVILIAN_DISTRICTS,
+  CivilianOccupationId,
+  CivilianDistrictOrigin,
+  generateCivilianOffline,
+} from '../data/civilianGeneratorData';
 import {
   SquadPresetId,
   SquadThreatLevel,
@@ -88,7 +98,7 @@ export const PeoplePage: React.FC = () => {
   const { savedNPCs, saveNPC, deleteNPC } = useCampaign();
   const { addCombatant, addMultipleCombatants, combatants, updateHP, ablateSP, addCriticalInjury } = useCombat();
 
-  const [activeTab, setActiveTab] = useState<'dossier' | 'generator' | 'squads' | 'pets' | 'builder' | 'library'>('dossier');
+  const [activeTab, setActiveTab] = useState<'enemies' | 'civilians' | 'squads' | 'pets' | 'dossier' | 'builder' | 'library'>('enemies');
 
   // Dedicated Squad / Troop Generator State
   const [squadPresetId, setSquadPresetId] = useState<SquadPresetId>('ncpd');
@@ -122,6 +132,23 @@ export const PeoplePage: React.FC = () => {
   const [copied, setCopied] = useState<boolean>(false);
   const [sendSuccess, setSendSuccess] = useState<boolean>(false);
   const [npcToast, setNpcToast] = useState<string | null>(null);
+  const [showEnemyAiOptions, setShowEnemyAiOptions] = useState<boolean>(false);
+
+  // Dedicated Civilian (Everyday People) State
+  const [civilianOccupationId, setCivilianOccupationId] = useState<CivilianOccupationId>('street_vendor');
+  const [civilianDistrictId, setCivilianDistrictId] = useState<CivilianDistrictOrigin>('watson');
+  const [extraCivilianContext, setExtraCivilianContext] = useState<string>('');
+  const [showCivilianAiOptions, setShowCivilianAiOptions] = useState<boolean>(false);
+  const [isGeneratingCivilianAI, setIsGeneratingCivilianAI] = useState<boolean>(false);
+  const [generatedCivilian, setGeneratedCivilian] = useState<NPCSheet | null>(() => {
+    return generateCivilianOffline({
+      occupationId: 'street_vendor',
+      districtId: 'watson',
+      system: 'RED',
+    });
+  });
+  const [civilianToast, setCivilianToast] = useState<string | null>(null);
+  const [civilianCopied, setCivilianCopied] = useState<boolean>(false);
 
   // Dedicated Pet Generator State
   const [petNatureId, setPetNatureId] = useState<PetNatureId>('cyber_k9');
@@ -134,6 +161,7 @@ export const PeoplePage: React.FC = () => {
   const [petCopied, setPetCopied] = useState<boolean>(false);
   const [petSendSuccess, setPetSendSuccess] = useState<boolean>(false);
   const [petToast, setPetToast] = useState<string | null>(null);
+  const [showPetAiOptions, setShowPetAiOptions] = useState<boolean>(false);
 
   // Dossier & Bestiary State
   const [dossierTierFilter, setDossierTierFilter] = useState<'all' | NPCTier>('all');
@@ -218,6 +246,61 @@ export const PeoplePage: React.FC = () => {
     } finally {
       setIsGeneratingNarrativeAI(false);
     }
+  };
+
+  // Generate Civilian Offline
+  const handleGenerateCivilianOffline = () => {
+    const civ = generateCivilianOffline({
+      occupationId: civilianOccupationId,
+      districtId: civilianDistrictId,
+      system,
+    });
+    setGeneratedCivilian(civ);
+    setCivilianToast(`Cidadão gerado pelas regras de Everyday People!`);
+    setTimeout(() => setCivilianToast(null), 3000);
+  };
+
+  // Generate Civilian with AI Co-GM
+  const handleGenerateCivilianAI = async () => {
+    setIsGeneratingCivilianAI(true);
+    try {
+      const civ = await generateAICivilian({
+        occupationId: civilianOccupationId,
+        districtId: civilianDistrictId,
+        system,
+        extraContext: extraCivilianContext,
+      });
+      setGeneratedCivilian(civ);
+      setCivilianToast(`Cidadão único aprofundado com IA Co-GM!`);
+      setTimeout(() => setCivilianToast(null), 3500);
+    } catch (err) {
+      console.error(err);
+      handleGenerateCivilianOffline();
+    } finally {
+      setIsGeneratingCivilianAI(false);
+    }
+  };
+
+  const handleCopyCivilian = () => {
+    if (!generatedCivilian) return;
+    const text = `--- CIDADÃO CIVIL: ${generatedCivilian.name} ---
+Papel: ${generatedCivilian.role}
+Distrito: ${generatedCivilian.faction}
+Aparência: ${generatedCivilian.appearance}
+Maneirismo: ${generatedCivilian.quirks}
+Drama Pessoal / Gancho: ${generatedCivilian.motivation}
+Segredo / Rumor: ${generatedCivilian.weaknessOrSecret}
+Reação sob Fogo: ${generatedCivilian.surrenderTrigger}
+Fala Típica: ${generatedCivilian.dialogueHook}
+Saque dos Bolsos: ${(generatedCivilian.pocketLoot || []).join(', ')}
+Stats: HP ${generatedCivilian.statsRED?.HP || 25} | SP ${generatedCivilian.statsRED?.bodySP || 0} | Combat Number #${generatedCivilian.statsRED?.combatNumber || 7}`;
+    navigator.clipboard.writeText(text);
+    setCivilianCopied(true);
+    setCivilianToast('Ficha civil copiada para a área de transferência!');
+    setTimeout(() => {
+      setCivilianCopied(false);
+      setCivilianToast(null);
+    }, 2500);
   };
 
   // 3. Generate Dedicated Pet Offline
@@ -1000,63 +1083,89 @@ Táticas: ${generatedNPC.tactics}`;
         {/* Sub-tabs pills */}
         <div className="flex items-center gap-1 bg-[#14141a] border border-[#27272a] rounded-xl p-1 text-xs font-medium overflow-x-auto no-scrollbar max-w-full whitespace-nowrap">
           <button
-            onClick={() => setActiveTab('dossier')}
+            onClick={() => setActiveTab('enemies')}
             className={`px-3 py-1.5 rounded-md transition flex items-center gap-1.5 ${
-              activeTab === 'dossier'
+              activeTab === 'enemies'
                 ? 'bg-red-600 text-white shadow-sm font-semibold'
                 : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
-            <BookOpen className="w-3.5 h-3.5" />
-            <span>Dossiê Oficial</span>
+            <Sword className="w-3.5 h-3.5 text-white" />
+            <span>Inimigos de Combate</span>
             <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono border ${
-              activeTab === 'dossier'
+              activeTab === 'enemies'
                 ? 'bg-red-950/80 text-white border-red-400/40'
                 : 'bg-zinc-800 text-zinc-300 border-zinc-700'
             }`}>
-              {OFFICIAL_BESTIARY.length}
+              Ameaças
             </span>
           </button>
           <button
-            onClick={() => setActiveTab('generator')}
+            onClick={() => setActiveTab('civilians')}
             className={`px-3 py-1.5 rounded-md transition flex items-center gap-1.5 ${
-              activeTab === 'generator'
-                ? 'bg-zinc-800 text-cyan-300 shadow-sm font-semibold border border-cyan-800/50'
+              activeTab === 'civilians'
+                ? 'bg-cyan-600 text-white shadow-sm font-semibold'
                 : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
-            <Users className="w-3.5 h-3.5 text-cyan-400" />
-            <span>Gerador Narrativo de NPCs</span>
-            <span className="px-1.5 py-0.2 rounded-full text-[9px] font-mono bg-cyan-950/60 text-cyan-400 border border-cyan-800/40">
-              Livros
+            <Users className="w-3.5 h-3.5 text-white" />
+            <span>Civis & Cotidiano</span>
+            <span className={`px-1.5 py-0.2 rounded-full text-[9px] font-mono border ${
+              activeTab === 'civilians'
+                ? 'bg-cyan-950/80 text-white border-cyan-400/40'
+                : 'bg-zinc-800 text-cyan-400 border-zinc-700'
+            }`}>
+              Everyday People
             </span>
           </button>
           <button
             onClick={() => setActiveTab('squads')}
             className={`px-3 py-1.5 rounded-md transition flex items-center gap-1.5 ${
               activeTab === 'squads'
-                ? 'bg-zinc-800 text-amber-400 shadow-sm font-semibold border border-amber-500/50'
+                ? 'bg-amber-600 text-white shadow-sm font-semibold'
                 : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
-            <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
+            <ShieldAlert className="w-3.5 h-3.5 text-white" />
             <span>Tropas & Quadrilhas</span>
-            <span className="px-1.5 py-0.2 rounded-full text-[9px] font-mono bg-amber-950/60 text-amber-400 border border-amber-800/40 font-bold">
-              NCPD • Trauma • Max-Tac
+            <span className={`px-1.5 py-0.2 rounded-full text-[9px] font-mono border ${
+              activeTab === 'squads'
+                ? 'bg-amber-950/80 text-white border-amber-400/40'
+                : 'bg-zinc-800 text-amber-400 border-zinc-700'
+            }`}>
+              Esquadrões
             </span>
           </button>
           <button
             onClick={() => setActiveTab('pets')}
             className={`px-3 py-1.5 rounded-md transition flex items-center gap-1.5 ${
               activeTab === 'pets'
-                ? 'bg-zinc-800 text-emerald-400 shadow-sm font-semibold border border-emerald-500/50'
+                ? 'bg-emerald-600 text-white shadow-sm font-semibold'
                 : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
             <span className="text-xs">🐕</span>
-            <span>Gerador de Pets & Biopets</span>
-            <span className="px-1.5 py-0.2 rounded-full text-[9px] font-mono bg-emerald-950/60 text-emerald-400 border border-emerald-800/40 font-bold">
-              Novo
+            <span>Pets & Biopets</span>
+            <span className={`px-1.5 py-0.2 rounded-full text-[9px] font-mono border ${
+              activeTab === 'pets'
+                ? 'bg-emerald-950/80 text-white border-emerald-400/40'
+                : 'bg-zinc-800 text-emerald-400 border-zinc-700'
+            }`}>
+              K-9 • Drones
+            </span>
+          </button>
+          <button
+            onClick={() => setActiveTab('dossier')}
+            className={`px-3 py-1.5 rounded-md transition flex items-center gap-1.5 ${
+              activeTab === 'dossier'
+                ? 'bg-zinc-800 text-zinc-100 shadow-sm border border-zinc-700 font-semibold'
+                : 'text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            <BookOpen className="w-3.5 h-3.5 text-zinc-400" />
+            <span>Dossiê Oficial</span>
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-zinc-900 text-zinc-400 border border-zinc-800">
+              {OFFICIAL_BESTIARY.length}
             </span>
           </button>
           <button
@@ -1689,14 +1798,14 @@ Táticas: ${generatedNPC.tactics}`;
         </div>
       )}
 
-      {/* TAB 1: GERADOR NARRATIVO DE NPCS (ESTRUTURA DOS LIVROS) */}
-      {activeTab === 'generator' && (
+      {/* TAB 1: GERADOR DE INIMIGOS & AMEAÇAS HOSTIS DE COMBATE */}
+      {activeTab === 'enemies' && (
         <div className="space-y-6">
           {/* Toast Notification */}
           {npcToast && (
-            <div className="p-3.5 rounded-xl bg-cyan-950/80 border border-cyan-500/60 text-cyan-300 font-mono text-xs flex items-center justify-between shadow-lg animate-pulse">
+            <div className="p-3.5 rounded-xl bg-red-950/80 border border-red-500/60 text-red-300 font-mono text-xs flex items-center justify-between shadow-lg animate-pulse">
               <span className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-cyan-400" />
+                <Sword className="w-4 h-4 text-red-400" />
                 {npcToast}
               </span>
               <button onClick={() => setNpcToast(null)} className="text-zinc-400 hover:text-zinc-100">&times;</button>
@@ -1704,21 +1813,21 @@ Táticas: ${generatedNPC.tactics}`;
           )}
 
           {/* Banner Top Info */}
-          <div className="p-4 rounded-2xl bg-gradient-to-r from-[#121217] via-[#151520] to-[#121217] border border-[#27272a] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-[#171212] via-[#201515] to-[#171212] border border-red-900/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 font-bold">
+                <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/30 font-bold">
                   Cyberpunk RED Corebook & Danger Gal Dossier
                 </span>
-                <span className="text-[10px] font-mono text-zinc-500">Módulo de NPCs com Foco Narrativo</span>
+                <span className="text-[10px] font-mono text-zinc-500">Módulo Exclusivo de Inimigos & Combate</span>
               </div>
               <h2 className="text-base font-bold text-zinc-100 mt-1 flex items-center gap-2">
-                <Users className="w-4 h-4 text-cyan-400" />
-                <span>Gerador Narrativo de NPCs & Personagens do Submundo</span>
+                <Sword className="w-4 h-4 text-red-500" />
+                <span>Gerador de Inimigos, Ameaças & Ciberpsicopatas</span>
               </h2>
             </div>
             <span className="text-[11px] font-mono text-zinc-400 bg-zinc-900 px-2.5 py-1 rounded-lg border border-zinc-800">
-              {system === 'RED' ? 'Fichas Cyberpunk RED' : 'Fichas Cyberpunk 2020'}
+              {system === 'RED' ? 'Regras Cyberpunk RED' : 'Regras Cyberpunk 2020'}
             </span>
           </div>
 
@@ -1731,9 +1840,8 @@ Táticas: ${generatedNPC.tactics}`;
                   <span>1. Escalão de Ameaça (Tier)</span>
                   <span className="text-[10px] font-normal text-zinc-500">Regras Oficiais</span>
                 </span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                   {[
-                    { id: 'civilian', label: 'Cidadão / Civil', hp: '25 HP', sub: 'Everyday People DLC', border: 'border-zinc-700' },
                     { id: 'mook', label: 'Capanga / Mook', hp: '30 HP', sub: 'Combate Comum de Rua', border: 'border-zinc-700' },
                     { id: 'lieutenant', label: 'Tenente / LT', hp: '40 HP', sub: 'Especialista & Tático', border: 'border-cyan-800/60' },
                     { id: 'miniboss', label: 'Mini-Chefe', hp: '50 HP', sub: 'Comandante Blindado', border: 'border-amber-800/60' },
@@ -1768,7 +1876,7 @@ Táticas: ${generatedNPC.tactics}`;
                   2. Arquétipo & Propósito Narrativo
                 </span>
                 <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1 no-scrollbar">
-                  {NARRATIVE_ARCHETYPES.map(arch => {
+                  {NARRATIVE_ARCHETYPES.filter(a => a.id !== 'civilian_witness').map(arch => {
                     const isSelected = narrativeArchetype === arch.id;
                     return (
                       <button
@@ -1948,49 +2056,89 @@ Táticas: ${generatedNPC.tactics}`;
                 )}
               </div>
 
-              {/* 4. Optional Scene Context for AI */}
-              <div className="p-4 rounded-xl bg-[#121217] border border-[#27272a] space-y-2">
-                <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 block font-mono">
-                  4. Contexto da Cena (Opcional para IA)
-                </span>
-                <input
-                  type="text"
-                  value={extraNpcContext}
-                  onChange={e => setExtraNpcContext(e.target.value)}
-                  placeholder="Ex: Encontrado num beco em chamas com um chip de dados na mão..."
-                  className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-lg p-2.5 text-xs text-zinc-200 font-mono focus:outline-none focus:border-cyan-500"
-                />
-              </div>
+              {/* Opção Extra: Configurar Inimigo com IA (Gemini Co-GM) */}
+              <div className="rounded-xl border border-red-900/40 bg-red-950/15 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Bot className="w-4 h-4 text-red-400" />
+                    <span className="text-xs font-bold text-zinc-200">Opção Extra: Configurar Inimigo com IA (Gemini Co-GM)</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowEnemyAiOptions(!showEnemyAiOptions)}
+                    className="text-[11px] font-mono text-red-400 hover:text-red-300 transition flex items-center gap-1"
+                  >
+                    <span>{showEnemyAiOptions ? 'Ocultar Opções' : 'Configurar com IA'}</span>
+                    {showEnemyAiOptions ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
 
-              {/* Action Buttons */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <button
-                  type="button"
-                  onClick={handleGenerateNarrativeOffline}
-                  disabled={isGeneratingNarrativeAI}
-                  className="py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-100 border border-zinc-700 text-xs font-mono font-semibold flex items-center justify-center gap-2 transition"
-                >
-                  <Zap className="w-4 h-4 text-cyan-400" />
-                  <span>Gerar por Tabelas (Offline)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleGenerateNarrativeAI}
-                  disabled={isGeneratingNarrativeAI}
-                  className="py-3 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-mono font-bold flex items-center justify-center gap-2 transition shadow-md shadow-cyan-950/40"
-                >
-                  {isGeneratingNarrativeAI ? (
-                    <>
-                      <Sparkles className="w-4 h-4 animate-spin text-white" />
-                      <span>Gerando com Co-GM...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-4 h-4 text-amber-300" />
-                      <span>Gerar com IA Co-GM</span>
-                    </>
-                  )}
-                </button>
+                {showEnemyAiOptions && (
+                  <div className="space-y-3 pt-2 border-t border-red-950/50 animate-in fade-in duration-150">
+                    <div>
+                      <label className="text-[10px] font-mono text-zinc-400 block mb-1">
+                        Instruções Táticas / Surpresas para a IA:
+                      </label>
+                      <input
+                        type="text"
+                        value={extraNpcContext}
+                        onChange={e => setExtraNpcContext(e.target.value)}
+                        placeholder="Ex: Emboscada em telhado sob chuva ácida, arma experimental Militech, surto de ciberpsicose..."
+                        className="w-full bg-[#0a0a0d] border border-zinc-800 rounded-lg p-2.5 text-xs text-zinc-200 font-mono focus:outline-none focus:border-red-500"
+                      />
+                    </div>
+
+                    <div className="flex flex-wrap gap-1.5 text-[10px] font-mono text-zinc-400">
+                      <span className="text-zinc-500">Sugestões rápidas:</span>
+                      {[
+                        'Emboscada em telhado sob chuva ácida',
+                        'Atirador com rifle smart modificado',
+                        'Solo com lâminas mantis e Sandevistan',
+                        'Guarda com escudo e armadura cerâmica',
+                        'Ciberpsicopata descontrolado e imprevisível',
+                      ].map((sug, sIdx) => (
+                        <button
+                          key={sIdx}
+                          type="button"
+                          onClick={() => setExtraNpcContext(sug)}
+                          className="px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 hover:border-red-500 hover:text-red-300 transition"
+                        >
+                          {sug}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleGenerateNarrativeOffline}
+                    disabled={isGeneratingNarrativeAI}
+                    className="py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-100 border border-zinc-700 text-xs font-mono font-semibold flex items-center justify-center gap-2 transition"
+                  >
+                    <Zap className="w-4 h-4 text-red-400" />
+                    <span>Gerar Inimigo por Tabelas (Offline)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleGenerateNarrativeAI}
+                    disabled={isGeneratingNarrativeAI}
+                    className="py-3 rounded-xl bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white text-xs font-mono font-bold flex items-center justify-center gap-2 transition shadow-md shadow-red-950/40"
+                  >
+                    {isGeneratingNarrativeAI ? (
+                      <>
+                        <Sparkles className="w-4 h-4 animate-spin text-white" />
+                        <span>Gerando Inimigo com IA...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 text-amber-300" />
+                        <span>Gerar Inimigo com IA Co-GM</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -2232,6 +2380,378 @@ Táticas: ${generatedNPC.tactics}`;
                   <h3 className="text-sm font-semibold text-zinc-300">Nenhum combatente gerado ainda</h3>
                   <p className="text-xs text-zinc-500 max-w-sm mx-auto">
                     Selecione o escalão de ameaça, o arquétipo e a facção ao lado e clique em <strong>"Gerar por Tabelas"</strong> ou <strong>"Gerar com IA Co-GM"</strong>.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* TAB 2: GERADOR DEDICADO DE CIVIS & CIDADÃOS COMUNS       */}
+      {/* ======================================================== */}
+      {activeTab === 'civilians' && (
+        <div className="space-y-6">
+          {/* Toast Notification */}
+          {civilianToast && (
+            <div className="p-3.5 rounded-xl bg-cyan-950/80 border border-cyan-500/60 text-cyan-300 font-mono text-xs flex items-center justify-between shadow-lg animate-in fade-in zoom-in-95 duration-150">
+              <span className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-cyan-400" />
+                {civilianToast}
+              </span>
+              <button onClick={() => setCivilianToast(null)} className="text-zinc-400 hover:text-zinc-100">&times;</button>
+            </div>
+          )}
+
+          {/* Banner Top Info */}
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-[#101717] via-[#121c1c] to-[#101717] border border-cyan-900/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 font-bold">
+                  Cyberpunk RED Everyday People DLC & Night City Lore
+                </span>
+                <span className="text-[10px] font-mono text-zinc-500">Módulo de Cidadãos, Não-Combatentes & Testemunhas</span>
+              </div>
+              <h2 className="text-base font-bold text-zinc-100 mt-1 flex items-center gap-2">
+                <Users className="w-4 h-4 text-cyan-400" />
+                <span>Gerador Dedicado de Civis & Cidadãos de Night City</span>
+              </h2>
+              <p className="text-xs text-zinc-400 mt-0.5">
+                Cidadãos desarmados, operários, comerciantes, vítimas de gangues e testemunhas oculares com dramas pessoais, segredos e reações de pânico.
+              </p>
+            </div>
+            <span className="text-[11px] font-mono text-zinc-400 bg-zinc-900 px-2.5 py-1 rounded-lg border border-zinc-800">
+              {system === 'RED' ? 'Regras Everyday People' : 'Regras Cyberpunk 2020'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Controls Column (5 cols) */}
+            <div className="lg:col-span-5 space-y-5">
+              {/* 1. Ocupação Civil */}
+              <div className="p-4 rounded-xl bg-[#121217] border border-[#27272a] space-y-3">
+                <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 block font-mono flex items-center justify-between">
+                  <span>1. Ocupação Civil (Everyday People)</span>
+                  <span className="text-[10px] font-normal text-zinc-500">{CIVILIAN_OCCUPATIONS.length} Profissões</span>
+                </span>
+                <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1 no-scrollbar">
+                  {CIVILIAN_OCCUPATIONS.map(occ => {
+                    const isSelected = civilianOccupationId === occ.id;
+                    return (
+                      <button
+                        key={occ.id}
+                        type="button"
+                        onClick={() => setCivilianOccupationId(occ.id)}
+                        className={`w-full p-2.5 rounded-lg border text-left transition flex items-center justify-between text-xs ${
+                          isSelected
+                            ? 'bg-cyan-950/40 border-cyan-500 text-zinc-100 shadow-sm'
+                            : 'bg-[#0a0a0d] border-[#27272a] text-zinc-400 hover:bg-zinc-800/80'
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <strong className="text-zinc-200 block">{occ.name}</strong>
+                            <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-zinc-900 text-cyan-400 border border-zinc-800">
+                              {occ.badge}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-zinc-500 mt-0.5 line-clamp-1">{occ.description}</p>
+                        </div>
+                        {isSelected && <Check className="w-4 h-4 text-cyan-400 shrink-0 ml-2" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 2. Distrito de Origem */}
+              <div className="p-4 rounded-xl bg-[#121217] border border-[#27272a] space-y-3">
+                <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 block font-mono">
+                  2. Bairro / Distrito de Origem
+                </span>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                  {CIVILIAN_DISTRICTS.map(dist => {
+                    const isSelected = civilianDistrictId === dist.id;
+                    return (
+                      <button
+                        key={dist.id}
+                        type="button"
+                        onClick={() => setCivilianDistrictId(dist.id)}
+                        className={`p-2 rounded-lg border text-left transition flex flex-col justify-between ${
+                          isSelected
+                            ? 'bg-cyan-950/40 border-cyan-500 text-zinc-100 font-medium shadow-sm'
+                            : 'bg-[#0a0a0d] border-[#27272a] text-zinc-400 hover:bg-zinc-800'
+                        }`}
+                      >
+                        <span className="font-semibold text-zinc-200">{dist.name.split(' ')[0]}</span>
+                        <span className="text-[9px] text-zinc-500 truncate">{dist.socialClass}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 3. Opção Extra com IA */}
+              <div className="rounded-xl border border-cyan-900/40 bg-cyan-950/15 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Bot className="w-4 h-4 text-cyan-400" />
+                    <span className="text-xs font-bold text-zinc-200">Opção Extra: Configurar Civil com IA (Gemini Co-GM)</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowCivilianAiOptions(!showCivilianAiOptions)}
+                    className="text-[11px] font-mono text-cyan-400 hover:text-cyan-300 transition flex items-center gap-1"
+                  >
+                    <span>{showCivilianAiOptions ? 'Ocultar Opções' : 'Configurar com IA'}</span>
+                    {showCivilianAiOptions ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+
+                {showCivilianAiOptions && (
+                  <div className="space-y-3 pt-2 border-t border-cyan-950/50 animate-in fade-in duration-150">
+                    <div>
+                      <label className="text-[10px] font-mono text-zinc-400 block mb-1">
+                        Contexto do Encontro / História Pessoal para a IA:
+                      </label>
+                      <input
+                        type="text"
+                        value={extraCivilianContext}
+                        onChange={e => setExtraCivilianContext(e.target.value)}
+                        placeholder="Ex: Dono de mercearia que viu assassinato da Arasaka, precisa de resgate para a filha..."
+                        className="w-full bg-[#0a0a0d] border border-zinc-800 rounded-lg p-2.5 text-xs text-zinc-200 font-mono focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+
+                    <div className="flex flex-wrap gap-1.5 text-[10px] font-mono text-zinc-400">
+                      <span className="text-zinc-500">Sugestões rápidas:</span>
+                      {[
+                        'Viu a van preta da Arasaka descarregando refém',
+                        'Dívida de extorsão com gangue de Watson',
+                        'Enfermeiro clandestino que tratou um Edgerunner',
+                        'Garçom que ouviu segredo no banheiro do Afterlife',
+                        'Testemunha amedrontada querendo fugir da cidade',
+                      ].map((sug, sIdx) => (
+                        <button
+                          key={sIdx}
+                          type="button"
+                          onClick={() => setExtraCivilianContext(sug)}
+                          className="px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 hover:border-cyan-500 hover:text-cyan-300 transition"
+                        >
+                          {sug}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleGenerateCivilianOffline}
+                    disabled={isGeneratingCivilianAI}
+                    className="py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-100 border border-zinc-700 text-xs font-mono font-semibold flex items-center justify-center gap-2 transition"
+                  >
+                    <Zap className="w-4 h-4 text-cyan-400" />
+                    <span>Gerar Civil por Tabelas (Offline)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleGenerateCivilianAI}
+                    disabled={isGeneratingCivilianAI}
+                    className="py-3 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-mono font-bold flex items-center justify-center gap-2 transition shadow-md shadow-cyan-950/40"
+                  >
+                    {isGeneratingCivilianAI ? (
+                      <>
+                        <Sparkles className="w-4 h-4 animate-spin text-white" />
+                        <span>IA Criando Civil...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 text-amber-300" />
+                        <span>Gerar Civil com IA Co-GM</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Civilian Sheet Preview Column (7 cols) */}
+            <div className="lg:col-span-7">
+              {generatedCivilian ? (
+                <div className="p-6 rounded-2xl bg-[#121217] border border-[#27272a] space-y-5 shadow-lg">
+                  {/* Top Sheet Header */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#27272a] gap-3">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-cyan-950/80 text-cyan-300 border border-cyan-800/40 font-bold">
+                          CIVIL (EVERYDAY PEOPLE)
+                        </span>
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-300">
+                          {generatedCivilian.archetype}
+                        </span>
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-400">
+                          {generatedCivilian.faction}
+                        </span>
+                      </div>
+                      <h2 className="text-xl font-bold text-zinc-100 mt-1">
+                        {generatedCivilian.name}
+                      </h2>
+                      <p className="text-xs text-zinc-400">{generatedCivilian.role} &bull; Não-Combatente</p>
+                    </div>
+
+                    {/* Actions: Save, Copy */}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          saveNPC(generatedCivilian);
+                          setCivilianToast(`Ficha de ${generatedCivilian.name} salva na Biblioteca!`);
+                          setTimeout(() => setCivilianToast(null), 2500);
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-medium flex items-center gap-1.5 transition shadow"
+                        title="Salvar na Biblioteca da Campanha"
+                      >
+                        <Bookmark className="w-3.5 h-3.5" />
+                        <span>Salvar</span>
+                      </button>
+                      <button
+                        onClick={handleCopyCivilian}
+                        className="p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200 border border-zinc-700 transition"
+                        title="Copiar Ficha Civil"
+                      >
+                        {civilianCopied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Narrative Dossier */}
+                  <div className="p-4 rounded-xl bg-[#0a0a0d] border border-cyan-950/60 space-y-3">
+                    <span className="text-[10px] font-mono uppercase text-cyan-400 font-bold block flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5" /> Dossiê Humano & Interpretação de Cena
+                    </span>
+
+                    {/* Appearance & Quirks */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-mono uppercase text-zinc-500 block">Roupas do Dia a Dia & Aparência:</span>
+                        <p className="text-zinc-300 leading-relaxed">{generatedCivilian.appearance || generatedCivilian.description}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-mono uppercase text-zinc-500 block">Maneirismos & Cotidiano:</span>
+                        <p className="text-zinc-300 leading-relaxed">{generatedCivilian.quirks}</p>
+                      </div>
+                    </div>
+
+                    {/* Motivation & Secret */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs border-t border-zinc-800/80 pt-2.5">
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-mono uppercase text-amber-400 block font-semibold">Drama Pessoal / O Que Precisa:</span>
+                        <p className="text-zinc-300 leading-relaxed">{generatedCivilian.motivation}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-mono uppercase text-cyan-400 block font-semibold">Segredo ou Rumor que Sabe:</span>
+                        <p className="text-zinc-300 leading-relaxed">{generatedCivilian.weaknessOrSecret}</p>
+                      </div>
+                    </div>
+
+                    {/* Dialogue Quote */}
+                    {generatedCivilian.dialogueHook && (
+                      <div className="p-3 rounded-lg bg-zinc-900/90 border-l-4 border-cyan-500 flex items-start justify-between gap-2 text-xs">
+                        <div className="italic text-cyan-200 font-sans">
+                          {generatedCivilian.dialogueHook}
+                        </div>
+                        <button
+                          onClick={() => {
+                            if (generatedCivilian.dialogueHook) {
+                              navigator.clipboard.writeText(generatedCivilian.dialogueHook);
+                              setCivilianToast('Fala copiada!');
+                              setTimeout(() => setCivilianToast(null), 2000);
+                            }
+                          }}
+                          className="text-[10px] font-mono text-zinc-500 hover:text-cyan-300 shrink-0"
+                          title="Copiar Fala de Diálogo"
+                        >
+                          Copiar
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Panic Protocol */}
+                    <div className="text-xs pt-2 border-t border-zinc-800/60 bg-red-950/20 p-3 rounded-lg border border-red-900/30">
+                      <span className="text-[10px] font-mono uppercase text-red-400 block font-bold flex items-center gap-1.5 mb-1">
+                        <AlertCircle className="w-3.5 h-3.5 text-red-400" />
+                        <span>Reação sob Tiroteio / Protocolo de Pânico:</span>
+                      </span>
+                      <p className="text-red-200/90">{generatedCivilian.surrenderTrigger}</p>
+                    </div>
+
+                    {/* Everyday Pocket Loot */}
+                    {generatedCivilian.pocketLoot && generatedCivilian.pocketLoot.length > 0 && (
+                      <div className="text-xs pt-2 border-t border-zinc-800/60">
+                        <span className="text-[10px] font-mono uppercase text-emerald-400 block font-semibold mb-1">
+                          Saque dos Bolsos Civis (Everyday Pocket Loot):
+                        </span>
+                        <div className="flex flex-wrap gap-1.5 font-mono text-[11px]">
+                          {generatedCivilian.pocketLoot.map((item, idx) => (
+                            <span key={idx} className="px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-300">
+                              &bull; {item}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Vitals Stats Display */}
+                  <div className="p-4 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-3">
+                    <span className="text-[10px] font-mono uppercase text-zinc-500 font-bold block">
+                      Estatísticas de Cidadão Comum (Everyday People):
+                    </span>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center font-mono">
+                      <div className="p-2.5 rounded-lg bg-zinc-900 border border-zinc-800">
+                        <span className="text-[10px] text-zinc-500 uppercase block">Combat Number</span>
+                        <span className="text-base font-bold text-zinc-400">#7 (Básico)</span>
+                      </div>
+                      <div className="p-2.5 rounded-lg bg-red-950/20 border border-red-900/30">
+                        <span className="text-[10px] text-zinc-500 uppercase block">Pontos Vida (HP)</span>
+                        <span className="text-base font-bold text-red-400">{generatedCivilian.statsRED?.HP || 25}</span>
+                      </div>
+                      <div className="p-2.5 rounded-lg bg-zinc-900 border border-zinc-800">
+                        <span className="text-[10px] text-zinc-500 uppercase block">Blindagem Cabeça</span>
+                        <span className="text-base font-bold text-zinc-400">SP 0 (Civil)</span>
+                      </div>
+                      <div className="p-2.5 rounded-lg bg-zinc-900 border border-zinc-800">
+                        <span className="text-[10px] text-zinc-500 uppercase block">Blindagem Corpo</span>
+                        <span className="text-base font-bold text-zinc-300">SP {generatedCivilian.statsRED?.bodySP || 0}</span>
+                      </div>
+                    </div>
+
+                    {/* Self Defense Gear */}
+                    <div className="pt-2 border-t border-zinc-800 text-xs">
+                      <span className="text-[10px] font-mono text-zinc-500 uppercase block mb-1">
+                        Autodefesa Improvisada & Ferramentas de Trabalho:
+                      </span>
+                      <div className="flex flex-wrap gap-2">
+                        {generatedCivilian.weapons.map((w, wIdx) => (
+                          <span key={wIdx} className="px-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 font-mono text-xs flex items-center gap-1.5">
+                            <span className="text-amber-400">&bull;</span>
+                            <span>{w.name}</span>
+                            <span className="text-zinc-500">({w.damage})</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-12 rounded-2xl bg-[#121217] border border-dashed border-[#27272a] text-center space-y-3">
+                  <Users className="w-10 h-10 text-zinc-600 mx-auto" />
+                  <h3 className="text-sm font-semibold text-zinc-300">Nenhum cidadão civil gerado ainda</h3>
+                  <p className="text-xs text-zinc-500 max-w-sm mx-auto">
+                    Selecione a ocupação e o distrito ao lado e clique em <strong>"Gerar Civil por Tabelas"</strong> ou <strong>"Gerar Civil com IA Co-GM"</strong>.
                   </p>
                 </div>
               )}
@@ -2923,35 +3443,89 @@ Táticas: ${generatedNPC.tactics}`;
                 />
               </div>
 
-              {/* Action Buttons */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <button
-                  type="button"
-                  onClick={handleGeneratePetOffline}
-                  disabled={isGeneratingPetAI}
-                  className="py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-100 border border-zinc-700 text-xs font-mono font-semibold flex items-center justify-center gap-2 transition"
-                >
-                  <Zap className="w-4 h-4 text-emerald-400" />
-                  <span>Gerar Pet Canônico (Offline)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleGeneratePetAI}
-                  disabled={isGeneratingPetAI}
-                  className="py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-mono font-bold flex items-center justify-center gap-2 transition shadow-md shadow-emerald-950/40"
-                >
-                  {isGeneratingPetAI ? (
-                    <>
-                      <Sparkles className="w-4 h-4 animate-spin text-white" />
-                      <span>Gerando com Co-GM...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-4 h-4 text-amber-300" />
-                      <span>Gerar Pet com IA</span>
-                    </>
-                  )}
-                </button>
+              {/* Opção Extra: Configurar Pet com IA (Gemini Co-GM) */}
+              <div className="rounded-xl border border-emerald-900/40 bg-emerald-950/15 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Bot className="w-4 h-4 text-emerald-400" />
+                    <span className="text-xs font-bold text-zinc-200">Opção Extra: Configurar Pet com IA (Gemini Co-GM)</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowPetAiOptions(!showPetAiOptions)}
+                    className="text-[11px] font-mono text-emerald-400 hover:text-emerald-300 transition flex items-center gap-1"
+                  >
+                    <span>{showPetAiOptions ? 'Ocultar Opções' : 'Configurar com IA'}</span>
+                    {showPetAiOptions ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+
+                {showPetAiOptions && (
+                  <div className="space-y-3 pt-2 border-t border-emerald-950/50 animate-in fade-in duration-150">
+                    <div>
+                      <label className="text-[10px] font-mono text-zinc-400 block mb-1">
+                        Instruções Especiais / Peculiaridades para a IA:
+                      </label>
+                      <input
+                        type="text"
+                        value={extraPetContext}
+                        onChange={e => setExtraPetContext(e.target.value)}
+                        placeholder="Ex: Cão K-9 com visão térmica e mandíbula de titânio, drone gato com glitch de afeto..."
+                        className="w-full bg-[#0a0a0d] border border-zinc-800 rounded-lg p-2.5 text-xs text-zinc-200 font-mono focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    <div className="flex flex-wrap gap-1.5 text-[10px] font-mono text-zinc-400">
+                      <span className="text-zinc-500">Sugestões rápidas:</span>
+                      {[
+                        'K-9 policial com mandíbula de titânio e blindagem',
+                        'Drone-gato espião que grava áudio secreto',
+                        'Clone exótico da Biotechnica que brilha no escuro',
+                        'Cão selvagem dos Badlands treinado por Nômades',
+                        'Mascote com glitch cômico e medo de buzinas',
+                      ].map((sug, sIdx) => (
+                        <button
+                          key={sIdx}
+                          type="button"
+                          onClick={() => setExtraPetContext(sug)}
+                          className="px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 hover:border-emerald-500 hover:text-emerald-300 transition"
+                        >
+                          {sug}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleGeneratePetOffline}
+                    disabled={isGeneratingPetAI}
+                    className="py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-100 border border-zinc-700 text-xs font-mono font-semibold flex items-center justify-center gap-2 transition"
+                  >
+                    <Zap className="w-4 h-4 text-emerald-400" />
+                    <span>Gerar Pet por Tabelas (Offline)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleGeneratePetAI}
+                    disabled={isGeneratingPetAI}
+                    className="py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-mono font-bold flex items-center justify-center gap-2 transition shadow-md shadow-emerald-950/40"
+                  >
+                    {isGeneratingPetAI ? (
+                      <>
+                        <Sparkles className="w-4 h-4 animate-spin text-white" />
+                        <span>IA Criando Pet...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 text-amber-300" />
+                        <span>Gerar Pet com IA Co-GM</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
 
