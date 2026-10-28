@@ -43,6 +43,24 @@ import {
   BestiaryEnemy,
   SystemCreationGuideline,
 } from '../data/bestiaryData';
+import {
+  NARRATIVE_ARCHETYPES,
+  NarrativeArchetypeId,
+  generateNarrativeNPCOffline,
+} from '../data/npcNarrativeGeneratorData';
+import {
+  PET_NATURES,
+  PET_SIZES,
+  PET_TRAININGS,
+  PetNatureId,
+  PetSizeId,
+  PetTrainingId,
+  generatePetOffline,
+} from '../data/petGeneratorData';
+import {
+  generateAINarrativeNPC,
+  generateAIPet,
+} from '../services/aiService';
 
 const FIRST_NAMES = ['Kael', 'Jax', 'Raven', 'Vektor', 'Rocco', 'Slick', 'Nyx', 'Brick', 'T-Bug', 'Zero', 'Crash', 'Elena', 'Malik', 'Hana', 'Dante', 'Blaze', 'Cipher', 'Viper', 'Spike', 'Ghost'];
 const LAST_NAMES = ['Vance', 'Kowalski', 'Silver', 'Cross', 'Tanaka', 'Mendez', 'Steel', 'Frost', 'Mercer', 'Chen', 'Black', 'Reyes', 'Novak', 'Winter', 'Kane', 'Wolf', 'Stone', 'Sato'];
@@ -52,13 +70,29 @@ export const PeoplePage: React.FC = () => {
   const { savedNPCs, saveNPC, deleteNPC } = useCampaign();
   const { addCombatant, combatants, updateHP, ablateSP, addCriticalInjury } = useCombat();
 
-  const [activeTab, setActiveTab] = useState<'dossier' | 'generator' | 'builder' | 'library'>('dossier');
+  const [activeTab, setActiveTab] = useState<'dossier' | 'generator' | 'pets' | 'builder' | 'library'>('dossier');
   const [selectedTier, setSelectedTier] = useState<NPCTier>('mook');
-  const [selectedCategory, setSelectedCategory] = useState<'gangs' | 'trauma' | 'corps' | 'police' | 'nomads'>('gangs');
+  const [selectedCategory, setSelectedCategory] = useState<'gangs' | 'corps' | 'police' | 'trauma' | 'nomads' | 'independent'>('gangs');
   const [selectedSubfaction, setSelectedSubfaction] = useState<string>('maelstrom');
+  const [narrativeArchetype, setNarrativeArchetype] = useState<NarrativeArchetypeId>('combatant');
+  const [extraNpcContext, setExtraNpcContext] = useState<string>('');
+  const [isGeneratingNarrativeAI, setIsGeneratingNarrativeAI] = useState<boolean>(false);
   const [generatedNPC, setGeneratedNPC] = useState<NPCSheet | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
   const [sendSuccess, setSendSuccess] = useState<boolean>(false);
+  const [npcToast, setNpcToast] = useState<string | null>(null);
+
+  // Dedicated Pet Generator State
+  const [petNatureId, setPetNatureId] = useState<PetNatureId>('cyber_k9');
+  const [petSizeId, setPetSizeId] = useState<PetSizeId>('medium');
+  const [petTrainingId, setPetTrainingId] = useState<PetTrainingId>('military');
+  const [petOwnerFaction, setPetOwnerFaction] = useState<string>('NCPD // Unidade K-9');
+  const [extraPetContext, setExtraPetContext] = useState<string>('');
+  const [isGeneratingPetAI, setIsGeneratingPetAI] = useState<boolean>(false);
+  const [generatedPet, setGeneratedPet] = useState<NPCSheet | null>(null);
+  const [petCopied, setPetCopied] = useState<boolean>(false);
+  const [petSendSuccess, setPetSendSuccess] = useState<boolean>(false);
+  const [petToast, setPetToast] = useState<string | null>(null);
 
   // Dossier & Bestiary State
   const [dossierTierFilter, setDossierTierFilter] = useState<'all' | NPCTier>('all');
@@ -108,7 +142,122 @@ export const PeoplePage: React.FC = () => {
   const [manualCyberware, setManualCyberware] = useState<string>('Ciberolho com Visão Noturna, Interface Neural');
   const [manualTactics, setManualTactics] = useState<string>('Mantém cobertura média e atira com precisão.');
 
-  // Generate NPC logic
+  // 1. Generate Narrative NPC Offline
+  const handleGenerateNarrativeOffline = () => {
+    const npc = generateNarrativeNPCOffline({
+      tier: selectedTier,
+      archetypeId: narrativeArchetype,
+      factionCategory: selectedCategory,
+      subfactionId: selectedSubfaction,
+      system,
+    });
+    setGeneratedNPC(npc);
+    setNpcToast(`NPC gerado pelas tabelas oficiais do Corebook & Dossier!`);
+    setTimeout(() => setNpcToast(null), 3000);
+  };
+
+  // 2. Generate Narrative NPC with AI Co-GM
+  const handleGenerateNarrativeAI = async () => {
+    setIsGeneratingNarrativeAI(true);
+    try {
+      const npc = await generateAINarrativeNPC({
+        tier: selectedTier,
+        archetypeId: narrativeArchetype,
+        factionCategory: selectedCategory,
+        subfactionId: selectedSubfaction,
+        system,
+        extraContext: extraNpcContext,
+      });
+      setGeneratedNPC(npc);
+      setNpcToast(`NPC aprofundado com inteligência artificial pelo Co-GM!`);
+      setTimeout(() => setNpcToast(null), 3500);
+    } catch (err) {
+      console.error(err);
+      handleGenerateNarrativeOffline();
+    } finally {
+      setIsGeneratingNarrativeAI(false);
+    }
+  };
+
+  // 3. Generate Dedicated Pet Offline
+  const handleGeneratePetOffline = () => {
+    const pet = generatePetOffline({
+      natureId: petNatureId,
+      sizeId: petSizeId,
+      trainingId: petTrainingId,
+      ownerFaction: petOwnerFaction,
+      system,
+    });
+    setGeneratedPet(pet);
+    setPetToast(`Pet gerado com regras canônicas de animais (Interface RED)!`);
+    setTimeout(() => setPetToast(null), 3000);
+  };
+
+  // 4. Generate Dedicated Pet with AI Co-GM
+  const handleGeneratePetAI = async () => {
+    setIsGeneratingPetAI(true);
+    try {
+      const pet = await generateAIPet({
+        natureId: petNatureId,
+        sizeId: petSizeId,
+        trainingId: petTrainingId,
+        ownerFaction: petOwnerFaction,
+        system,
+        extraContext: extraPetContext,
+      });
+      setGeneratedPet(pet);
+      setPetToast(`Pet gerado com IA e peculiaridades do universo Cyberpunk!`);
+      setTimeout(() => setPetToast(null), 3500);
+    } catch (err) {
+      console.error(err);
+      handleGeneratePetOffline();
+    } finally {
+      setIsGeneratingPetAI(false);
+    }
+  };
+
+  // Send Pet to combat tracker
+  const handleSendPetToCombat = (pet: NPCSheet) => {
+    addCombatant({
+      id: 'combat-' + pet.id + '-' + Date.now(),
+      name: pet.name,
+      system: pet.system,
+      initiative: Math.floor(Math.random() * 10) + 1 + (pet.statsRED?.REF || 7),
+      currentHP: pet.statsRED?.HP || 25,
+      maxHP: pet.statsRED?.HP || 25,
+      headSP: pet.statsRED?.headSP || 7,
+      bodySP: pet.statsRED?.bodySP || 7,
+      conditions: [],
+      criticalInjuries: [],
+      deathSavePenalty: 0,
+      faction: pet.faction,
+      weapons: pet.weapons.map(w => ({
+        name: w.name,
+        damage: w.damage,
+        rof: w.rof || 1,
+      })),
+      combatNumber: pet.statsRED?.combatNumber || 12,
+      appearance: pet.appearance || pet.description || '',
+    });
+    setPetSendSuccess(true);
+    setTimeout(() => setPetSendSuccess(false), 2000);
+  };
+
+  // Copy Pet
+  const handleCopyPet = () => {
+    if (!generatedPet) return;
+    const txt = `🐾 ${generatedPet.name} [${generatedPet.role}]
+HP: ${generatedPet.statsRED?.HP || 25} | SP: ${generatedPet.statsRED?.bodySP || 7} | Combat Number: ${generatedPet.statsRED?.combatNumber || 12}
+Instinto: ${generatedPet.petInstinct || generatedPet.tactics}
+Peculiaridade: ${generatedPet.quirks || 'Nenhuma'}
+Ataques: ${generatedPet.weapons.map(w => `${w.name} (${w.damage})`).join(' | ')}
+Implantes: ${generatedPet.cyberware.join(', ')}`;
+    navigator.clipboard.writeText(txt);
+    setPetCopied(true);
+    setTimeout(() => setPetCopied(false), 2000);
+  };
+
+  // Generate NPC logic (Legacy fallback)
   const handleGenerate = () => {
     const randomFirst = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)];
     const randomLast = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
@@ -701,13 +850,31 @@ Táticas: ${generatedNPC.tactics}`;
           </button>
           <button
             onClick={() => setActiveTab('generator')}
-            className={`px-3 py-1.5 rounded-md transition ${
+            className={`px-3 py-1.5 rounded-md transition flex items-center gap-1.5 ${
               activeTab === 'generator'
-                ? 'bg-zinc-800 text-zinc-100 shadow-sm'
+                ? 'bg-zinc-800 text-cyan-300 shadow-sm font-semibold border border-cyan-800/50'
                 : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
-            Gerador Automático
+            <Users className="w-3.5 h-3.5 text-cyan-400" />
+            <span>Gerador Narrativo de NPCs</span>
+            <span className="px-1.5 py-0.2 rounded-full text-[9px] font-mono bg-cyan-950/60 text-cyan-400 border border-cyan-800/40">
+              Livros
+            </span>
+          </button>
+          <button
+            onClick={() => setActiveTab('pets')}
+            className={`px-3 py-1.5 rounded-md transition flex items-center gap-1.5 ${
+              activeTab === 'pets'
+                ? 'bg-zinc-800 text-emerald-400 shadow-sm font-semibold border border-emerald-500/50'
+                : 'text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            <span className="text-xs">🐕</span>
+            <span>Gerador de Pets & Biopets</span>
+            <span className="px-1.5 py-0.2 rounded-full text-[9px] font-mono bg-emerald-950/60 text-emerald-400 border border-emerald-800/40 font-bold">
+              Novo
+            </span>
           </button>
           <button
             onClick={() => setActiveTab('builder')}
@@ -1339,317 +1506,847 @@ Táticas: ${generatedNPC.tactics}`;
         </div>
       )}
 
-      {/* TAB 1: AUTOMATIC GENERATOR */}
+      {/* TAB 1: GERADOR NARRATIVO DE NPCS (ESTRUTURA DOS LIVROS) */}
       {activeTab === 'generator' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Controls Column (5 cols) */}
-          <div className="lg:col-span-5 space-y-5">
-            {/* Tier Selection */}
-            <div className="p-4 rounded-xl bg-[#121217] border border-[#27272a] space-y-3">
-              <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 block font-mono">
-                1. Escalão de Ameaça (Tier)
+        <div className="space-y-6">
+          {/* Toast Notification */}
+          {npcToast && (
+            <div className="p-3.5 rounded-xl bg-cyan-950/80 border border-cyan-500/60 text-cyan-300 font-mono text-xs flex items-center justify-between shadow-lg animate-pulse">
+              <span className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-cyan-400" />
+                {npcToast}
               </span>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                {[
-                  { id: 'civilian', label: 'Cidadão / Civil', sub: 'Everyday People DLC' },
-                  { id: 'pet', label: 'Pet / Biopet', sub: 'Cães K-9 & Robodogs' },
-                  { id: 'mook', label: 'Capanga / Mook', sub: 'Combate Comum' },
-                  { id: 'lieutenant', label: 'Tenente / LT', sub: 'Especialista Tático' },
-                  { id: 'miniboss', label: 'Mini-Chefe', sub: 'Blindado / Perigoso' },
-                  { id: 'boss', label: 'Chefe / Ciberpsico', sub: 'Ameaça Mortal' },
-                ].map(t => (
-                  <button
-                    key={t.id}
-                    onClick={() => setSelectedTier(t.id as NPCTier)}
-                    className={`p-2.5 rounded-lg border text-left transition ${
-                      selectedTier === t.id
-                        ? 'bg-red-950/40 border-red-600/60 text-zinc-100 shadow-sm'
-                        : 'bg-[#0a0a0d] border-[#27272a] text-zinc-400 hover:bg-zinc-800'
-                    }`}
-                  >
-                    <div className="font-semibold">{t.label}</div>
-                    <div className="text-[10px] text-zinc-500">{t.sub}</div>
-                  </button>
-                ))}
-              </div>
+              <button onClick={() => setNpcToast(null)} className="text-zinc-400 hover:text-zinc-100">&times;</button>
             </div>
+          )}
 
-            {/* Faction Category Selection */}
-            <div className="p-4 rounded-xl bg-[#121217] border border-[#27272a] space-y-3">
-              <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 block font-mono">
-                2. Categoria da Facção
-              </span>
-              <div className="grid grid-cols-3 gap-2 text-xs">
-                {[
-                  { id: 'gangs', label: 'Gangues de Rua' },
-                  { id: 'trauma', label: 'Trauma Team™' },
-                  { id: 'corps', label: 'Corporações' },
-                  { id: 'police', label: 'Polícia / MaxTac' },
-                  { id: 'nomads', label: 'Nômades & Civis' },
-                ].map(cat => (
-                  <button
-                    key={cat.id}
-                    onClick={() => {
-                      setSelectedCategory(cat.id as any);
-                      if (cat.id === 'corps') setSelectedSubfaction('arasaka');
-                    }}
-                    className={`p-2 rounded-lg border text-center transition ${
-                      selectedCategory === cat.id
-                        ? 'bg-zinc-800 border-zinc-500 text-zinc-100 font-medium'
-                        : 'bg-[#0a0a0d] border-[#27272a] text-zinc-400 hover:bg-zinc-800'
-                    }`}
-                  >
-                    {cat.label}
-                  </button>
-                ))}
+          {/* Banner Top Info */}
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-[#121217] via-[#151520] to-[#121217] border border-[#27272a] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 font-bold">
+                  Cyberpunk RED Corebook & Danger Gal Dossier
+                </span>
+                <span className="text-[10px] font-mono text-zinc-500">Módulo de NPCs com Foco Narrativo</span>
               </div>
-
-              {/* Subfaction selection if Gangs or Corps */}
-              {selectedCategory === 'gangs' && (
-                <div className="pt-2">
-                  <label className="block text-[11px] text-zinc-400 mb-1.5 font-mono">
-                    Escolha a Gangue Específica:
-                  </label>
-                  <select
-                    value={selectedSubfaction}
-                    onChange={e => setSelectedSubfaction(e.target.value)}
-                    className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-red-500"
-                  >
-                    {GANGS_LIST.map(g => (
-                      <option key={g.id} value={g.id}>
-                        {g.name} ({g.category}) - Ameaça: {g.threatLevel}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {selectedCategory === 'corps' && (
-                <div className="pt-2">
-                  <label className="block text-[11px] text-zinc-400 mb-1.5 font-mono">
-                    Escolha a Mega-Corporação:
-                  </label>
-                  <select
-                    value={selectedSubfaction}
-                    onChange={e => setSelectedSubfaction(e.target.value)}
-                    className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-red-500"
-                  >
-                    <option value="arasaka">Arasaka Corporation (Segurança & Ninjas)</option>
-                    <option value="militech">Militech Arms (Infantaria & Blindados)</option>
-                    <option value="biotechnica">Biotechnica (Genética & Contenção)</option>
-                    <option value="kang-tao">Kang Tao (Smartguns & Alta Tecnologia)</option>
-                  </select>
-                </div>
-              )}
+              <h2 className="text-base font-bold text-zinc-100 mt-1 flex items-center gap-2">
+                <Users className="w-4 h-4 text-cyan-400" />
+                <span>Gerador Narrativo de NPCs & Personagens do Submundo</span>
+              </h2>
             </div>
-
-            {/* Generate Button */}
-            <button
-              onClick={handleGenerate}
-              className="w-full py-3 rounded-xl bg-red-600 hover:bg-red-700 active:scale-[0.99] text-white font-semibold text-xs tracking-wider uppercase transition shadow-md flex items-center justify-center gap-2"
-            >
-              <Zap className="w-4 h-4" />
-              <span>Gerar Ficha Completa ({system})</span>
-            </button>
+            <span className="text-[11px] font-mono text-zinc-400 bg-zinc-900 px-2.5 py-1 rounded-lg border border-zinc-800">
+              {system === 'RED' ? 'Fichas Cyberpunk RED' : 'Fichas Cyberpunk 2020'}
+            </span>
           </div>
 
-          {/* Sheet Preview Column (7 cols) */}
-          <div className="lg:col-span-7">
-            {generatedNPC ? (
-              <div className="p-6 rounded-2xl bg-[#121217] border border-[#27272a] space-y-5 shadow-lg">
-                {/* Top Sheet Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#27272a] gap-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-red-950/60 text-red-300 border border-red-800/40">
-                        {generatedNPC.tier.toUpperCase()}
-                      </span>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-400">
-                        Sistema: {generatedNPC.system}
-                      </span>
-                    </div>
-                    <h2 className="text-lg font-bold text-zinc-100 mt-1">
-                      {generatedNPC.name}
-                    </h2>
-                    <p className="text-xs text-zinc-400">{generatedNPC.role} • Reputação {generatedNPC.reputation}</p>
-                  </div>
-
-                  {/* Actions: Save, Send to Combat, Copy */}
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleSendToCombat(generatedNPC)}
-                      className="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 text-xs font-medium flex items-center gap-1.5 transition"
-                      title="Enviar Combatente para o Rastreador Lateral"
-                    >
-                      <ShieldAlert className="w-3.5 h-3.5 text-red-400" />
-                      <span>{sendSuccess ? 'Enviado!' : 'Combate'}</span>
-                    </button>
-                    <button
-                      onClick={() => saveNPC(generatedNPC)}
-                      className="px-2.5 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-medium flex items-center gap-1.5 transition"
-                      title="Salvar na Biblioteca da Campanha"
-                    >
-                      <Bookmark className="w-3.5 h-3.5" />
-                      <span>Salvar</span>
-                    </button>
-                    <button
-                      onClick={handleCopy}
-                      className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200 border border-zinc-700 transition"
-                      title="Copiar Ficha em Texto"
-                    >
-                      {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-                    </button>
-                  </div>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Controls Column (5 cols) */}
+            <div className="lg:col-span-5 space-y-5">
+              {/* 1. Threat Tier Selection (No Pets - Pets have their own tab) */}
+              <div className="p-4 rounded-xl bg-[#121217] border border-[#27272a] space-y-3">
+                <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 block font-mono flex items-center justify-between">
+                  <span>1. Escalão de Ameaça (Tier)</span>
+                  <span className="text-[10px] font-normal text-zinc-500">Regras Oficiais</span>
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  {[
+                    { id: 'civilian', label: 'Cidadão / Civil', hp: '25 HP', sub: 'Everyday People DLC', border: 'border-zinc-700' },
+                    { id: 'mook', label: 'Capanga / Mook', hp: '30 HP', sub: 'Combate Comum de Rua', border: 'border-zinc-700' },
+                    { id: 'lieutenant', label: 'Tenente / LT', hp: '40 HP', sub: 'Especialista & Tático', border: 'border-cyan-800/60' },
+                    { id: 'miniboss', label: 'Mini-Chefe', hp: '50 HP', sub: 'Comandante Blindado', border: 'border-amber-800/60' },
+                    { id: 'boss', label: 'Chefe / Ciberpsico', hp: '65 HP', sub: 'Ameaça Mortal de Elite', border: 'border-red-800/60' },
+                  ].map(t => {
+                    const isSelected = selectedTier === t.id;
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setSelectedTier(t.id as NPCTier)}
+                        className={`p-2.5 rounded-lg border text-left transition flex flex-col justify-between ${
+                          isSelected
+                            ? 'bg-cyan-950/40 border-cyan-500 text-zinc-100 shadow-sm'
+                            : 'bg-[#0a0a0d] border-[#27272a] text-zinc-400 hover:bg-zinc-800'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-zinc-200">{t.label}</span>
+                          <span className="text-[10px] font-mono text-cyan-400 font-bold">{t.hp}</span>
+                        </div>
+                        <span className="text-[10px] text-zinc-500 mt-0.5">{t.sub}</span>
+                      </button>
+                    );
+                  })}
                 </div>
+              </div>
 
-                {/* Vital Statistics Display */}
-                {isRed ? (
-                  // CYBERPUNK RED STATBLOCK
-                  <div className="space-y-4">
-                    {/* Key Combat Numbers */}
-                    <div className="grid grid-cols-4 gap-2 text-center font-mono">
-                      <div className="p-2.5 rounded-lg bg-[#0a0a0d] border border-[#27272a]">
-                        <span className="text-[10px] text-zinc-500 uppercase block">Combat Number</span>
-                        <span className="text-lg font-bold text-red-400">{generatedNPC.statsRED?.combatNumber}</span>
-                      </div>
-                      <div className="p-2.5 rounded-lg bg-[#0a0a0d] border border-[#27272a]">
-                        <span className="text-[10px] text-zinc-500 uppercase block">Pontos Vida (HP)</span>
-                        <span className="text-lg font-bold text-zinc-100">{generatedNPC.statsRED?.HP}</span>
-                      </div>
-                      <div className="p-2.5 rounded-lg bg-[#0a0a0d] border border-[#27272a]">
-                        <span className="text-[10px] text-zinc-500 uppercase block">SP Cabeça</span>
-                        <span className="text-lg font-bold text-zinc-200">{generatedNPC.statsRED?.headSP}</span>
-                      </div>
-                      <div className="p-2.5 rounded-lg bg-[#0a0a0d] border border-[#27272a]">
-                        <span className="text-[10px] text-zinc-500 uppercase block">SP Corpo</span>
-                        <span className="text-lg font-bold text-zinc-200">{generatedNPC.statsRED?.bodySP}</span>
-                      </div>
-                    </div>
-
-                    {/* 10 RED Attributes Row */}
-                    <div className="p-3 rounded-lg bg-[#0a0a0d] border border-[#27272a]">
-                      <span className="text-[10px] font-mono uppercase text-zinc-500 block mb-1.5">
-                        Atributos RED (10 Stats)
-                      </span>
-                      <div className="grid grid-cols-5 sm:grid-cols-10 gap-1 text-center font-mono text-xs">
-                        {['INT', 'REF', 'DEX', 'TECH', 'COOL', 'WILL', 'LUCK', 'MOVE', 'BODY', 'EMP'].map(stat => (
-                          <div key={stat} className="bg-zinc-900/80 p-1.5 rounded border border-zinc-800">
-                            <span className="text-[9px] text-zinc-500 block">{stat}</span>
-                            <span className="font-bold text-zinc-200">
-                              {(generatedNPC.statsRED as any)?.[stat] ?? 6}
+              {/* 2. Narrative Archetype Selection (Danger Gal Dossier) */}
+              <div className="p-4 rounded-xl bg-[#121217] border border-[#27272a] space-y-3">
+                <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 block font-mono">
+                  2. Arquétipo & Propósito Narrativo
+                </span>
+                <div className="space-y-2">
+                  {NARRATIVE_ARCHETYPES.map(arch => {
+                    const isSelected = narrativeArchetype === arch.id;
+                    return (
+                      <button
+                        key={arch.id}
+                        type="button"
+                        onClick={() => setNarrativeArchetype(arch.id)}
+                        className={`w-full p-2.5 rounded-lg border text-left transition flex items-center justify-between text-xs ${
+                          isSelected
+                            ? 'bg-zinc-800 border-cyan-500/80 text-zinc-100 shadow-sm'
+                            : 'bg-[#0a0a0d] border-[#27272a] text-zinc-400 hover:bg-zinc-800/80'
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <strong className="text-zinc-200 block">{arch.name}</strong>
+                            <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-zinc-900 text-cyan-400 border border-zinc-800">
+                              {arch.badge}
                             </span>
                           </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  // CYBERPUNK 2020 STATBLOCK
-                  <div className="space-y-4">
-                    {/* BTM & 6 Parts */}
-                    <div className="grid grid-cols-3 gap-2 text-center font-mono">
-                      <div className="p-2 rounded bg-[#0a0a0d] border border-[#27272a]">
-                        <span className="text-[10px] text-zinc-500 block">BTM (Mod. Tipo Corp.)</span>
-                        <span className="text-base font-bold text-amber-400">{generatedNPC.stats2020?.BTM}</span>
-                      </div>
-                      <div className="p-2 rounded bg-[#0a0a0d] border border-[#27272a]">
-                        <span className="text-[10px] text-zinc-500 block">SP Cabeça (Loc 1)</span>
-                        <span className="text-base font-bold text-zinc-200">{generatedNPC.stats2020?.headSP}</span>
-                      </div>
-                      <div className="p-2 rounded bg-[#0a0a0d] border border-[#27272a]">
-                        <span className="text-[10px] text-zinc-500 block">SP Tronco (Loc 2-4)</span>
-                        <span className="text-base font-bold text-zinc-200">{generatedNPC.stats2020?.torsoSP}</span>
-                      </div>
-                    </div>
-
-                    <div className="p-2.5 rounded bg-[#0a0a0d] border border-[#27272a] text-center font-mono">
-                      <span className="text-[10px] text-zinc-500 block mb-1">SP Membros (Braços e Pernas)</span>
-                      <div className="grid grid-cols-4 gap-1 text-xs">
-                        <div className="bg-zinc-900 p-1 rounded">Braço D: {generatedNPC.stats2020?.rArmSP}</div>
-                        <div className="bg-zinc-900 p-1 rounded">Braço E: {generatedNPC.stats2020?.lArmSP}</div>
-                        <div className="bg-zinc-900 p-1 rounded">Perna D: {generatedNPC.stats2020?.rLegSP}</div>
-                        <div className="bg-zinc-900 p-1 rounded">Perna E: {generatedNPC.stats2020?.lLegSP}</div>
-                      </div>
-                    </div>
-
-                    {/* 2020 Stats */}
-                    <div className="grid grid-cols-9 gap-1 text-center font-mono text-xs">
-                      {['INT', 'REF', 'TEC', 'COOL', 'ATR', 'LUCK', 'MA', 'BODY', 'EMP'].map(stat => (
-                        <div key={stat} className="bg-zinc-900 p-1 rounded border border-zinc-800">
-                          <span className="text-[9px] text-zinc-500 block">{stat}</span>
-                          <span className="font-bold text-zinc-200">
-                            {(generatedNPC.stats2020 as any)?.[stat] ?? 7}
-                          </span>
+                          <p className="text-[10px] text-zinc-500 mt-0.5 line-clamp-1">{arch.description}</p>
                         </div>
+                        {isSelected && <Check className="w-4 h-4 text-cyan-400 shrink-0 ml-2" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 3. Faction Category Selection */}
+              <div className="p-4 rounded-xl bg-[#121217] border border-[#27272a] space-y-3">
+                <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 block font-mono">
+                  3. Facção & Afiliação
+                </span>
+                <div className="grid grid-cols-3 gap-2 text-xs">
+                  {[
+                    { id: 'gangs', label: 'Gangues de Rua' },
+                    { id: 'corps', label: 'Corporações' },
+                    { id: 'police', label: 'NCPD / MaxTac' },
+                    { id: 'trauma', label: 'Trauma Team™' },
+                    { id: 'nomads', label: 'Nômades (Badlands)' },
+                    { id: 'independent', label: 'Submundo Livre' },
+                  ].map(cat => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedCategory(cat.id as any);
+                        if (cat.id === 'corps') setSelectedSubfaction('arasaka');
+                        if (cat.id === 'gangs') setSelectedSubfaction('maelstrom');
+                      }}
+                      className={`p-2 rounded-lg border text-center transition ${
+                        selectedCategory === cat.id
+                          ? 'bg-zinc-800 border-cyan-500 text-zinc-100 font-medium'
+                          : 'bg-[#0a0a0d] border-[#27272a] text-zinc-400 hover:bg-zinc-800'
+                      }`}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
+
+                {selectedCategory === 'gangs' && (
+                  <div className="pt-2">
+                    <label className="block text-[11px] text-zinc-400 mb-1.5 font-mono">
+                      Escolha a Gangue Específica:
+                    </label>
+                    <select
+                      value={selectedSubfaction}
+                      onChange={e => setSelectedSubfaction(e.target.value)}
+                      className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-cyan-500"
+                    >
+                      {GANGS_LIST.map(g => (
+                        <option key={g.id} value={g.id}>
+                          {g.name} ({g.category}) - Ameaça: {g.threatLevel}
+                        </option>
                       ))}
-                    </div>
+                    </select>
                   </div>
                 )}
 
-                {/* Weapons & Cyberware */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                  <div className="p-3.5 rounded-lg bg-[#0a0a0d] border border-[#27272a] space-y-2">
-                    <span className="text-[11px] font-mono uppercase text-zinc-400 font-semibold flex items-center gap-1.5">
-                      <Sword className="w-3.5 h-3.5 text-red-500" /> Armamento
-                    </span>
-                    <ul className="space-y-1.5 text-zinc-300">
-                      {generatedNPC.weapons.map((w, idx) => (
-                        <li key={idx} className="flex justify-between items-center bg-zinc-900/80 px-2.5 py-1.5 rounded border border-zinc-800">
-                          <div className="flex items-center gap-2">
-                            <span className="text-zinc-200 font-medium">{w.name}</span>
-                            <span className="font-mono text-amber-400 font-bold text-[11px]">({w.damage})</span>
-                          </div>
-                          <button
-                            onClick={() => handleOpenNpcAttack(generatedNPC, w)}
-                            className="flex items-center gap-1 px-2 py-1 rounded bg-red-950/80 hover:bg-red-900 border border-red-800 text-red-300 font-mono text-[10px] font-bold transition shadow-sm"
-                            title="Rolar teste de ataque e dano com esta arma"
-                          >
-                            <Crosshair className="w-3 h-3 text-red-400" />
-                            <span>Rolar Ataque</span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
+                {selectedCategory === 'corps' && (
+                  <div className="pt-2">
+                    <label className="block text-[11px] text-zinc-400 mb-1.5 font-mono">
+                      Escolha a Mega-Corporação:
+                    </label>
+                    <select
+                      value={selectedSubfaction}
+                      onChange={e => setSelectedSubfaction(e.target.value)}
+                      className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-cyan-500"
+                    >
+                      <option value="arasaka">Arasaka Corporation (Segurança Privada & Assassinos)</option>
+                      <option value="militech">Militech Arms (Tropa Tática & Blindados)</option>
+                      <option value="biotechnica">Biotechnica (Genética & Contenção Biológica)</option>
+                      <option value="kang-tao">Kang Tao (Smartguns & Especialistas Chineses)</option>
+                      <option value="petrochem">Petrochem (Segurança Industrial de CHOOH2)</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              {/* 4. Optional Scene Context for AI */}
+              <div className="p-4 rounded-xl bg-[#121217] border border-[#27272a] space-y-2">
+                <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 block font-mono">
+                  4. Contexto da Cena (Opcional para IA)
+                </span>
+                <input
+                  type="text"
+                  value={extraNpcContext}
+                  onChange={e => setExtraNpcContext(e.target.value)}
+                  placeholder="Ex: Encontrado num beco em chamas com um chip de dados na mão..."
+                  className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-lg p-2.5 text-xs text-zinc-200 font-mono focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <button
+                  type="button"
+                  onClick={handleGenerateNarrativeOffline}
+                  disabled={isGeneratingNarrativeAI}
+                  className="py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-100 border border-zinc-700 text-xs font-mono font-semibold flex items-center justify-center gap-2 transition"
+                >
+                  <Zap className="w-4 h-4 text-cyan-400" />
+                  <span>Gerar por Tabelas (Offline)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleGenerateNarrativeAI}
+                  disabled={isGeneratingNarrativeAI}
+                  className="py-3 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-mono font-bold flex items-center justify-center gap-2 transition shadow-md shadow-cyan-950/40"
+                >
+                  {isGeneratingNarrativeAI ? (
+                    <>
+                      <Sparkles className="w-4 h-4 animate-spin text-white" />
+                      <span>Gerando com Co-GM...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4 text-amber-300" />
+                      <span>Gerar com IA Co-GM</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Sheet Preview Column (7 cols) */}
+            <div className="lg:col-span-7">
+              {generatedNPC ? (
+                <div className="p-6 rounded-2xl bg-[#121217] border border-[#27272a] space-y-5 shadow-lg">
+                  {/* Top Sheet Header */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#27272a] gap-3">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-cyan-950/80 text-cyan-300 border border-cyan-800/40 font-bold">
+                          {generatedNPC.tier.toUpperCase()}
+                        </span>
+                        {generatedNPC.archetype && (
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-950/60 text-purple-300 border border-purple-800/40">
+                            {generatedNPC.archetype}
+                          </span>
+                        )}
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-400">
+                          {generatedNPC.faction}
+                        </span>
+                      </div>
+                      <h2 className="text-xl font-bold text-zinc-100 mt-1">
+                        {generatedNPC.name}
+                      </h2>
+                      <p className="text-xs text-zinc-400">{generatedNPC.role} &bull; Reputação {generatedNPC.reputation ?? 2}</p>
+                    </div>
+
+                    {/* Actions: Save, Send to Combat, Copy */}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleSendToCombat(generatedNPC)}
+                        className="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 text-xs font-medium flex items-center gap-1.5 transition"
+                        title="Enviar Combatente para o Rastreador Lateral"
+                      >
+                        <ShieldAlert className="w-3.5 h-3.5 text-red-400" />
+                        <span>{sendSuccess ? 'Enviado!' : 'Combate'}</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          saveNPC(generatedNPC);
+                          setNpcToast(`Ficha de ${generatedNPC.name} salva na Biblioteca!`);
+                          setTimeout(() => setNpcToast(null), 2500);
+                        }}
+                        className="px-2.5 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-medium flex items-center gap-1.5 transition"
+                        title="Salvar na Biblioteca da Campanha"
+                      >
+                        <Bookmark className="w-3.5 h-3.5" />
+                        <span>Salvar</span>
+                      </button>
+                      <button
+                        onClick={handleCopy}
+                        className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200 border border-zinc-700 transition"
+                        title="Copiar Ficha em Texto"
+                      >
+                        {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="p-3.5 rounded-lg bg-[#0a0a0d] border border-[#27272a] space-y-2">
-                    <span className="text-[11px] font-mono uppercase text-zinc-400 font-semibold flex items-center gap-1.5">
-                      <Cpu className="w-3.5 h-3.5 text-cyan-500" /> Ciberware & Implantes
+                  {/* NARRATIVE HIGHLIGHT BOX (DANGER GAL DOSSIER) */}
+                  <div className="p-4 rounded-xl bg-[#0a0a0d] border border-cyan-950/60 space-y-3">
+                    <span className="text-[10px] font-mono uppercase text-cyan-400 font-bold block flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5" /> Dossiê Narrativo & Interpretação de Cena
                     </span>
-                    <ul className="space-y-1 text-zinc-300">
-                      {generatedNPC.cyberware.map((c, idx) => (
-                        <li key={idx} className="bg-zinc-900/60 px-2 py-1 rounded">
-                          {c}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
 
-                {/* Tactics & Lore notes */}
-                <div className="p-3.5 rounded-lg bg-[#0a0a0d] border border-[#27272a] space-y-1.5 text-xs">
-                  <span className="text-[11px] font-mono uppercase text-zinc-400 font-semibold block">
-                    Diretrizes Táticas de Combate
-                  </span>
-                  <p className="text-zinc-300 leading-relaxed">
-                    {generatedNPC.tactics}
-                  </p>
-                  {generatedNPC.notes && (
-                    <div className="pt-2 text-[11px] text-zinc-500 font-mono whitespace-pre-line border-t border-zinc-800 mt-2">
-                      {generatedNPC.notes}
+                    {/* Appearance & Quirks */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-mono uppercase text-zinc-500 block">Aparência & Estilo:</span>
+                        <p className="text-zinc-300 leading-relaxed">{generatedNPC.appearance || generatedNPC.description}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-mono uppercase text-zinc-500 block">Maneirismos & Gírias:</span>
+                        <p className="text-zinc-300 leading-relaxed">{generatedNPC.quirks || 'Fala pausada e desconfiada.'}</p>
+                      </div>
+                    </div>
+
+                    {/* Motivation & Secret */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs border-t border-zinc-800/80 pt-2.5">
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-mono uppercase text-amber-400 block font-semibold">Motivação Imediata:</span>
+                        <p className="text-zinc-300 leading-relaxed">{generatedNPC.motivation || 'Conseguir dinheiro rápido para sobreviver à noite.'}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-mono uppercase text-red-400 block font-semibold">Segredo / Fraqueza:</span>
+                        <p className="text-zinc-300 leading-relaxed">{generatedNPC.weaknessOrSecret || 'Deve dinheiro a um agiota violento.'}</p>
+                      </div>
+                    </div>
+
+                    {/* Dialogue Hook Quote Block */}
+                    {generatedNPC.dialogueHook && (
+                      <div className="p-3 rounded-lg bg-zinc-900/90 border-l-4 border-cyan-500 flex items-start justify-between gap-2 text-xs">
+                        <div className="italic text-cyan-200 font-sans">
+                          {generatedNPC.dialogueHook}
+                        </div>
+                        <button
+                          onClick={() => {
+                            if (generatedNPC.dialogueHook) {
+                              navigator.clipboard.writeText(generatedNPC.dialogueHook);
+                              setNpcToast('Fala copiada!');
+                              setTimeout(() => setNpcToast(null), 2000);
+                            }
+                          }}
+                          className="text-[10px] font-mono text-zinc-500 hover:text-cyan-300 shrink-0"
+                          title="Copiar Fala de Diálogo"
+                        >
+                          Copiar
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Tactical Morale & Retreat */}
+                    <div className="text-xs pt-1 border-t border-zinc-800/60">
+                      <span className="text-[10px] font-mono uppercase text-zinc-500 block">Moral Tático & Rendição:</span>
+                      <p className="text-zinc-300">{generatedNPC.surrenderTrigger || 'Foge se o HP cair para menos de 50%.'}</p>
+                    </div>
+
+                    {/* Pocket Loot */}
+                    {generatedNPC.pocketLoot && generatedNPC.pocketLoot.length > 0 && (
+                      <div className="text-xs pt-2 border-t border-zinc-800/60">
+                        <span className="text-[10px] font-mono uppercase text-emerald-400 block font-semibold mb-1">
+                          Saque Narrativo dos Bolsos (Pocket Loot):
+                        </span>
+                        <div className="flex flex-wrap gap-1.5 font-mono text-[11px]">
+                          {generatedNPC.pocketLoot.map((item, idx) => (
+                            <span key={idx} className="px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-300">
+                              &bull; {item}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Vital Combat Statistics Display */}
+                  {isRed ? (
+                    <div className="space-y-4">
+                      {/* Key Combat Numbers */}
+                      <div className="grid grid-cols-4 gap-2 text-center font-mono">
+                        <div className="p-2.5 rounded-lg bg-[#0a0a0d] border border-[#27272a]">
+                          <span className="text-[10px] text-zinc-500 uppercase block">Combat Number</span>
+                          <span className="text-lg font-bold text-red-400">{generatedNPC.statsRED?.combatNumber}</span>
+                        </div>
+                        <div className="p-2.5 rounded-lg bg-[#0a0a0d] border border-[#27272a]">
+                          <span className="text-[10px] text-zinc-500 uppercase block">Pontos Vida (HP)</span>
+                          <span className="text-lg font-bold text-zinc-100">{generatedNPC.statsRED?.HP}</span>
+                        </div>
+                        <div className="p-2.5 rounded-lg bg-[#0a0a0d] border border-[#27272a]">
+                          <span className="text-[10px] text-zinc-500 uppercase block">SP Cabeça</span>
+                          <span className="text-lg font-bold text-zinc-200">{generatedNPC.statsRED?.headSP}</span>
+                        </div>
+                        <div className="p-2.5 rounded-lg bg-[#0a0a0d] border border-[#27272a]">
+                          <span className="text-[10px] text-zinc-500 uppercase block">SP Corpo</span>
+                          <span className="text-lg font-bold text-zinc-200">{generatedNPC.statsRED?.bodySP}</span>
+                        </div>
+                      </div>
+
+                      {/* 10 RED Attributes Row */}
+                      <div className="p-3 rounded-lg bg-[#0a0a0d] border border-[#27272a]">
+                        <span className="text-[10px] font-mono uppercase text-zinc-500 block mb-1.5">
+                          Atributos RED (10 Stats)
+                        </span>
+                        <div className="grid grid-cols-5 sm:grid-cols-10 gap-1 text-center font-mono text-xs">
+                          {['INT', 'REF', 'DEX', 'TECH', 'COOL', 'WILL', 'LUCK', 'MOVE', 'BODY', 'EMP'].map(stat => (
+                            <div key={stat} className="bg-zinc-900/80 p-1.5 rounded border border-zinc-800">
+                              <span className="text-[9px] text-zinc-500 block">{stat}</span>
+                              <span className="font-bold text-zinc-200">
+                                {(generatedNPC.statsRED as any)?.[stat] ?? 6}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-3 gap-2 text-center font-mono">
+                        <div className="p-2 rounded bg-[#0a0a0d] border border-[#27272a]">
+                          <span className="text-[10px] text-zinc-500 block">BTM</span>
+                          <span className="text-base font-bold text-amber-400">{generatedNPC.stats2020?.BTM}</span>
+                        </div>
+                        <div className="p-2 rounded bg-[#0a0a0d] border border-[#27272a]">
+                          <span className="text-[10px] text-zinc-500 block">SP Cabeça</span>
+                          <span className="text-base font-bold text-zinc-200">{generatedNPC.stats2020?.headSP}</span>
+                        </div>
+                        <div className="p-2 rounded bg-[#0a0a0d] border border-[#27272a]">
+                          <span className="text-[10px] text-zinc-500 block">SP Tronco</span>
+                          <span className="text-base font-bold text-zinc-200">{generatedNPC.stats2020?.torsoSP}</span>
+                        </div>
+                      </div>
                     </div>
                   )}
+
+                  {/* Weapons & Cyberware */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div className="p-3.5 rounded-lg bg-[#0a0a0d] border border-[#27272a] space-y-2">
+                      <span className="text-[11px] font-mono uppercase text-zinc-400 font-semibold flex items-center gap-1.5">
+                        <Sword className="w-3.5 h-3.5 text-red-500" /> Armamento
+                      </span>
+                      <ul className="space-y-1.5 text-zinc-300">
+                        {generatedNPC.weapons.map((w, idx) => (
+                          <li key={idx} className="flex justify-between items-center bg-zinc-900/80 px-2.5 py-1.5 rounded border border-zinc-800">
+                            <div className="flex items-center gap-2">
+                              <span className="text-zinc-200 font-medium">{w.name}</span>
+                              <span className="font-mono text-amber-400 font-bold text-[11px]">({w.damage})</span>
+                            </div>
+                            <button
+                              onClick={() => handleOpenNpcAttack(generatedNPC, w)}
+                              className="flex items-center gap-1 px-2 py-1 rounded bg-red-950/80 hover:bg-red-900 border border-red-800 text-red-300 font-mono text-[10px] font-bold transition shadow-sm"
+                              title="Rolar teste de ataque e dano com esta arma"
+                            >
+                              <Crosshair className="w-3 h-3 text-red-400" />
+                              <span>Rolar Ataque</span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div className="p-3.5 rounded-lg bg-[#0a0a0d] border border-[#27272a] space-y-2">
+                      <span className="text-[11px] font-mono uppercase text-zinc-400 font-semibold flex items-center gap-1.5">
+                        <Cpu className="w-3.5 h-3.5 text-cyan-500" /> Ciberware & Implantes
+                      </span>
+                      <ul className="space-y-1 text-zinc-300">
+                        {generatedNPC.cyberware.map((c, idx) => (
+                          <li key={idx} className="bg-zinc-900/60 px-2 py-1 rounded">
+                            {c}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-12 rounded-2xl bg-[#121217] border border-dashed border-[#27272a] text-center space-y-3">
+                  <Users className="w-10 h-10 text-zinc-600 mx-auto" />
+                  <h3 className="text-sm font-semibold text-zinc-300">Nenhum combatente gerado ainda</h3>
+                  <p className="text-xs text-zinc-500 max-w-sm mx-auto">
+                    Selecione o escalão de ameaça, o arquétipo e a facção ao lado e clique em <strong>"Gerar por Tabelas"</strong> ou <strong>"Gerar com IA Co-GM"</strong>.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* TAB NOVO: GERADOR DEDICADO DE PETS & BIOCRIATURAS        */}
+      {/* ======================================================== */}
+      {activeTab === 'pets' && (
+        <div className="space-y-6">
+          {/* Toast Notification */}
+          {petToast && (
+            <div className="p-3.5 rounded-xl bg-emerald-950/80 border border-emerald-500/60 text-emerald-300 font-mono text-xs flex items-center justify-between shadow-lg animate-pulse">
+              <span className="flex items-center gap-2">
+                <span>🐕</span>
+                {petToast}
+              </span>
+              <button onClick={() => setPetToast(null)} className="text-zinc-400 hover:text-zinc-100">&times;</button>
+            </div>
+          )}
+
+          {/* Top Info Banner */}
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-[#121217] via-[#141b18] to-[#121217] border border-[#27272a] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold">
+                  Interface RED Vol. 2 & Corebook p. 317 (Animals & Biopets)
+                </span>
+                <span className="text-[10px] font-mono text-zinc-500">Módulo de Criaturas Cibernéticas</span>
+              </div>
+              <h2 className="text-base font-bold text-zinc-100 mt-1 flex items-center gap-2">
+                <span className="text-base">🐕</span>
+                <span>Gerador Canônico de Pets, Cães K-9 & Drones Quadrúpedes</span>
+              </h2>
+              <p className="text-xs text-zinc-400 mt-0.5">
+                Animais operam com regras de adestramento, porte físico, mandíbulas de titânio perfurantes e manobras de bote distintas de humanoides.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Controls Column (5 cols) */}
+            <div className="lg:col-span-5 space-y-5">
+              {/* 1. Pet Nature Selection */}
+              <div className="p-4 rounded-xl bg-[#121217] border border-[#27272a] space-y-3">
+                <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 block font-mono">
+                  1. Natureza do Animal / Biopet
+                </span>
+                <div className="space-y-2">
+                  {PET_NATURES.map(nature => {
+                    const isSelected = petNatureId === nature.id;
+                    return (
+                      <button
+                        key={nature.id}
+                        type="button"
+                        onClick={() => setPetNatureId(nature.id)}
+                        className={`w-full p-2.5 rounded-lg border text-left transition flex items-center justify-between text-xs ${
+                          isSelected
+                            ? 'bg-emerald-950/40 border-emerald-500 text-zinc-100 shadow-sm'
+                            : 'bg-[#0a0a0d] border-[#27272a] text-zinc-400 hover:bg-zinc-800'
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <strong className="text-zinc-200 block">{nature.name}</strong>
+                            <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-zinc-900 text-emerald-400 border border-zinc-800">
+                              {nature.badge}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-zinc-500 mt-0.5 line-clamp-1">{nature.description}</p>
+                        </div>
+                        {isSelected && <Check className="w-4 h-4 text-emerald-400 shrink-0 ml-2" />}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
-            ) : (
-              <div className="p-12 rounded-2xl bg-[#121217] border border-dashed border-[#27272a] text-center space-y-3">
-                <Users className="w-10 h-10 text-zinc-600 mx-auto" />
-                <h3 className="text-sm font-semibold text-zinc-300">Nenhum combatente gerado ainda</h3>
-                <p className="text-xs text-zinc-500 max-w-sm mx-auto">
-                  Selecione o escalão de ameaça e a facção ao lado e clique em "Gerar Ficha Completa".
-                </p>
+
+              {/* 2. Pet Size Selection */}
+              <div className="p-4 rounded-xl bg-[#121217] border border-[#27272a] space-y-3">
+                <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 block font-mono">
+                  2. Porte Físico & Estatísticas Básicas
+                </span>
+                <div className="grid grid-cols-3 gap-2 text-xs font-mono">
+                  {(['small', 'medium', 'large'] as PetSizeId[]).map(sId => {
+                    const s = PET_SIZES[sId];
+                    const isSelected = petSizeId === sId;
+                    return (
+                      <button
+                        key={sId}
+                        type="button"
+                        onClick={() => setPetSizeId(sId)}
+                        className={`p-2.5 rounded-lg border text-center transition flex flex-col justify-between ${
+                          isSelected
+                            ? 'bg-emerald-950/40 border-emerald-500 text-emerald-200 font-bold'
+                            : 'bg-[#0a0a0d] border-[#27272a] text-zinc-400 hover:bg-zinc-800'
+                        }`}
+                      >
+                        <span className="text-xs text-zinc-200 block">{s.name.split('(')[0]}</span>
+                        <div className="text-[10px] text-zinc-500 mt-1">
+                          <div>{s.hp} HP</div>
+                          <div className="text-amber-400 font-bold">{s.biteDamage}</div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            )}
+
+              {/* 3. Training Level Selection */}
+              <div className="p-4 rounded-xl bg-[#121217] border border-[#27272a] space-y-3">
+                <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 block font-mono">
+                  3. Nível de Adestramento & Instinto
+                </span>
+                <div className="space-y-2">
+                  {(['military', 'domestic', 'feral', 'ai_program'] as PetTrainingId[]).map(tId => {
+                    const t = PET_TRAININGS[tId];
+                    const isSelected = petTrainingId === tId;
+                    return (
+                      <button
+                        key={tId}
+                        type="button"
+                        onClick={() => setPetTrainingId(tId)}
+                        className={`w-full p-2.5 rounded-lg border text-left transition flex items-center justify-between text-xs ${
+                          isSelected
+                            ? 'bg-zinc-800 border-emerald-500/80 text-zinc-100 font-medium'
+                            : 'bg-[#0a0a0d] border-[#27272a] text-zinc-400 hover:bg-zinc-800'
+                        }`}
+                      >
+                        <div>
+                          <strong className="text-zinc-200 block">{t.name}</strong>
+                          <span className="text-[10px] text-zinc-500 block line-clamp-1">{t.behaviorSummary}</span>
+                        </div>
+                        {isSelected && <Check className="w-4 h-4 text-emerald-400 shrink-0 ml-2" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 4. Owner / Faction Input */}
+              <div className="p-4 rounded-xl bg-[#121217] border border-[#27272a] space-y-3">
+                <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 block font-mono">
+                  4. Dono / Organização Guardiã
+                </span>
+                <input
+                  type="text"
+                  value={petOwnerFaction}
+                  onChange={e => setPetOwnerFaction(e.target.value)}
+                  placeholder="Ex: NCPD K-9, Arasaka Security, Solo Mercenário..."
+                  className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-lg p-2.5 text-xs text-zinc-200 font-mono focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <button
+                  type="button"
+                  onClick={handleGeneratePetOffline}
+                  disabled={isGeneratingPetAI}
+                  className="py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-100 border border-zinc-700 text-xs font-mono font-semibold flex items-center justify-center gap-2 transition"
+                >
+                  <Zap className="w-4 h-4 text-emerald-400" />
+                  <span>Gerar Pet Canônico (Offline)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleGeneratePetAI}
+                  disabled={isGeneratingPetAI}
+                  className="py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-mono font-bold flex items-center justify-center gap-2 transition shadow-md shadow-emerald-950/40"
+                >
+                  {isGeneratingPetAI ? (
+                    <>
+                      <Sparkles className="w-4 h-4 animate-spin text-white" />
+                      <span>Gerando com Co-GM...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4 text-amber-300" />
+                      <span>Gerar Pet com IA</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Pet Sheet Preview Column (7 cols) */}
+            <div className="lg:col-span-7">
+              {generatedPet ? (
+                <div className="p-6 rounded-2xl bg-[#121217] border border-[#27272a] space-y-5 shadow-lg">
+                  {/* Top Pet Header */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#27272a] gap-3">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800/40 font-bold flex items-center gap-1">
+                          <span>🐾</span> Pet / Animal
+                        </span>
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-300">
+                          Porte {generatedPet.petSize}
+                        </span>
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-400">
+                          {generatedPet.faction}
+                        </span>
+                      </div>
+                      <h2 className="text-xl font-bold text-zinc-100 mt-1 flex items-center gap-2">
+                        <span>{generatedPet.name}</span>
+                      </h2>
+                      <p className="text-xs text-zinc-400">{generatedPet.role}</p>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleSendPetToCombat(generatedPet)}
+                        className="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 text-xs font-medium flex items-center gap-1.5 transition"
+                        title="Enviar Pet para o Rastreador Lateral"
+                      >
+                        <ShieldAlert className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>{petSendSuccess ? 'Enviado!' : 'Combate'}</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          saveNPC(generatedPet);
+                          setPetToast(`Pet ${generatedPet.name} salvo na Biblioteca!`);
+                          setTimeout(() => setPetToast(null), 2500);
+                        }}
+                        className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium flex items-center gap-1.5 transition"
+                        title="Salvar Pet na Biblioteca da Campanha"
+                      >
+                        <Bookmark className="w-3.5 h-3.5" />
+                        <span>Salvar</span>
+                      </button>
+                      <button
+                        onClick={handleCopyPet}
+                        className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200 border border-zinc-700 transition"
+                        title="Copiar Ficha do Pet"
+                      >
+                        {petCopied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Pet Narrative & Instinct Box */}
+                  <div className="p-4 rounded-xl bg-[#0a0a0d] border border-emerald-950/60 space-y-3">
+                    <span className="text-[10px] font-mono uppercase text-emerald-400 font-bold block flex items-center gap-1.5">
+                      <span>🐕</span> Perfil Canônico de Comportamento & Adestramento
+                    </span>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <span className="text-[10px] font-mono uppercase text-zinc-500 block">Instinto & Adestramento:</span>
+                        <p className="text-zinc-300 leading-relaxed">{generatedPet.petInstinct || generatedPet.tactics}</p>
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-mono uppercase text-zinc-500 block">Peculiaridade Animal:</span>
+                        <p className="text-zinc-300 leading-relaxed">{generatedPet.quirks || 'Alerta constante contra cromo.'}</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs border-t border-zinc-800/80 pt-2.5">
+                      <div>
+                        <span className="text-[10px] font-mono uppercase text-zinc-500 block">Descrição & Pelagem:</span>
+                        <p className="text-zinc-300 leading-relaxed">{generatedPet.appearance || generatedPet.description}</p>
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-mono uppercase text-amber-400 block font-semibold">Economia & Manutenção:</span>
+                        <p className="text-zinc-300 font-mono text-[11px]">
+                          Ração / Carga: <strong className="text-amber-400">{generatedPet.petMonthlyCostEb || 50} eb/mês</strong>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Animal Combat Stats */}
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-4 gap-2 text-center font-mono">
+                      <div className="p-2.5 rounded-lg bg-[#0a0a0d] border border-[#27272a]">
+                        <span className="text-[10px] text-zinc-500 uppercase block">Combat Number</span>
+                        <span className="text-lg font-bold text-emerald-400">{generatedPet.statsRED?.combatNumber}</span>
+                      </div>
+                      <div className="p-2.5 rounded-lg bg-[#0a0a0d] border border-[#27272a]">
+                        <span className="text-[10px] text-zinc-500 uppercase block">Pontos Vida (HP)</span>
+                        <span className="text-lg font-bold text-zinc-100">{generatedPet.statsRED?.HP}</span>
+                      </div>
+                      <div className="p-2.5 rounded-lg bg-[#0a0a0d] border border-[#27272a]">
+                        <span className="text-[10px] text-zinc-500 uppercase block">SP Blindagem</span>
+                        <span className="text-lg font-bold text-zinc-200">{generatedPet.statsRED?.bodySP}</span>
+                      </div>
+                      <div className="p-2.5 rounded-lg bg-[#0a0a0d] border border-[#27272a]">
+                        <span className="text-[10px] text-zinc-500 uppercase block">Deslocamento (MOVE)</span>
+                        <span className="text-lg font-bold text-cyan-400">{generatedPet.statsRED?.MOVE}</span>
+                      </div>
+                    </div>
+
+                    {/* Animal Attributes */}
+                    <div className="p-3 rounded-lg bg-[#0a0a0d] border border-[#27272a]">
+                      <span className="text-[10px] font-mono uppercase text-zinc-500 block mb-1.5">
+                        Atributos do Animal (Cyberpunk RED)
+                      </span>
+                      <div className="grid grid-cols-5 gap-2 text-center font-mono text-xs">
+                        <div className="bg-zinc-900/80 p-1.5 rounded border border-zinc-800">
+                          <span className="text-[9px] text-zinc-500 block">INT</span>
+                          <span className="font-bold text-zinc-200">{generatedPet.statsRED?.INT}</span>
+                        </div>
+                        <div className="bg-zinc-900/80 p-1.5 rounded border border-zinc-800">
+                          <span className="text-[9px] text-zinc-500 block">REF</span>
+                          <span className="font-bold text-zinc-200">{generatedPet.statsRED?.REF}</span>
+                        </div>
+                        <div className="bg-zinc-900/80 p-1.5 rounded border border-zinc-800">
+                          <span className="text-[9px] text-zinc-500 block">DEX</span>
+                          <span className="font-bold text-zinc-200">{generatedPet.statsRED?.DEX}</span>
+                        </div>
+                        <div className="bg-zinc-900/80 p-1.5 rounded border border-zinc-800">
+                          <span className="text-[9px] text-zinc-500 block">BODY</span>
+                          <span className="font-bold text-zinc-200">{generatedPet.statsRED?.BODY}</span>
+                        </div>
+                        <div className="bg-zinc-900/80 p-1.5 rounded border border-zinc-800">
+                          <span className="text-[9px] text-zinc-500 block">EMP</span>
+                          <span className="font-bold text-zinc-200">{generatedPet.statsRED?.EMP}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Animal Attacks & Implants */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div className="p-3.5 rounded-lg bg-[#0a0a0d] border border-[#27272a] space-y-2">
+                      <span className="text-[11px] font-mono uppercase text-zinc-400 font-semibold flex items-center gap-1.5">
+                        <Sword className="w-3.5 h-3.5 text-emerald-500" /> Armas Naturais & Manobras
+                      </span>
+                      <ul className="space-y-1.5 text-zinc-300">
+                        {generatedPet.weapons.map((w, idx) => (
+                          <li key={idx} className="flex justify-between items-center bg-zinc-900/80 px-2.5 py-1.5 rounded border border-zinc-800">
+                            <div>
+                              <span className="text-zinc-200 font-medium block">{w.name}</span>
+                              {w.notes && <span className="text-[10px] text-zinc-500 block">{w.notes}</span>}
+                            </div>
+                            <button
+                              onClick={() => handleOpenNpcAttack(generatedPet, w)}
+                              className="flex items-center gap-1 px-2 py-1 rounded bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-800 text-emerald-300 font-mono text-[10px] font-bold transition shadow-sm"
+                              title="Rolar ataque com este animal"
+                            >
+                              <Crosshair className="w-3 h-3 text-emerald-400" />
+                              <span>Rolar</span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div className="p-3.5 rounded-lg bg-[#0a0a0d] border border-[#27272a] space-y-2">
+                      <span className="text-[11px] font-mono uppercase text-zinc-400 font-semibold flex items-center gap-1.5">
+                        <Cpu className="w-3.5 h-3.5 text-cyan-500" /> Ciberware Canino & Acessórios
+                      </span>
+                      <ul className="space-y-1 text-zinc-300">
+                        {generatedPet.cyberware.map((c, idx) => (
+                          <li key={idx} className="bg-zinc-900/60 px-2 py-1 rounded">
+                            &bull; {c}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-12 rounded-2xl bg-[#121217] border border-dashed border-[#27272a] text-center space-y-3">
+                  <span className="text-3xl block">🐕</span>
+                  <h3 className="text-sm font-semibold text-zinc-300">Nenhum animal ou pet gerado ainda</h3>
+                  <p className="text-xs text-zinc-500 max-w-sm mx-auto">
+                    Selecione a natureza (K-9, Robodog, Clone ou Mutante), o porte e o adestramento ao lado e clique em <strong>"Gerar Pet Canônico"</strong> ou <strong>"Gerar Pet com IA"</strong>.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

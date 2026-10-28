@@ -11,6 +11,17 @@ import {
   MISSION_OUTCOMES,
   SPECIAL_SALVAGE_POOL,
 } from '../data/rewardsData';
+import {
+  generateNarrativeNPCOffline,
+  NarrativeArchetypeId,
+} from '../data/npcNarrativeGeneratorData';
+import {
+  generatePetOffline,
+  PetNatureId,
+  PetSizeId,
+  PetTrainingId,
+} from '../data/petGeneratorData';
+import { NPCSheet, NPCTier, GameSystem } from '../types/system';
 
 export const DEFAULT_USER_API_KEY = '';
 
@@ -1217,4 +1228,166 @@ Responda ESTRITAMENTE em formato JSON puro (sem marcações extras fora do JSON)
     ...fallback,
     isAiGenerated: false,
   };
+}
+
+// 8. GERADOR NARRATIVO DE NPCS COM IA (DANGER GAL DOSSIER & COREBOOK)
+export async function generateAINarrativeNPC(options: {
+  tier: NPCTier;
+  archetypeId: NarrativeArchetypeId;
+  factionCategory: 'gangs' | 'corps' | 'trauma' | 'police' | 'nomads' | 'independent';
+  subfactionId?: string;
+  system: GameSystem;
+  extraContext?: string;
+  apiKey?: string;
+}): Promise<NPCSheet> {
+  const activeKey = getEffectiveApiKey(options.apiKey);
+  const baseNPC = generateNarrativeNPCOffline(options);
+
+  if (!activeKey) {
+    return baseNPC;
+  }
+
+  const prompt = `Você é o "Cyberpunk Neural Co-GM", gerador oficial de NPCs com profundidade narrativa para Cyberpunk RED (Core Rulebook e Danger Gal Dossier).
+Crie um NPC marcante com foco em NARRATIVA, MOTIVAÇÕES, FRAQUEZAS E DIÁLOGOS NOIR.
+
+PARÂMETROS:
+- Escalão (Tier): ${options.tier.toUpperCase()}
+- Arquétipo Narrativo: ${options.archetypeId}
+- Facção: ${baseNPC.faction}
+- Sistema: ${options.system}
+- Contexto da Cena: ${options.extraContext || 'Encontro nas ruas de Night City'}
+
+Retorne ESTRITAMENTE em formato JSON puro:
+{
+  "name": "Nome e 'Alcunha' Sobrenome",
+  "role": "Papel específico de rua",
+  "appearance": "Descrição visual de 2 a 3 linhas (roupas, cromo visível, cicatrizes, estilo)",
+  "quirks": "Maneirismos, cacoetes ou tiques nervosos",
+  "motivation": "O que quer imediatamente da equipe ou na cena (Objetivo pessoal urgente)",
+  "weaknessOrSecret": "Segredo sujo, vício, dívida impagável ou ponto fraco que pode ser explorado",
+  "dialogueHook": "Uma frase de impacto em primeira pessoa para o Mestre falar em cena",
+  "surrenderTrigger": "Condição exata sob a qual foge, se rende ou tenta negociar a própria vida",
+  "tactics": "Diretriz tática em combate",
+  "pocketLoot": [
+    "Item pessoal narrativo 1",
+    "Item pessoal narrativo 2",
+    "Item pessoal narrativo 3"
+  ]
+}`;
+
+  try {
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeKey}`;
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: { responseMimeType: 'application/json' },
+      }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (text) {
+        const parsed = JSON.parse(text);
+        return {
+          ...baseNPC,
+          name: parsed.name || baseNPC.name,
+          role: parsed.role || baseNPC.role,
+          appearance: parsed.appearance || baseNPC.appearance,
+          description: `${parsed.appearance || baseNPC.appearance} Conhecido como "${parsed.name || baseNPC.name}".`,
+          quirks: parsed.quirks || baseNPC.quirks,
+          motivation: parsed.motivation || baseNPC.motivation,
+          weaknessOrSecret: parsed.weaknessOrSecret || baseNPC.weaknessOrSecret,
+          dialogueHook: parsed.dialogueHook || baseNPC.dialogueHook,
+          surrenderTrigger: parsed.surrenderTrigger || baseNPC.surrenderTrigger,
+          tactics: `${parsed.tactics || baseNPC.tactics} ${parsed.surrenderTrigger || baseNPC.surrenderTrigger}`,
+          pocketLoot: parsed.pocketLoot?.length ? parsed.pocketLoot : baseNPC.pocketLoot,
+          gear: parsed.pocketLoot?.length ? parsed.pocketLoot : baseNPC.gear,
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('AI Narrative NPC fallback to offline:', err);
+  }
+
+  return baseNPC;
+}
+
+// 9. GERADOR DEDICADO DE PETS & BIOCRIATURAS COM IA (CYBERPUNK RED)
+export async function generateAIPet(options: {
+  natureId: PetNatureId;
+  sizeId: PetSizeId;
+  trainingId: PetTrainingId;
+  ownerFaction?: string;
+  system: GameSystem;
+  extraContext?: string;
+  apiKey?: string;
+}): Promise<NPCSheet> {
+  const activeKey = getEffectiveApiKey(options.apiKey);
+  const basePet = generatePetOffline(options);
+
+  if (!activeKey) {
+    return basePet;
+  }
+
+  const prompt = `Você é o "Cyberpunk Neural Co-GM", gerador de animais cibernéticos e biocriaturas para Cyberpunk RED (p. 317 Animals & Interface RED Vol. 2 Pet Shop).
+Crie um Pet / Animal Cibernético único e cinematográfico.
+
+PARÂMETROS:
+- Natureza: ${options.natureId}
+- Porte: ${options.sizeId}
+- Adestramento: ${options.trainingId}
+- Dono / Facção: ${options.ownerFaction || 'NCPD ou Mercenários'}
+- Contexto: ${options.extraContext || 'Animal de guarda ou companhia em Night City'}
+
+Retorne ESTRITAMENTE em formato JSON puro:
+{
+  "name": "Nome e (Raça ou Linhagem)",
+  "appearance": "Descrição sensorial detalhada da carcaça, pelagem, cromo visível e olhos",
+  "quirks": "Comportamento animal peculiar ou cacoete característico",
+  "petInstinct": "Como reage a estranhos e a sons de combate",
+  "tactics": "Diretriz de combate (bote, mordida, imobilização ou fuga)",
+  "specialImplants": ["Implante 1", "Implante 2"],
+  "pocketLoot": [
+    "Item na coleira ou compartimento 1",
+    "Item na coleira ou compartimento 2"
+  ]
+}`;
+
+  try {
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeKey}`;
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: { responseMimeType: 'application/json' },
+      }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (text) {
+        const parsed = JSON.parse(text);
+        return {
+          ...basePet,
+          name: parsed.name || basePet.name,
+          appearance: parsed.appearance || basePet.appearance,
+          description: `${parsed.appearance || basePet.appearance} Pertencente a ${options.ownerFaction || 'Submundo'}.`,
+          quirks: parsed.quirks || basePet.quirks,
+          petInstinct: parsed.petInstinct || basePet.petInstinct,
+          tactics: `${parsed.tactics || basePet.tactics}`,
+          cyberware: parsed.specialImplants?.length ? parsed.specialImplants : basePet.cyberware,
+          pocketLoot: parsed.pocketLoot?.length ? parsed.pocketLoot : basePet.pocketLoot,
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('AI Pet fallback to offline:', err);
+  }
+
+  return basePet;
 }

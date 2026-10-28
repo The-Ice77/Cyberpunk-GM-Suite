@@ -141,6 +141,24 @@ export interface NPCSheet {
   gear: string[];
   tactics?: string;
   reputation?: number;
+  // Narrative & Danger Gal Dossier fields:
+  archetype?: string;
+  appearance?: string;
+  quirks?: string;
+  motivation?: string;
+  weaknessOrSecret?: string;
+  surrenderTrigger?: string;
+  dialogueHook?: string;
+  pocketLoot?: string[];
+  // Pet & Biopet specific fields:
+  isPet?: boolean;
+  petNature?: string;
+  petSize?: 'Pequeno' | 'Médio' | 'Grande / Pesado';
+  petTraining?: string;
+  petInstinct?: string;
+  petBiteDamage?: string;
+  petSpecialActions?: string[];
+  petMonthlyCostEb?: number;
 }
 
 export interface DistrictInfo {
