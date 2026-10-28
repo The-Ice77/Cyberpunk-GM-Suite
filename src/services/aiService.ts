@@ -34,6 +34,19 @@ export interface ChatMessage {
   isRuleCitation?: boolean;
 }
 
+/**
+ * Modelos do Google Gemini suportados em ordem de cascata resiliente.
+ * Se o modelo principal sofrer pico de tráfego temporário (503/429),
+ * o sistema tenta automaticamente o próximo da lista sem falhar a requisição.
+ */
+export const CANDIDATE_GEMINI_MODELS = [
+  'gemini-flash-lite-latest',
+  'gemini-3.5-flash-lite',
+  'gemini-3.5-flash',
+  'gemini-3.7-flash',
+  'gemini-flash-latest',
+];
+
 export function getEffectiveApiKey(providedKey?: string | null): string {
   if (providedKey && providedKey.trim().length > 10) {
     return providedKey.trim();
@@ -49,17 +62,122 @@ export function getEffectiveApiKey(providedKey?: string | null): string {
   return '';
 }
 
+export interface GeminiCallOptions {
+  prompt: string;
+  systemInstruction?: string;
+  isJson?: boolean;
+  temperature?: number;
+  topP?: number;
+  apiKey?: string | null;
+}
+
+/**
+ * Despachante central para a API do Google Gemini com:
+ * 1. Cascata automática de modelos para 100% de disponibilidade.
+ * 2. Injeção de semente de entropia para evitar respostas repetitivas ou idênticas.
+ * 3. Temperatura alta (0.95 - 1.0) para máxima variedade criativa no universo Cyberpunk.
+ */
+export async function callGeminiAPI(options: GeminiCallOptions): Promise<string | null> {
+  const activeKey = getEffectiveApiKey(options.apiKey);
+  if (!activeKey) return null;
+
+  // Semente dinâmica de entropia para quebrar repetições e incentivar variedade
+  const entropyNonce = `[Entropia-Variação-${Date.now().toString(36)}-${Math.floor(Math.random() * 99999)}]`;
+  const variationGuidance = `\n\n(Diretriz de Variabilidade: Gere uma resposta única, surpreendente e crua no tom de Cyberpunk. Nunca use clichês ou nomes idênticos a gerações anteriores. ${entropyNonce})`;
+  const fullPrompt = `${options.prompt}${variationGuidance}`;
+
+  const temperature = options.temperature ?? (options.isJson ? 0.95 : 1.0);
+  const topP = options.topP ?? 0.95;
+
+  for (const model of CANDIDATE_GEMINI_MODELS) {
+    try {
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${activeKey}`;
+      const payload: any = {
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              {
+                text: options.systemInstruction
+                  ? `${options.systemInstruction}\n\n${fullPrompt}`
+                  : fullPrompt,
+              },
+            ],
+          },
+        ],
+        generationConfig: {
+          temperature,
+          topP,
+          ...(options.isJson ? { responseMimeType: 'application/json' } : {}),
+        },
+      };
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text && text.trim().length > 0) {
+          return text.trim();
+        }
+      } else {
+        console.warn(`[Gemini Cascade] Modelo ${model} retornou status ${res.status}. Tentando próximo modelo...`);
+      }
+    } catch (err: any) {
+      console.warn(`[Gemini Cascade] Falha ao conectar ao modelo ${model}:`, err?.message || err);
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Executa uma chamada à API do Gemini e faz parse seguro de JSON,
+ * limpando eventuais marcações de markdown (```json ... ```).
+ */
+export async function callGeminiJSON<T = any>(
+  prompt: string,
+  options?: { systemInstruction?: string; temperature?: number; apiKey?: string | null }
+): Promise<T | null> {
+  const rawText = await callGeminiAPI({
+    prompt,
+    systemInstruction: options?.systemInstruction,
+    isJson: true,
+    temperature: options?.temperature ?? 0.95,
+    apiKey: options?.apiKey,
+  });
+
+  if (!rawText) return null;
+
+  try {
+    let cleaned = rawText.trim();
+    if (cleaned.startsWith('```json')) {
+      cleaned = cleaned.slice(7);
+    } else if (cleaned.startsWith('```')) {
+      cleaned = cleaned.slice(3);
+    }
+    if (cleaned.endsWith('```')) {
+      cleaned = cleaned.slice(0, -3);
+    }
+    cleaned = cleaned.trim();
+    return JSON.parse(cleaned) as T;
+  } catch (parseErr) {
+    console.warn('Erro ao processar JSON retornado pelo Gemini:', parseErr, rawText);
+    return null;
+  }
+}
+
+// 0. CHAT ASSISTANT PRINCIPAL: CYBERPUNK NEURAL CO-GM
 export async function askCyberpunkAI(
   prompt: string,
   apiKey: string | null,
   campaignContext?: string
 ): Promise<string> {
-  const activeKey = getEffectiveApiKey(apiKey);
-
-  if (activeKey) {
-    try {
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeKey}`;
-      const systemInstruction = `Você é o "Cyberpunk Neural Co-GM", um assistente de inteligência artificial de elite e co-mestre especializado em RPG de mesa Cyberpunk RED e Cyberpunk 2020.
+  const systemInstruction = `Você é o "Cyberpunk Neural Co-GM", um assistente de inteligência artificial de elite e co-mestre especializado em RPG de mesa Cyberpunk RED e Cyberpunk 2020.
 Você conhece todas as regras oficiais de R. Talsorian Games (Corebook RED, Cyberpunk 2020, Black Chrome, Night City Weather, Gang Guide, Data Pack).
 Suas respostas devem ser no tom do gênero Cyberpunk (direto, visceral, técnico e cinematográfico).
 Sempre forneça cálculos exatos de DVs, dano e regras mecânicas quando solicitado, citando as páginas e livros oficiais.
@@ -75,32 +193,17 @@ DIRETRIZES ESSENCIAIS DE FORMATAÇÃO (MARKDOWN):
 
 Contexto atual da mesa: ${campaignContext || 'Sessão em Night City'}`;
 
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [
-            {
-              role: 'user',
-              parts: [{ text: `${systemInstruction}\n\nPergunta do Mestre/Jogador: ${prompt}` }],
-            },
-          ],
-        }),
-      });
+  const aiReply = await callGeminiAPI({
+    prompt,
+    systemInstruction,
+    isJson: false,
+    temperature: 1.0,
+    apiKey,
+  });
 
-      if (response.ok) {
-        const data = await response.json();
-        const reply = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (reply) return reply;
-      } else {
-        console.warn(`Gemini API returned status ${response.status}, falling back to built-in oracle.`);
-      }
-    } catch (err: any) {
-      console.warn('Fallback to Offline Oracle due to API error:', err.message);
-    }
-  }
+  if (aiReply) return aiReply;
 
-  // BUILT-IN OFFLINE CYBERPUNK ORACLE ENGINE
+  // BUILT-IN OFFLINE CYBERPUNK ORACLE ENGINE (com alta variedade dinâmica)
   const lower = prompt.toLowerCase();
 
   for (const r of RULES_CODEX_DATABASE) {
@@ -121,16 +224,39 @@ Contexto atual da mesa: ${campaignContext || 'Sessão em Night City'}`;
   }
 
   if (lower.includes('gancho') || lower.includes('missao') || lower.includes('contrato') || lower.includes('gig')) {
-    const clients = ['Executivo traído da Petrochem', 'Fixer respeitado do Afterlife', 'Padre Ibarra de Heywood', 'Médico clandestino em fuga'];
-    const targets = ['resgatar um contêiner de chips neurais blindados', 'extrair um cientista da Biotechnica antes da execução', 'eliminar um líder de célula do Maelstrom com Sandevistan', 'recuperar um carro esporte carregado de armas nos Badlands'];
+    const clients = [
+      'Executivo traído da Petrochem',
+      'Fixer respeitado do Afterlife',
+      'Padre Ibarra de Heywood',
+      'Médico clandestino em fuga',
+      'Netrunner dissidente da Kang Tao',
+      'Líder nômade dos Aldecaldos',
+      'Jornalista investigativo do Canal 54',
+      'Ripperdoc endividado com os Valentinos',
+    ];
+    const targets = [
+      'resgatar um contêiner de chips neurais blindados',
+      'extrair um cientista da Biotechnica antes da execução',
+      'eliminar um líder de célula do Maelstrom com Sandevistan',
+      'recuperar um carro esporte carregado de armas nos Badlands',
+      'invadir a cobertura de um executivo durante uma festa de gala',
+      'roubar a gravação bruta de um braindance de assassinato',
+      'destruir um laboratório clandestino de Black Lace no Arroyo',
+    ];
     const client = clients[Math.floor(Math.random() * clients.length)];
     const target = targets[Math.floor(Math.random() * targets.length)];
-    const payout = Math.floor(Math.random() * 3 + 1) * 500 + 500;
+    const payout = Math.floor(Math.random() * 4 + 1) * 500 + 1000;
 
     return `💼 **Proposta de Trabalho da Rede Clandestina:**\n\n**Contratante:** ${client}\n**Objetivo Principal:** ${target}\n**Pagamento Estimado:** ${payout}eb por Edgerunner no ato da entrega.\n**Complicação:** O local foi isolado por uma tempestade de cinzas ácida ou há uma equipe rival de Solos monitorando o mesmo perímetro.\n\n*O que a equipe faz primeiro: reconhecimento furtivo ou chute na porta?*`;
   }
 
-  return `🤖 **Transmissão Neural Co-GM:**\n\n"Em Night City, ninguém sai ileso se hesitar por mais de um segundo. Analisei a sua solicitação:\n\n*Para resolver isso em jogo:* determine o Atributo relevante + Perícia do personagem + rolagem de 1d10 explodindo vs DV da tarefa. Se estiver em combate, lembre-se que alvos com REF 8+ podem esquivar de disparos com a perícia Esquiva (Evasion).\n\nQuer que eu gere um encontro surpresa, interprete um ferimento crítico ou calcule as defesas de uma fortaleza de dados agora?"`;
+  const randomGMs = [
+    `🤖 **Transmissão Neural Co-GM:**\n\n"Em Night City, ninguém sai ileso se hesitar por mais de um segundo. Analisei a sua solicitação:\n\n*Para resolver isso em jogo:* determine o Atributo relevante + Perícia do personagem + rolagem de 1d10 explodindo vs DV da tarefa. Se estiver em combate, lembre-se que alvos com REF 8+ podem esquivar de disparos com a perícia Esquiva (Evasion).\n\nQuer que eu gere um encontro surpresa, interprete um ferimento crítico ou calcule as defesas de uma fortaleza de dados agora?"`,
+    `🤖 **Transmissão Neural Co-GM:**\n\n"Os sensores de rua captaram seu sinal. Se você precisa de uma decisão rápida de regras:\n\n- **Ações em Combate:** 1 Ação de Movimento + 1 Ação Principal por turno.\n- **Ablação de Blindagem:** Sempre que o dano penetrar o SP da armadura, reduza o SP daquela localização em -1 permanentemente até o reparo.\n- **Críticos:** Dois dados 6 no dano causam uma Lesão Crítica (+5 de dano bônus direto aos PVs!)."`,
+    `🤖 **Transmissão Neural Co-GM:**\n\n"Frequência segura estabelecida. Se a cena estiver travada, use a regra de ouro de Cyberpunk: *faça a porta se abrir com dois caras armados entrando atirando*.\n\nPosso calcular estatísticas de combate, gerar NPCs na hora ou puxar uma carta de Tarot para definir o destino dos personagens."`,
+  ];
+
+  return randomGMs[Math.floor(Math.random() * randomGMs.length)];
 }
 
 // 1. Encounter Generator with AI
@@ -146,9 +272,8 @@ export async function generateAIExtendedEncounter(
   mechanicsAndDVs: string;
   twist: string;
 }> {
-  const activeKey = getEffectiveApiKey(apiKey);
-  const prompt = `Crie um encontro urbano dinâmico e cinematográfico para Cyberpunk RED no distrito de ${districtName} durante o horário: ${timeOfDay}.
-Retorne no formato JSON com os seguintes campos:
+  const prompt = `Crie um encontro urbano dinâmico, tenso e cinematográfico para Cyberpunk RED no distrito de ${districtName} durante o horário: ${timeOfDay}.
+Retorne estritamente em formato JSON com os seguintes campos:
 {
   "title": "título curto e chamativo",
   "actors": "quem está presente no encontro",
@@ -158,36 +283,46 @@ Retorne no formato JSON com os seguintes campos:
   "twist": "uma reviravolta ou complicação dramática imprevista"
 }`;
 
-  if (activeKey) {
-    try {
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeKey}`;
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: { responseMimeType: 'application/json' },
-        }),
-      });
+  const aiResult = await callGeminiJSON<{
+    title: string;
+    actors: string;
+    sceneDescription: string;
+    tacticalObstacle: string;
+    mechanicsAndDVs: string;
+    twist: string;
+  }>(prompt, { apiKey });
 
-      if (res.ok) {
-        const data = await res.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text) return JSON.parse(text);
-      }
-    } catch (e) {
-      console.warn('AI Encounter fallback:', e);
-    }
-  }
+  if (aiResult) return aiResult;
 
-  return {
-    title: `Emboscada de Becos em ${districtName}`,
-    actors: `3 Gangers armados e um Doutor Clandestino ferido`,
-    sceneDescription: `Chuva ácida estalando no asfalto quente. Neons piscando em azul e amarelo sobre latões de lixo em chamas. O ar cheira a óleo de CHOOH2 queimado e comida sintética estragada.`,
-    tacticalObstacle: `Dois capangas montaram barricada atrás de um sedã acidentado munidos de espingardas pesadas (dano 5d6). O terceiro tenta arrombar a trava magnética da porta dos fundos.`,
-    mechanicsAndDVs: `Teste de Percepção DV 13 para notar a mira laser no escuro; Teste de Atletismo DV 15 para saltar por cima do carro sem tomar fogo de supressão.`,
-    twist: `O médico não é refém: ele roubou uma maleta de órgãos criogênicos da Trauma Team com rastreador GPS ativo que soará em 3 rodadas!`,
-  };
+  // Fallback offline com alta variação
+  const encounterTemplates = [
+    {
+      title: `Emboscada de Becos em ${districtName}`,
+      actors: `3 Gangers armados e um Doutor Clandestino ferido`,
+      sceneDescription: `Chuva ácida estalando no asfalto quente de ${districtName}. Neons piscando em azul e amarelo sobre latões de lixo em chamas. O ar cheira a óleo de CHOOH2 queimado e comida sintética estragada.`,
+      tacticalObstacle: `Dois capangas montaram barricada atrás de um sedã acidentado munidos de espingardas pesadas (dano 5d6). O terceiro tenta arrombar a trava magnética da porta dos fundos.`,
+      mechanicsAndDVs: `Teste de Percepção DV 13 para notar a mira laser no escuro; Teste de Atletismo DV 15 para saltar por cima do carro sem tomar fogo de supressão.`,
+      twist: `O médico não é refém: ele roubou uma maleta de órgãos criogênicos da Trauma Team com rastreador GPS ativo que soará em 3 rodadas!`,
+    },
+    {
+      title: `Cobrança Armada no Pátio de ${districtName}`,
+      actors: `4 Enforcers da gangue local cercando um entregador de dados em uma moto elétrica`,
+      sceneDescription: `Sirenes distantes da polícia ecoando pelas esquinas escuras. Fumaça densa de escapamento cobre o chão enquanto poças refletem letreiros quebrados de propaganda da Arasaka.`,
+      tacticalObstacle: `Dois motoqueiros aceleram em círculos para encurralar a vítima enquanto o líder saca uma Katana Térmica zumbindo a alta temperatura.`,
+      mechanicsAndDVs: `Teste de Intimidação DV 15 para fazer o bando recuar; Esquiva DV 14 contra disparos de SMG disparados em movimento.`,
+      twist: `A moto do entregador carrega um cilindro de gás comprimido que explodirá se for atingido por projétil penetrante (Dano 4d6 em 4m)!`,
+    },
+    {
+      title: `Operação de Varredura Secreta da Corporação`,
+      actors: `Equipe tática da Militech com camuflagem ótica interrogando civis`,
+      sceneDescription: `Luzes estroboscópicas brancas de um drone aéreo varrendo os becos de ${districtName}. O zumbido de hélices abafa qualquer pedido de socorro.`,
+      tacticalObstacle: `Drones de reconhecimento com sensores infravermelhos bloqueiam a saída principal do quarteirão.`,
+      mechanicsAndDVs: `Furtividade DV 15 para passar sob a sombra dos toldos; Cybertech ou Interface DV 13 para bloquear o sinal do drone.`,
+      twist: `O alvo procurado pelos soldados se escondeu no porta-malas do veículo dos próprios jogadores!`,
+    },
+  ];
+
+  return encounterTemplates[Math.floor(Math.random() * encounterTemplates.length)];
 }
 
 // 2. Screamsheet Generator with AI
@@ -200,47 +335,63 @@ export async function generateAIScreamsheet(
   article: string;
   hiddenGig: string;
   payout: string;
+  isAi?: boolean;
 }> {
-  const activeKey = getEffectiveApiKey(apiKey);
-  const prompt = `Crie uma notícia de jornal / Screamsheet completa para Cyberpunk RED sobre o tópico: "${topic}".
-Retorne em JSON:
+  const corps = ['Petrochem', 'Arasaka', 'Militech', 'Kang Tao', 'Biotechnica', 'Trauma Team', 'Ziggurat', 'Night Corp', 'Continental Brands', 'SovOil'];
+  const randomCorp = corps[Math.floor(Math.random() * corps.length)];
+  const newsNetworks = ['Canal 54 News', 'World News Service (WNS)', 'Night City Inquirer', 'Ziggurat Pulse', 'N54 Live', 'Radio Free Night City'];
+  const randomNet = newsNetworks[Math.floor(Math.random() * newsNetworks.length)];
+
+  const prompt = `Crie uma notícia de jornal / Screamsheet completa, visceral, original e sensacionalista para Cyberpunk RED sobre o tópico: "${topic}".
+Canal de transmissão sugerido: ${randomNet}.
+Corporação ou facção de contexto: ${randomCorp}.
+IMPORTANTE: Nunca repita manchetes comuns. Varie os crimes, escândalos, acidentes e ganchos de missão.
+Retorne em JSON puro:
 {
-  "network": "Canal 54 News / World News Service / Night City Inquirer",
+  "network": "Canal 54 News / World News Service / Night City Inquirer / Ziggurat Pulse / N54 Live",
   "headline": "Manchete impactante sensacionalista em caixa alta",
   "article": "Artigo jornalístico de 2 a 3 parágrafos narrando o fato com viés corporativo ou de rua",
   "hiddenGig": "O gancho de missão secreto que um Fixer esperto extrai desta notícia",
   "payout": "valor de pagamento sugerido em eb por Edgerunner"
 }`;
 
-  if (activeKey) {
-    try {
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeKey}`;
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: { responseMimeType: 'application/json' },
-        }),
-      });
+  const aiResult = await callGeminiJSON<{
+    network: string;
+    headline: string;
+    article: string;
+    hiddenGig: string;
+    payout: string;
+  }>(prompt, { apiKey });
 
-      if (res.ok) {
-        const data = await res.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text) return JSON.parse(text);
-      }
-    } catch (e) {
-      console.warn('AI Screamsheet fallback:', e);
-    }
-  }
+  if (aiResult) return { ...aiResult, isAi: true };
 
-  return {
-    network: 'World News Service (WNS)',
-    headline: 'EXPLOSÃO EM DUTO DA PETROCHEM INTERROMPE DISTRIBUIÇÃO EM ARROYO',
-    article: 'Na madrugada desta terça-feira, uma detonação de alta potência comprometeu uma das linhas de transferência de CHOOH2 da Petrochem no distrito industrial de Arroyo. Representantes corporativos culpam sabotadores ecoterroristas, enquanto o DPNC declarou toque de recolher em cinco quarteirões ao redor da refinaria.',
-    hiddenGig: 'Um Fixer rival quer que a equipe entre no perímetro interditado antes dos peritos da Arasaka para extrair o disco rígido da câmera de segurança que gravou os reais executores.',
-    payout: '1.800eb por mercenário + 3 doses de drogas sintéticas',
-  };
+  // Fallback offline com múltiplas notícias variadas
+  const newsPool = [
+    {
+      network: 'World News Service (WNS)',
+      headline: `EXPLOSÃO EM DUTO DA PETROCHEM INTERROMPE DISTRIBUIÇÃO EM ARROYO`,
+      article: `Na madrugada de hoje, uma detonação de alta potência comprometeu uma das linhas de transferência de CHOOH2 da Petrochem no distrito de Arroyo. Representantes culpam sabotadores ecoterroristas, enquanto o DPNC declarou toque de recolher em cinco quarteirões.`,
+      hiddenGig: `Um Fixer rival quer que a equipe entre no perímetro interditado antes dos peritos da Arasaka para extrair o disco rígido da câmera de segurança que gravou os reais executores.`,
+      payout: '1.800eb por mercenário + 3 doses de drogas sintéticas',
+    },
+    {
+      network: 'Night City Inquirer',
+      headline: `VAZAMENTO DE BIOTECNOLOGIA PROVOCA SURTO DE RAIVA CIBERNÉTICA EM LITTLE CHINA`,
+      article: `Três clínicas clandestinas foram fechadas às pressas após implantes neurais piratas causarem episódios de histeria coletiva e surtos violentos em Kabuki. A MaxTac foi acionada e neutralizou quatro indivíduos com ciberware de combate.`,
+      hiddenGig: `Um médico ripperdoc quer resgatar o lote intacto de microprocessadores neurais antes que a incineradora corporativa destrua a evidência.`,
+      payout: '2.200eb por mercenário + desconto vitalício em cirurgias',
+    },
+    {
+      network: 'Canal 54 News',
+      headline: `CONVOI MILITAR DA KANG TAO EMBOSCADO NA INTERESTADUAL 101`,
+      article: `Tropas nômades não identificadas interceptaram um veículo blindado de transporte de chips quânticos nos arredores de Night City. O confronto durou mais de 20 minutos com armamento anti-veículo pesado.`,
+      hiddenGig: `O líder nômade contratou mercenários para decodificar a carga antes que os satélites de rastreamento da Kang Tao localizem o esconderijo no deserto.`,
+      payout: '3.000eb por mercenário',
+    },
+  ];
+
+  const picked = newsPool[Math.floor(Math.random() * newsPool.length)];
+  return { ...picked, isAi: false };
 }
 
 // 3. Campaign Beat Chart Generator with AI
@@ -255,7 +406,6 @@ export async function generateAICampaignBeatChart(
   climax: { title: string; narrative: string; battlefieldSetup: string };
   resolution: { title: string; narrative: string; payoutAndConsequences: string };
 }> {
-  const activeKey = getEffectiveApiKey(apiKey);
   const prompt = `Você é um mestre experiente de Cyberpunk RED. Crie uma aventura completa usando a estrutura oficial do Beat Chart (6 atos) baseada na ideia: "${themeOrIdea}".
 Retorne estritamente um JSON no seguinte formato:
 {
@@ -267,36 +417,18 @@ Retorne estritamente um JSON no seguinte formato:
   "resolution": { "title": "6. A Resolução", "narrative": "desfecho e pagamento", "payoutAndConsequences": "reputação, eddies e inimigos gerados" }
 }`;
 
-  if (activeKey) {
-    try {
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeKey}`;
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: { responseMimeType: 'application/json' },
-        }),
-      });
+  const aiResult = await callGeminiJSON<any>(prompt, { apiKey });
+  if (aiResult) return aiResult;
 
-      if (res.ok) {
-        const data = await res.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text) return JSON.parse(text);
-      }
-    } catch (e) {
-      console.warn('AI Beat Chart fallback:', e);
-    }
-  }
-
+  // Fallback offline estruturado e dinâmico
   return {
     hook: {
-      title: '1. O Gancho: Chamada Clandestina no Pós-Vida',
-      narrative: `Um Fixer veterano chama a equipe para uma cabine privada no Afterlife às 2h da madrugada. A proposta: invadir um armazém periférico da Petrochem em Heywood antes do amanhecer para recuperar um contêiner lacrado com protótipos de células de combustível de lítio-grafeno.`,
-      mechanicalAction: `Oferta de 2.000eb por personagem. Teste de Human Perception DV 14 revela que o Fixer está nervoso e com uma dívida pesada para pagar até as 6h da manhã.`,
+      title: '1. O Gancho: Encontro no Fundo do Afterlife',
+      narrative: `Um Fixer com ciberolhos dourados entrega um datashard encriptado sobre a mesa. O alvo é invadir uma instalação discreta da Petrochem e extrair um protótipo de célula de combustível CHOOH2. Oferta: 2.000eb por cabeça.`,
+      mechanicalAction: `Teste de Conversação ou Negociação DV 14 para arrancar adiantamento de 500eb ou equipamento tático adicional.`,
     },
     development: {
-      title: '2. Desenvolvimento: Reconhecimento e Infiltração',
+      title: '2. Desenvolvimento: Vigilância sob Chuva Ácida',
       narrative: `A equipe faz a vigilância do armazém sob chuva cáustica. Drones de segurança monitoram o telhado e uma guarita com 3 guardas da Militech controla o portão de veículos.`,
       skillChecks: `Furtividade DV 15 para ultrapassar o campo visual dos holofotes; Netrunning DV 14 para desligar a cerca eletrificada através da câmera externa.`,
     },
@@ -336,8 +468,7 @@ export async function generateAISceneImprov(
   immediateHazard: string;
   suddenTwist: string;
 }> {
-  const activeKey = getEffectiveApiKey(apiKey);
-  const prompt = `Crie elementos imediatos de improvisação de cena para Cyberpunk RED.
+  const prompt = `Crie elementos imediatos de improvisação sensorial e narrativa de cena para Cyberpunk RED.
 Zona: ${zone}
 Situação atual: ${situation}
 Retorne em JSON:
@@ -356,39 +487,32 @@ Retorne em JSON:
   "suddenTwist": "um evento repentino que muda a dinâmica"
 }`;
 
-  if (activeKey) {
-    try {
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeKey}`;
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: { responseMimeType: 'application/json' },
-        }),
-      });
+  const aiResult = await callGeminiJSON<any>(prompt, { apiKey });
+  if (aiResult) return aiResult;
 
-      if (res.ok) {
-        const data = await res.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text) return JSON.parse(text);
-      }
-    } catch (e) {
-      console.warn('AI Scene Improv fallback:', e);
-    }
-  }
-
-  return {
-    sensorySights: `Fios elétricos soltos faiscando no teto de zinco molhado; luz estroboscópica de um holograma de refrigerante quebrado piscando em magenta sobre poças de água oleosa.`,
-    sensorySounds: `Gotejar rítmico de água contaminada; batidas graves de funk-techno vazando da porta de um clube a meio quarteirão; chiado de rádio da polícia captado por frequências abertas.`,
-    sensorySmells: `Cheiro penetrante de ozônio sintético misturado com fumaça de carne de soja queimada em uma barraquinha de rua.`,
-    instantNPC: {
+  const npcPool = [
+    {
       name: `Rico "Faísca" Navarro`,
       role: `Técnico de Cromo Clandestino`,
       visualAppearance: `Jaqueta tática com manchas de graxa de motor, três lentes de aumento ópticas presas com fita isolante no olho esquerdo e dedos mecânicos que tremem quando não estão segurando um ferro de solda.`,
       motivation: `Tentando recuperar uma mala de chips de interface roubada antes que seu chefe descubra.`,
       dialogueHook: `"Vocês aí com cara de mercenários... me dêem dois minutos de cobertura e eu divido metade do cromo com vocês!"`,
     },
+    {
+      name: `Vanya "Icepick" Rossi`,
+      role: `Netrunner de Aluguel`,
+      visualAppearance: `Sobretudo transparente de vinil reflexivo, cabos neurais enrolados no antebraço como pulseiras e óculos de realidade virtual com matriz verde piscando.`,
+      motivation: `Desesperado para descarregar o calor de um firewall que está fritando seus circuitos cerebrais.`,
+      dialogueHook: `"Se vocês não me ajudarem a desligar essa antena, nós todos vamos fritar em trinta segundos!"`,
+    },
+  ];
+  const pickedNPC = npcPool[Math.floor(Math.random() * npcPool.length)];
+
+  return {
+    sensorySights: `Fios elétricos soltos faiscando no teto de zinco molhado; luz estroboscópica de um holograma de refrigerante quebrado piscando em magenta sobre poças de água oleosa em ${zone}.`,
+    sensorySounds: `Gotejar rítmico de água contaminada; batidas graves de funk-techno vazando da porta de um clube a meio quarteirão; chiado de rádio da polícia captado por frequências abertas.`,
+    sensorySmells: `Cheiro penetrante de ozônio sintético misturado com fumaça de carne de soja queimada em uma barraquinha de rua.`,
+    instantNPC: pickedNPC,
     immediateHazard: `Um bueiro de vapor de alta pressão rompido bloqueia o beco (DV 15 Atletismo para saltar sem sofrer 2d6 de dano térmico).`,
     suddenTwist: `Uma van preta sem identificação para bruscamente na esquina e três agentes com capacetes espelhados desembarcam apontando fuzis com miras laser.`,
   };
@@ -406,7 +530,6 @@ export async function generateAITimeskipDowntime(
   cityShift: string;
   reputationImpact: string;
 }> {
-  const activeKey = getEffectiveApiKey(apiKey);
   const prompt = `Simule a passagem de tempo (Timeskip) de ${months} meses em Night City para um grupo de Edgerunners com as seguintes classes: ${rolesList.join(', ')}. Estilo de vida do grupo: ${lifestyle}.
 Retorne em JSON:
 {
@@ -423,44 +546,22 @@ Retorne em JSON:
   "reputationImpact": "como a reputação do grupo mudou nas ruas"
 }`;
 
-  if (activeKey) {
-    try {
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeKey}`;
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: { responseMimeType: 'application/json' },
-        }),
-      });
+  const aiResult = await callGeminiJSON<any>(prompt, { apiKey });
+  if (aiResult) return aiResult;
 
-      if (res.ok) {
-        const data = await res.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text) return JSON.parse(text);
-      }
-    } catch (e) {
-      console.warn('AI Timeskip fallback:', e);
-    }
+  const events = [];
+  for (let m = 1; m <= months; m++) {
+    events.push({
+      month: m,
+      eventTitle: `Mês ${m}: Bicos de Contrato e Manutenção de Cromo`,
+      narrative: `A equipe realizou trabalhos discretos de escolta e cobrança para pagar o aluguel e evitar atenções corporativas indesejadas em Night City.`,
+      mechanicalResult: `Despesa de aluguel paga; saldo de +${Math.floor(Math.random() * 500 + 400)}eb por personagem.`,
+    });
   }
 
   return {
-    summary: `Durante os ${months} meses, a equipe alternou entre bicos menores de escolta e períodos de reclusão em contêineres de carga para não chamar atenção corporativa. O custo de vida consumiu boa parte das reservas.`,
-    monthlyEvents: [
-      {
-        month: 1,
-        eventTitle: 'Manutenção de Cromo e Aluguel Atrasado',
-        narrative: `O senhorio do prédio em Santo Domingo ameaçou cortar a energia se o aluguel de 1.000eb não fosse pago. O grupo fez pequenos trabalhos de segurança para um mercado noturno local.`,
-        mechanicalResult: `Despesa de 1.000eb de aluguel; ganho de 1.200eb em bicos de rua por membro.`,
-      },
-      {
-        month: 2,
-        eventTitle: 'Guerra Territorial de Gangues',
-        narrative: `Os Tyger Claws tentaram expandir para o quarteirão da equipe. Tiros noturnos forçaram os personagens a barricar janelas com chapas de aço.`,
-        mechanicalResult: `Consumo de 50 balas por personagem em tiroteios defensivos. Reputação local mantida.`,
-      },
-    ],
+    summary: `Durante os ${months} meses, a equipe alternou entre bicos menores de escolta e períodos de reclusão para não chamar atenção corporativa. O custo de vida consumiu boa parte das reservas.`,
+    monthlyEvents: events,
     cityShift: `A Arasaka reforçou o patrulhamento aéreo em Heywood e o preço da munição de calibre pesado subiu 20% no mercado negro.`,
     reputationImpact: `O grupo é agora conhecido pelos Fixers locais como sobreviventes confiáveis que não fogem quando as coisas esquentam.`,
   };
@@ -478,15 +579,14 @@ export async function generateAINetArchitecture(
   blackICEList: { name: string; floor: number; spd: number; hp: number; effect: string }[];
   secretDataLoot: string;
 }> {
-  const activeKey = getEffectiveApiKey(apiKey);
   const prompt = `Crie uma Arquitetura NET completa e detalhada para Cyberpunk RED para o alvo: "${targetOrg}" com nível de dificuldade: "${difficulty}".
 Siga as regras de elevador de andares com senhas (DVs), nós de controle (câmeras, maglocks, metralhadoras de teto), arquivos secretos e Black ICE oficial (Hellhound, Raven, Liche, Giant, etc).
 Retorne em JSON:
 {
   "name": "nome da rede corporativa ou terminal",
-  "floorsCount": número de andares (ex: 6 para básica, 9 para padrão, 12 para avançada, 16 para fortaleza),
+  "floorsCount": 7,
   "floors": [
-    { "floor": 1, "type": "Senha / Arquivo / Controle / Black ICE", "dv": número do DV de interface, "content": "descrição do que há no andar", "notes": "efeito em caso de sucesso" }
+    { "floor": 1, "type": "Senha / Arquivo / Controle / Black ICE", "dv": 13, "content": "descrição do que há no andar", "notes": "efeito em caso de sucesso" }
   ],
   "blackICEList": [
     { "name": "Hellhound / Killer / etc", "floor": 3, "spd": 6, "hp": 25, "effect": "queima sinapses do netrunner" }
@@ -494,27 +594,8 @@ Retorne em JSON:
   "secretDataLoot": "conteúdo dos arquivos confidenciais que podem ser vendidos a Fixers"
 }`;
 
-  if (activeKey) {
-    try {
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeKey}`;
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: { responseMimeType: 'application/json' },
-        }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text) return JSON.parse(text);
-      }
-    } catch (e) {
-      console.warn('AI Net Architecture fallback:', e);
-    }
-  }
+  const aiResult = await callGeminiJSON<any>(prompt, { apiKey });
+  if (aiResult) return aiResult;
 
   return {
     name: `Sub-Rede de Segurança ${targetOrg}`,
@@ -553,7 +634,6 @@ export async function generateAICustomVehicle(
   weaponsMounted: string[];
   quirk: string;
 }> {
-  const activeKey = getEffectiveApiKey(apiKey);
   const prompt = `Crie um veículo customizado para Cyberpunk RED.
 Tipo: ${type}
 Clã Nômade ou Origem: ${nomadClan}
@@ -562,9 +642,9 @@ Retorne em JSON:
   "name": "nome apelido carinhoso de rua",
   "type": "${type}",
   "clan": "${nomadClan}",
-  "sdp": número de pontos estruturais (35 a 120),
-  "seats": número de passageiros,
-  "speedMph": velocidade máxima em milhas/hora,
+  "sdp": 75,
+  "seats": 5,
+  "speedMph": 110,
   "costEb": "valor estimado no mercado negro",
   "visualAesthetic": "descrição visual detalhada da pintura, soldas, blindagem e escapamentos",
   "installedNomadMods": ["mod 1", "mod 2", "mod 3"],
@@ -572,27 +652,8 @@ Retorne em JSON:
   "quirk": "peculiaridade divertida ou mecânica do carro"
 }`;
 
-  if (activeKey) {
-    try {
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeKey}`;
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: { responseMimeType: 'application/json' },
-        }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text) return JSON.parse(text);
-      }
-    } catch (e) {
-      console.warn('AI Custom Vehicle fallback:', e);
-    }
-  }
+  const aiResult = await callGeminiJSON<any>(prompt, { apiKey });
+  if (aiResult) return aiResult;
 
   return {
     name: `Caravan Ranger "Fúria do Deserto"`,
@@ -636,8 +697,20 @@ export async function generateAICustomBar(
   };
   localRumors: string[];
 }> {
-  const activeKey = getEffectiveApiKey(apiKey);
-  const prompt = `Crie um bar ou casa noturna memorável para Night City no distrito de ${district} com a estética / clima: ${vibe}.
+  const barThemes = [
+    'Subsolo industrial clandestino de Netrunners com cabos refrigerados',
+    'Rooftop de alta tecnologia com vista panorâmica para o memorial da Arasaka',
+    'Boteco pesado de motoqueiros com cheiro forte de CHOOH2 e palco de punk rock',
+    'Arcade neon retro-futurista com luz negra e lâmen sintético',
+    'Galpão flutuante nas docas úmidas de Pacifica com música tribal eletrônica',
+    'Antigo abrigo antiaéreo reconvertido em lounge noir com mesas de bilhar'
+  ];
+  const randomBarTheme = barThemes[Math.floor(Math.random() * barThemes.length)];
+
+  const prompt = `Crie um bar ou casa noturna memorável e totalmente único para Night City no distrito de ${district}.
+Vibe solicitada: ${vibe || randomBarTheme}.
+Conceito atmosférico adicional: ${randomBarTheme}.
+IMPORTANTE: Crie um nome original e diferente de bares comuns (não use "Chrome Siren" ou "Afterlife").
 Retorne em JSON:
 {
   "name": "nome estiloso da boate ou boteco",
@@ -648,65 +721,49 @@ Retorne em JSON:
   "securityRating": "Nenhuma (Faroeste) / Baixa / Média / Pesada / Militar",
   "signatureDrink": {
     "name": "nome do drink especial",
-    "cost": "preço em eb (ex: 35eb)",
+    "cost": "35eb",
     "category": "Coquetel Lendário / Destilado Pesado / Energético Cibernético / Elixir Bioquímico / Cerveja de Sarjeta",
-    "glassware": "estilo do copo (ex: Copo tumbler pesado com borda de sal)",
+    "glassware": "estilo do copo",
     "visualServing": "como é servido, cores, névoa ou efervescência",
     "ingredients": ["ingrediente 1", "ingrediente 2", "ingrediente 3"],
     "tastingNotes": "sensação sensorial detalhada no primeiro gole e queimação",
     "description": "resumo direto dos ingredientes e sabor",
     "inGameEffect": "bônus mecânico exato de regra e duração",
-    "sideEffect": "ressaca ou teste de resistência se houver",
+    "sideEffect": "ressaca ou efeito secundário",
     "loreTrivia": "história ou lenda sobre a criação do drink"
   },
   "localRumors": ["rumor 1 com gancho de missão", "rumor 2"]
 }`;
 
-  if (activeKey) {
-    try {
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeKey}`;
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: { responseMimeType: 'application/json' },
-        }),
-      });
+  const aiResult = await callGeminiJSON<any>(prompt, { apiKey });
+  if (aiResult) return aiResult;
 
-      if (res.ok) {
-        const data = await res.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text) return JSON.parse(text);
-      }
-    } catch (e) {
-      console.warn('AI Bar fallback:', e);
-    }
-  }
+  const barNames = [
+    { name: 'The Chrome Siren', drink: "Siren's Byte", effect: '+1 em Interface de Netrunning por 1h' },
+    { name: 'Neon Samurai', drink: 'Katana Slash Shot', effect: '+1 em Esquiva (Evasion) por 1h' },
+    { name: 'Afterburner Lounge', drink: 'CHOOH2 Blue Flame', effect: '+2 em Iniciativa no primeiro turno de combate' },
+  ];
+  const pickedBar = barNames[Math.floor(Math.random() * barNames.length)];
 
   return {
-    name: `The Chrome Siren (A Sereia de Cromo)`,
+    name: pickedBar.name,
     district,
     aesthetic: `Subsolo com teto baixo coberto por tubulações cromadas que condensam gotas de água gelada; iluminação fria azul turquesa refletindo em mesas de espelho escuro.`,
     musicStyle: `Synthwave pesado com vocais distorcidos e baixo pulsante a 110 dB.`,
     clientele: `Netrunners de aluguel, batedores de carteira e técnicos de cibernéticos clandestinos.`,
     securityRating: `Média`,
     signatureDrink: {
-      name: `Siren's Byte`,
+      name: pickedBar.drink,
       cost: '40eb',
       category: 'Elixir Bioquímico',
       glassware: 'Copo térmico de policarbonato fosco com LED azul na base',
-      visualServing: 'Líquido azul neon com microbolhas efervescentes que brilham sob luz ambiente e soltam aroma de mentol gelado.',
-      ingredients: [
-        'Vodka sintética 70% com infusão de cafeína pura',
-        'Xarope de mirtilo radioativo com taurina',
-        'Gotas de eletrólito neuronal efervescente',
-      ],
-      tastingNotes: 'Gosto gélido de menta e frutas escuras que faz a língua formigar e anestesia levemente os dentes, gerando um surto imediato de clareza cognitiva.',
-      description: 'Vodka sintética azul misturada com energético de taurina e cristais efervescentes de cafeína pura.',
-      inGameEffect: '+1 em testes de Interface de Netrunning e Cybertech pela próxima 1 hora.',
-      sideEffect: 'Insônia e taquicardia leve pelas próximas 6 horas.',
-      loreTrivia: 'Criado pelo barman em celebração à invasão da subestação de dados da Ziggurat em 2043.',
+      visualServing: 'Líquido azul neon com microbolhas efervescentes que brilham sob luz ambiente.',
+      ingredients: ['Vodka sintética 70%', 'Xarope de mirtilo radioativo', 'Gotas de eletrólito neuronal'],
+      tastingNotes: 'Gosto gélido de menta e frutas escuras que faz a língua formigar e anestesia levemente os dentes.',
+      description: 'Vodka sintética azul misturada com energético de taurina e cristais efervescentes.',
+      inGameEffect: pickedBar.effect,
+      sideEffect: 'Insônia leve pelas próximas 6 horas.',
+      loreTrivia: 'Criado pelo barman em celebração à queda da rede em 2043.',
     },
     localRumors: [
       `Dizem que o barman esconde uma antena transmissora ligada diretamente à fortaleza de dados da Ziggurat no porão.`,
@@ -741,7 +798,6 @@ export async function generateAIDate(
   },
   apiKey?: string
 ): Promise<AIDateResult> {
-  const activeKey = getEffectiveApiKey(apiKey);
   const contextDesc = [
     preferences?.district ? `Distrito: ${preferences.district}` : '',
     preferences?.partnerType ? `Tipo de Parceiro(a): ${preferences.partnerType}` : '',
@@ -749,65 +805,110 @@ export async function generateAIDate(
     preferences?.prompt ? `Instruções adicionais: ${preferences.prompt}` : '',
   ].filter(Boolean).join(' | ');
 
+  const nameInspirations = [
+    'Dante "Apex" Kowalski', 'Sora "Ghost" Takahashi', 'Malik "Ironclad" Al-Mansoor',
+    'Yuki "Katana" Tanaka', 'Zoe "Neon" Rossi', 'Goran "Buster" Varga',
+    'Helena "Valkyrie" Silva', 'Kael "Cipher" O\'Connor', 'Rocco "Spark" Russo',
+    'Leila "Mirage" Chen', 'Valentin "Apex" Cruz', 'Jax "Dust" Mendoza',
+    'Raven "Hex" Kelly', 'Carmen "Viper" Ortiz', 'Axel "Chrome" Vance'
+  ];
+  const randomSample = nameInspirations.sort(() => 0.5 - Math.random()).slice(0, 3).join(', ');
+
   const prompt = `Você é o Co-Mestre de Cyberpunk RED especialista no DLC oficial "Digital Dating & Datepath" (Garden Patch Dating).
-Gere um encontro romântico detalhado e atmosférico para um mercenário de Night City com base nos parâmetros: "${contextDesc || 'Encontro casual no submundo de Night City'}".
+Gere um encontro romântico detalhado, surpreendente, cru e cinematográfico para um mercenário de Night City com base nos parâmetros: "${contextDesc || 'Encontro casual no submundo de Night City'}".
+
+DIRETRIZ DE DIVERSIDADE & ANTI-REPETIÇÃO:
+- Crie um personagem totalmente NOVO. NUNCA use o nome "Nyx" ou "Nova" repetidamente.
+- Inspire-se em diversas etnias e origens culturais de Night City (exemplos de nomes/estilos: ${randomSample}).
+- Varie a atitude: pode ser alguém caloroso, cínico, paranoico, militarista, sedutor ou rebelde.
+- Varie os papéis: ${preferences?.partnerType || 'Solo, Netrunner, Tech, Ripperdoc, Nômade, Executivo, Rockerboy, Cop ou Fixer'}.
 
 Retorne EXCLUSIVAMENTE um objeto JSON válido com a seguinte estrutura:
 {
-  "partnerName": "Nome completo e apelido de rua entre aspas (ex: Kira \\"Nova\\" Chen ou Rex \\"Chrome\\" Morales)",
+  "partnerName": "Nome completo e apelido de rua entre aspas",
   "partnerRole": "Papel do sistema (ex: Solo Freelancer, Netrunner de Aluguel, Executiva Júnior, Médica Clandestina, Rockerboy Rebelde, Nômade das Badlands)",
   "partnerStyle": "Descrição detalhada do visual, roupas de estilo cyberpunk (Kitsch, Neotetro, High Fashion ou Militar), implantes visíveis e postura corporal",
   "keywords": ["#PalavraChave1", "#PalavraChave2", "#PalavraChave3"],
   "locationName": "Nome atmosférico do local do encontro (bar, restaurante subterrâneo, galeria de arcades, mirante de ferro-velho, estande de tiro)",
   "district": "Distrito de Night City (Watson, Westbrook, Heywood, Pacifica, Centro Corporativo, Santo Domingo ou Badlands)",
   "activity": "Atividade do encontro planejada pelo par",
-  "complicationTitle": "Título da Complicação inesperada do encontro (ex: Ex-Amante com Sandevistan, Tiroteio de Gangue na Saída, Cartão Clonado Recusado, Invasão da NCPD)",
+  "complicationTitle": "Título da Complicação inesperada do encontro",
   "complicationDesc": "Narrativa da complicação que interrompe o date",
-  "complicationHook": "Regra mecânica para o Mestre resolver a complicação (teste de perícia com DV, ex: Conversação DV 15 ou Tática DV 13)",
+  "complicationHook": "Regra mecânica para o Mestre resolver a complicação (teste de perícia com DV)",
   "conversationStarter": "Frase de abertura ou assunto instigante que o par puxa na mesa",
   "secretAgenda": "Motivação oculta ou segredo do par para este encontro"
 }`;
 
-  if (activeKey) {
-    try {
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeKey}`;
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: { responseMimeType: 'application/json' },
-        }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text) {
-          const parsed = JSON.parse(text);
-          return { ...parsed, isAi: true };
-        }
-      }
-    } catch (e) {
-      console.warn('AI Date fallback:', e);
-    }
+  const aiResult = await callGeminiJSON<AIDateResult>(prompt, { apiKey });
+  if (aiResult) {
+    return { ...aiResult, isAi: true };
   }
 
-  return {
-    partnerName: 'Nyx "Glitch" Sterling',
-    partnerRole: 'Netrunner Freelancer & DJ de Rádio Pirata',
-    partnerStyle: 'Jaqueta bomber holográfica com fios de fibra óptica azuis pulsando no colarinho, cabelo raspado de um lado com tatuagem neural de circuito, olhos ópticos ciano e sorriso sarcástico.',
-    keywords: ['#Netrunning', '#Synth-Drinks', '#Música Subterrânea'],
-    locationName: 'Sub-Zero Arcade & Noodle Bar',
-    district: preferences?.district || 'Watson (Kabuki)',
-    activity: 'Desafiar uns aos outros no arcade retrô de combate enquanto dividem uma tigela fumegante de lámen sintético apimentado com cerveja de arroz.',
-    complicationTitle: 'Varredura Surpresa da NCPD',
-    complicationDesc: 'Duas viaturas do DPNC param com sirenes ligadas em frente ao bar buscando um hacker procurado. Nyx empalidece e enfia discretamente um chip de dados criptografado no seu bolso.',
-    complicationHook: 'Teste de Atuação DV 14 para fingir que são apenas um casal apaixonado e distrair os policiais, ou Furtividade DV 15 para sair pelos fundos.',
-    conversationStarter: '"Você prefere morrer de velhice no tédio ou virar uma lenda de Night City queimando antes dos trinta?"',
-    secretAgenda: 'Está sendo caçada pela NetWatch por quebrar um firewall corporativo e precisa de alguém com mira boa para cobrir sua retaguarda.',
-    isAi: true,
-  };
+  // Fallback offline com alta rotação de parceiros
+  const offlineDates: AIDateResult[] = [
+    {
+      partnerName: 'Kira "Nova" Chen',
+      partnerRole: 'Solo Freelancer & Veterana de Heywood',
+      partnerStyle: 'Jaqueta de couro desgastada com ombreiras Kevlar, ciberolho Kiroshi dourado e sorriso confiante de quem já viu de tudo.',
+      keywords: ['#CombateUrbano', '#ArmasPesadas', '#Lealdade'],
+      locationName: 'El Coyote Cojo Rooftop Bar',
+      district: preferences?.district || 'Heywood (The Glen)',
+      activity: 'Comparar cicatrizes de combate e testar a precisão em um alvo holográfico enquanto tomam tequila sintética com sal.',
+      complicationTitle: 'Vingança dos Valentinos',
+      complicationDesc: 'Dois capangas entram no bar procurando Kira por um antigo desentendimento em uma aposta de corrida.',
+      complicationHook: 'Teste de Intimidação DV 15 ou Esquiva DV 14 para dispersar a confusão sem tiros.',
+      conversationStarter: '"Quantas vezes você já quase morreu neste mês? Eu parei de contar na quarta."',
+      secretAgenda: 'Precisa de um parceiro de confiança para invadir um depósito de penhores e resgatar a medalha militar do irmão.',
+      isAi: false,
+    },
+    {
+      partnerName: 'Dante "Vex" Morales',
+      partnerRole: 'Técnico de Garagem & Piloto Nômade',
+      partnerStyle: 'Macacão jeans reforçado, bandana vermelha, mãos cobertas por tatuagens de fiação e anéis de cromo escovado.',
+      keywords: ['#Velocidade', '#CustomCars', '#Badlands'],
+      locationName: 'Redline Diner & Pátio de Chooh2',
+      district: preferences?.district || 'Santo Domingo (Rancho Coronado)',
+      activity: 'Ajustar o turbocompressor de um carro de arrancada enquanto dividem uma porção de hambúrguer sintético com batatas fritas picantes.',
+      complicationTitle: 'Racha Clandestino Forçado',
+      complicationDesc: 'A gangue 6th Street bloqueia o cruzamento e desafia Dante para uma corrida com apostas altas valendo o próprio veículo.',
+      complicationHook: 'Teste de Pilotagem DV 15 ou Tática DV 13 para escolher o melhor trajeto pela autoestrada.',
+      conversationStarter: '"O motor de um carro nunca mente para você. As pessoas em Night City, por outro lado..."',
+      secretAgenda: 'Está acumulando eddies para comprar uma passagem de volta para seu clã nômade no sul.',
+      isAi: false,
+    },
+    {
+      partnerName: 'Chloe "Silk" Moreau',
+      partnerRole: 'Executiva Júnior de Relações Corporativas',
+      partnerStyle: 'Terno risca de giz assimétrico de alta costura, perfume sintético de orquídea rara e relógio de pulso holográfico de platina.',
+      keywords: ['#AltaModa', '#Conspiração', '#VinhoSintético'],
+      locationName: 'Skyline Terrace Lounge',
+      district: preferences?.district || 'Centro Corporativo',
+      activity: 'Degustar vinho tinto sintético em uma mesa com vista panorâmica para o memorial da Arasaka.',
+      complicationTitle: 'Escuta Grampeada',
+      complicationDesc: 'O detector de bugs de Chloe apita: há um agente de contrainteligência corporativa gravando a conversa na mesa ao lado.',
+      complicationHook: 'Teste de Percepção DV 14 para identificar o espião ou Conversação DV 15 para inventar uma mentira convincente.',
+      conversationStarter: '"Todo mundo em Night City tem um preço. Me diga o seu antes que meu chefe descubra."',
+      secretAgenda: 'Quer vazar uma planilha confidencial da diretoria para a mídia antes de ser demitida.',
+      isAi: false,
+    },
+    {
+      partnerName: 'Nyx "Glitch" Sterling',
+      partnerRole: 'Netrunner Freelancer & DJ de Rádio Pirata',
+      partnerStyle: 'Jaqueta bomber holográfica com fios de fibra óptica azuis pulsando no colarinho, cabelo raspado de um lado com tatuagem neural de circuito, olhos ópticos ciano e sorriso sarcástico.',
+      keywords: ['#Netrunning', '#Synth-Drinks', '#Música Subterrânea'],
+      locationName: 'Sub-Zero Arcade & Noodle Bar',
+      district: preferences?.district || 'Watson (Kabuki)',
+      activity: 'Desafiar uns aos outros no arcade retrô de combate enquanto dividem uma tigela fumegante de lámen sintético apimentado com cerveja de arroz.',
+      complicationTitle: 'Varredura Surpresa da NCPD',
+      complicationDesc: 'Duas viaturas do DPNC param com sirenes ligadas em frente ao bar buscando um hacker procurado. Nyx empalidece e enfia discretamente um chip de dados criptografado no seu bolso.',
+      complicationHook: 'Teste de Atuação DV 14 para fingir que são apenas um casal apaixonado e distrair os policiais, ou Furtividade DV 15 para sair pelos fundos.',
+      conversationStarter: '"Você prefere morrer de velhice no tédio ou virar uma lenda de Night City queimando antes dos trinta?"',
+      secretAgenda: 'Está sendo caçada pela NetWatch por quebrar um firewall corporativo e precisa de alguém com mira boa para cobrir sua retaguarda.',
+      isAi: false,
+    },
+  ];
+
+  return offlineDates[Math.floor(Math.random() * offlineDates.length)];
 }
 
 // 10. Night Market / Mercado Negro Generator with AI
@@ -820,7 +921,6 @@ export async function generateAINightMarket(
   },
   apiKey?: string
 ): Promise<NightMarket> {
-  const activeKey = getEffectiveApiKey(apiKey);
   const contextDesc = [
     preferences?.district ? `Distrito: ${preferences.district}` : '',
     preferences?.focusCategory ? `Foco de Mercadorias: ${preferences.focusCategory}` : '',
@@ -828,13 +928,24 @@ export async function generateAINightMarket(
     preferences?.prompt ? `Instruções adicionais: ${preferences.prompt}` : '',
   ].filter(Boolean).join(' | ');
 
+  const marketLocations = [
+    'docas clandestinas de contêineres marítimos enferrujados sob a chuva',
+    'túnel de metrô desativado sob trilhos eletrificados vigiado por snipers',
+    'estacionamento subterrâneo de shopping abandonado com barracas iluminadas por néon',
+    'acampamento de trailers nômades fortificado no perímetro das colinas',
+    'antigo matadouro industrial com câmaras frigoríficas adaptadas para quiosques'
+  ];
+  const randomLoc = marketLocations[Math.floor(Math.random() * marketLocations.length)];
+
   const prompt = `Você é o Co-Mestre de Cyberpunk RED especialista nas regras oficiais de "Night Markets" (Mercados Noturnos / Mercado Negro, Livro Básico pp. 336-342).
-Gere um Mercado Negro clandestino completo, atmosférico e perigoso com base nos parâmetros: "${contextDesc || 'Mercado Negro secreto no submundo de Night City'}".
+Gere um Mercado Negro clandestino completo, atmosférico, imprevisível e perigoso com base nos parâmetros: "${contextDesc || 'Mercado Negro secreto no submundo de Night City'}".
+Cenário de inspiração para localização: ${randomLoc}.
+IMPORTANTE: Gere nomes criativos, vendedores carismáticos com personalidades únicas e itens raros variados. Nunca repita nomes anteriores.
 
 Retorne EXCLUSIVAMENTE um objeto JSON válido com a seguinte estrutura:
 {
   "id": "night-market-ai-${Date.now()}",
-  "name": "Nome evocativo do Mercado Noturno (ex: Mercado Negro do Esgoto da Linha F, Bazar Clandestino das Docas 44, Feira de Cromo Roubado de Vista del Rey)",
+  "name": "Nome evocativo do Mercado Noturno",
   "district": "Distrito de Night City (Watson, Westbrook, Heywood, Pacifica, Santo Domingo ou Badlands)",
   "exactLocation": "Localização secreta exata e acesso",
   "operatorFixer": {
@@ -842,17 +953,17 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido com a seguinte estrutura:
     "reputation": 6,
     "quirk": "Cacoete, postura ou mania do Fixer",
     "securityLevel": "Baixa (Pistolas) ou Média (Solos Armados & Cães K-9) ou Alta (Torres e Snipers nos Telhados)",
-    "entryCondition": "Regra para entrar no mercado (convite, senha, pedágio em eb ou revista de armas)"
+    "entryCondition": "Regra para entrar no mercado"
   },
   "atmosphere": "Descrição sensorial rica (iluminação neon/lâmpadas a óleo, fumaça, cheiro de comida sintética frita, música e tensão armada)",
   "stalls": [
     {
       "vendorName": "Nome do vendedor(a)",
-      "vendorTitle": "Título ou especialidade (ex: Armeiro Clandestino, Ripperdoc de Garagem, Químico dos Valentinos)",
+      "vendorTitle": "Título ou especialidade",
       "vendorStyle": "Descrição visual do vendedor e sua banca",
       "vendorPersonality": "Personalidade de negociação e fala",
       "category": "Armas Pesadas | Cromo & Implantes | Cyberdecks & Softwares | Químicos & Drogas | Contrabando Corporativo | Roupas Blindadas",
-      "specialService": "Serviço extra no local com custo e perícia (ex: Instalação cirúrgica de implante, lixar números de série de arma, quebrar senha de chip)",
+      "specialService": "Serviço extra no local com custo e perícia",
       "items": [
         {
           "name": "Nome exato do item",
@@ -868,134 +979,84 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido com a seguinte estrutura:
     }
   ],
   "complication": {
-    "title": "Complicação imprevista no mercado (ex: Batida da NCPD, Caçador de Recompensas, Item com Rastreador GPS, Briga de Gangues)",
+    "title": "Complicação imprevista no mercado",
     "description": "O que acontece enquanto os personagens estão negociando",
     "mechanicalHook": "Regra mecânica / teste com DV para o Mestre resolver o evento"
   },
   "bargainTip": "Dica prática de pechincha ou negociação com o Fixer"
 }`;
 
-  if (activeKey) {
-    try {
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeKey}`;
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: { responseMimeType: 'application/json' },
-        }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text) {
-          const parsed = JSON.parse(text);
-          return {
-            ...parsed,
-            id: `night-market-ai-${Date.now()}`,
-            isAi: true,
-          };
-        }
-      }
-    } catch (e) {
-      console.warn('AI Night Market fallback:', e);
-    }
+  const aiResult = await callGeminiJSON<NightMarket>(prompt, { apiKey });
+  if (aiResult) {
+    return {
+      ...aiResult,
+      id: `night-market-ai-${Date.now()}`,
+      isAi: true,
+    };
   }
 
-  // Fallback se API falhar ou sem chave
+  // Fallback offline estruturado
   return {
-    id: `night-market-fallback-${Date.now()}`,
-    name: 'Mercado Negro Clandestino do Subsolo de Kabuki',
-    district: preferences?.district || 'Watson (Kabuki)',
-    exactLocation: 'Túneis de ventilação sob a praça do mercado central de Kabuki, acesso por escada caracol atrás de um açougue sintético.',
+    id: `night-market-offline-${Date.now()}`,
+    name: 'Bazar Clandestino das Docas 44',
+    district: preferences?.district || 'Watson (Northside)',
+    exactLocation: 'Galpão naval abandonado sob a ponte do porto, acesso por escotilha de descarga enferrujada.',
     operatorFixer: {
-      name: 'Rico "Centavo" Valente',
+      name: 'Marta "Chave-Mestra" Varga',
       reputation: 6,
-      quirk: 'Fuma charutos sintéticos cubanos com ponta dourada e anota débitos em uma placa de ardósia digital.',
+      quirk: 'Masca chiclete de nicotina continuamente e nunca olha nos olhos de quem não mostra credsticks primeiro.',
       securityLevel: 'Média (Solos Armados & Cães K-9)',
-      entryCondition: 'Apresentar 20eb na portaria ou senha fornecida por um Ripperdoc de Watson.',
+      entryCondition: 'Senha diária ("Olho de Vidro") ou taxa de entrada de 20eb por pessoa na porta.',
     },
-    atmosphere: 'Vapor quente avermelhado de geradores a CHOOH2, bancas de ferro dobrável iluminadas por tiras de LED neon ciano, aroma acre de solda eletrônica misturado com carne de porco clonada grelhando.',
+    atmosphere: 'Fumaça espessa de CHOOH2 misturada a vapor de cozimento de algas fritas. Holofotes halógenos pendurados por fios expostos iluminam bancas improvisadas sobre caixotes industriais.',
     stalls: [
       {
-        vendorName: 'Klaus "Balaço" Becker',
-        vendorTitle: 'Armeiro Militar Veterano',
-        vendorStyle: 'Colete tático gasto sem mangas revelando braços cobertos de queimaduras de pólvora e óculos balísticos amarelados.',
-        vendorPersonality: 'Direto, sem rodeios. Só aceita eurodólares em espécie ou munição pesada em troca.',
-        category: 'Armas Pesadas & Munições Especiais',
-        specialService: 'Lixar número de série e trocar agulha de percussão em 15 minutos (40eb).',
+        vendorName: 'Klaus "Martelo" Brandt',
+        vendorTitle: 'Armeiro Clandestino dos Bakkers',
+        vendorStyle: 'Macacão reforçado com manchas de fuligem, avental de couro e óculos de solda na testa.',
+        vendorPersonality: 'Grosseiro, mas apaixonado por mecânica pesada. Trata as armas como filhas.',
+        category: 'Armas Pesadas & Munições',
+        specialService: 'Lixar números de série de fábrica e ajustar gatilho (+1 em Saque Rápido por 100eb)',
         items: [
           {
-            name: 'Fuzil de Precisão Sternmeyer Sniping-55',
-            category: 'Fuzil de Precisão',
-            priceEb: 1100,
-            priceLabel: '1.100eb',
-            condition: 'Militar Restrito',
-            stock: 1,
-            description: 'Fuzil antimaterial com luneta holográfica de zoom 12x e bipé retrátil de titânio.',
-            mechanicalEffect: 'Dano 5d6, ignora penalidades de distância longa acima de 50 metros se apoiado.',
-          },
-          {
-            name: 'Caixa de Balas Incendiárias 9mm (50 un)',
-            category: 'Munição Especial',
-            priceEb: 150,
-            priceLabel: '150eb',
-            condition: 'Novo Lacrado',
-            stock: 3,
-            description: 'Projéteis com ponta oca preenchida com gel inflamável de fósforo branco.',
-            mechanicalEffect: 'Se causar dano ao HP, o alvo pega fogo causando 2 de dano por turno até apagar.',
-          },
-        ],
-      },
-      {
-        vendorName: 'Doc Haruto "Nervo" Sato',
-        vendorTitle: 'Cirurgião Excluído da Arasaka',
-        vendorStyle: 'Máscara respiratória cirúrgica com filtros laterais cromados, avental emborrachado e ferramentas ultrassônicas na bancada.',
-        vendorPersonality: 'Metódico e frio. Explica os riscos de ciberpsicose com indiferença cirúrgica.',
-        category: 'Cromo de Combate & Implantes Ilicitamente Adquiridos',
-        specialService: 'Implantação estéril de cromo no furgão médico adjacente (Cirurgia DV 15, 120eb).',
-        items: [
-          {
-            name: 'Linear Frame Beta (Exoesqueleto Interno)',
-            category: 'Cibernético Corporal',
-            priceEb: 2500,
-            priceLabel: '2.500eb',
-            condition: 'Militar Restrito',
-            stock: 1,
-            description: 'Vigas de fibra de titânio aparafusadas na coluna e fêmures, elevando a força física a níveis desumanos.',
-            mechanicalEffect: 'Define o atributo BODY em 14. Dano desarmado sobe para 4d6. Exige Interface Neural.',
-          },
-          {
-            name: 'Olho Cibernético Kiroshi com Scanner de Drones',
-            category: 'Cibernético Óptico',
+            name: 'Escopeta Tática Rostović Modificada',
+            category: 'Armas Pesadas',
             priceEb: 650,
             priceLabel: '650eb',
             condition: 'Usado em Combate',
             stock: 2,
-            description: 'Íris carmesim que detecta sinais de radiofrequência e sobrevoo de drones espiões a até 200m.',
-            mechanicalEffect: '+2 em Percepção contra vigilância eletrônica e emboscadas aéreas.',
+            description: 'Escopeta pesada calibre 12 com cano serrado e empunhadura ergonômica de polímero.',
+            mechanicalEffect: 'Dano 5d6 (projétil ou chumbo em cone). ROF 1. Carregador de 4 cartuchos.',
+          },
+          {
+            name: 'Caixa de Munição Perfurante de Armadura (AP) 9mm',
+            category: 'Munição Especial',
+            priceEb: 150,
+            priceLabel: '150eb (50 balas)',
+            condition: 'Militar Restrito',
+            stock: 4,
+            description: 'Projéteis com núcleo de tungstênio projetados para triturar coletes de kevlar.',
+            mechanicalEffect: 'Ablata 2 pontos de SP de armadura a cada impacto bem-sucedido que penetre a defesa.',
           },
         ],
       },
       {
-        vendorName: 'Nyx "Datastream"',
-        vendorTitle: 'Techie Clandestina de Hardware',
-        vendorStyle: 'Macacão de corrida com fiação exposta, soldador a laser pendurado no coldre e pulseira de leds de diagnóstico.',
-        vendorPersonality: 'Hiperativa e apaixonada por peças raras. Adora falar sobre overclocking de processadores.',
-        category: 'Cyberdecks, Softwares Proibidos & Gadgets Hackers',
-        specialService: 'Overclock de cyberdeck para adicionar +1 slot de memória temporário (80eb).',
+        vendorName: 'Dra. Sora "Bisturi" Tanaka',
+        vendorTitle: 'Ripperdoc Renegada da Biotechnica',
+        vendorStyle: 'Bata cirúrgica preta de vinil com mangas dobradas, luvas de nitrilo e ciberbraço cirúrgico multifuncional.',
+        vendorPersonality: 'Cirúrgica, cínica e extremamente rápida. Odeia conversa fiada.',
+        category: 'Cromo & Implantes Neurais',
+        specialService: 'Instalação cirúrgica imediata no furgão médico dos fundos (DV 15 Cirurgia, 200eb)',
         items: [
           {
-            name: 'Cyberdeck Arasaka Portátil Militar "Shinigami-3"',
-            category: 'Cyberdeck',
-            priceEb: 1400,
-            priceLabel: '1.400eb',
-            condition: 'Pirateado / Modificado',
+            name: 'Ciberolho Kiroshi com HUD de Mira Óptica',
+            category: 'Cibernético',
+            priceEb: 500,
+            priceLabel: '500eb',
+            condition: 'Novo Lacrado',
             stock: 1,
-            description: 'Carcaça preta fosca com placa de proteção contra contra-ataques neurais.',
-            mechanicalEffect: '8 slots de programas/hardware. Reduz em 2 o dano de Black ICE sofrido pelo Netrunner.',
+            description: 'Implante ocular com retícula de mira computadorizada e zoom digital 8x.',
+            mechanicalEffect: '+1 em testes de Ataque com Armas de Fogo em alvos além de 15 metros.',
           },
           {
             name: 'Black ICE Defensivo: Vira-Lata (Bloodhound)',
@@ -1016,7 +1077,7 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido com a seguinte estrutura:
       mechanicalHook: 'Teste de Esquiva ou Tática DV 14 para se abrigar atrás das bancas blindadas sem perder as compras, ou Intimidação DV 16 para fazer os motoqueiros recuarem.',
     },
     bargainTip: 'Regra Oficial de Pechincha (CP:R p. 338): Faça um teste resistido de Negociação (Trading) contra o vendedor. Uma margem de vitória de +3 ou mais reduz o preço final em 10% a 20%.',
-    isAi: true,
+    isAi: false,
   };
 }
 
@@ -1027,53 +1088,28 @@ export async function generateAILifepathBackstory(
   lifepath: Record<string, string>,
   apiKey?: string
 ): Promise<string> {
-  const activeKey = getEffectiveApiKey(apiKey);
-  if (!activeKey) {
-    return `Nasci sob o céu cinzento e tempestuoso de ${lifepath.culturalOrigin || 'Night City'}. Minha infância foi forjada em ${lifepath.childhoodEnvironment || 'ruas violentas e becos escuros'}, onde aprendi desde cedo que ${lifepath.personality || 'apenas os mais rápidos sobrevivem'}. Minha família enfrentou um golpe devastador quando ${lifepath.familyCrisis || 'perdemos tudo para o moedor de carne corporativo'}.\n\nHoje ganho a vida como ${role || 'Edgerunner'}. O que mais valorizo acima de qualquer eddie é ${lifepath.valueMost || 'minha honra e liberdade'}. Carrego sempre comigo ${lifepath.valuedPossession || 'minha arma de estimação'}, relíquia que me liga a ${lifepath.valuedPerson || 'quem me ensinou o ofício'}.\n\nMas Night City cobra seu preço em sangue: no passado, ${lifepath.tragicLoveAffair || 'uma tragédia amorosa me deixou cicatrizes incuráveis'}. E para piorar, ${lifepath.nemesis || 'um inimigo mortal'} segue no meu encalço. Mas nada vai me parar até eu ${lifepath.lifeGoals || 'me tornar uma lenda viva do Afterlife'}.`;
-  }
-
-  const prompt = `Você é o Co-Mestre Neural de Cyberpunk RED. Escreva uma crônica narrativa emocionante e visceral em primeira pessoa (3 parágrafos curtos) para o personagem "${characterName}" (${role}) com base nas seguintes escolhas oficiais de Lifepath:
-- Origem Cultural: ${lifepath.culturalOrigin}
-- Estilo & Penteado: ${lifepath.clothingStyle} com ${lifepath.hairstyle}
-- Personalidade & Postura: ${lifepath.personality}
-- Origem Familiar & Crise: ${lifepath.familyBackground} | ${lifepath.familyCrisis}
-- Ambiente de Infância: ${lifepath.childhoodEnvironment}
-- Valores & Pessoa Importante: ${lifepath.valueMost} | ${lifepath.valuedPerson}
-- Posse Estimada: ${lifepath.valuedPossession}
-- Caso de Amor Trágico: ${lifepath.tragicLoveAffair}
-- Arqui-Inimigo (Nemesis): ${lifepath.nemesis}
-- Objetivo de Vida Supremo: ${lifepath.lifeGoals}
+  const prompt = `Você é o Co-Mestre Neural de Cyberpunk RED. Escreva uma crônica narrativa emocionante, visceral e rica em primeira pessoa (3 parágrafos curtos) para o personagem "${characterName}" (${role}) com base nas seguintes escolhas oficiais de Lifepath:
+- Origem Cultural: ${lifepath.culturalOrigin || 'Night City'}
+- Estilo & Penteado: ${lifepath.clothingStyle || 'Casual'} com ${lifepath.hairstyle || 'Curto'}
+- Personalidade & Postura: ${lifepath.personality || 'Frio'}
+- Origem Familiar & Crise: ${lifepath.familyBackground || 'Rua'} | ${lifepath.familyCrisis || 'Perda total'}
+- Ambiente de Infância: ${lifepath.childhoodEnvironment || 'Subsolo'}
+- Valores & Pessoa Importante: ${lifepath.valueMost || 'Liberdade'} | ${lifepath.valuedPerson || 'Mentor'}
+- Posse Estimada: ${lifepath.valuedPossession || 'Arma herdada'}
+- Caso de Amor Trágico: ${lifepath.tragicLoveAffair || 'Traição'}
+- Arqui-Inimigo (Nemesis): ${lifepath.nemesis || 'Corporativo rival'}
+- Objetivo de Vida Supremo: ${lifepath.lifeGoals || 'Lenda do Afterlife'}
 
 Retorne exclusivamente o texto da biografia formatado em Markdown com parágrafos fluidos, tom noir visceral, gírias do universo (eddies, choomba, cromo) e pronto para ser usado na mesa de RPG.`;
 
-  if (activeKey) {
-    try {
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeKey}`;
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        }),
-      });
+  const aiReply = await callGeminiAPI({ prompt, isJson: false, apiKey });
+  if (aiReply) return aiReply;
 
-      if (res.ok) {
-        const data = await res.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text) {
-          return text.trim();
-        }
-      }
-    } catch (err) {
-      console.error('Error generating AI lifepath backstory:', err);
-    }
-  }
-
-  // Fallback se sem chave ou erro
-  return `Nasci sob o céu tóxico de ${lifepath.culturalOrigin || 'Night City'}. Cresci aprendendo que ${lifepath.feelingsAboutPeople || 'ninguém é confiável nas ruas'}. Meu bem mais precioso sempre foi ${lifepath.valuedPossession || 'minha arma'}, e nunca esqueci a lição de ${lifepath.familyCrisis || 'quando tudo desmoronou'}. Meu objetivo supremo é ${lifepath.lifeGoals || 'fazer meu nome nas ruas e virar uma lenda'}. Com ${lifepath.nemesis || 'meus inimigos'} caçando meus passos, cada trabalho na Zona de Combate é uma questão de vida ou morte.`;
+  // Fallback rico
+  return `Nasci sob o céu cinzento e tempestuoso de ${lifepath.culturalOrigin || 'Night City'}. Minha infância foi forjada em ${lifepath.childhoodEnvironment || 'ruas violentas e becos escuros'}, onde aprendi desde cedo que ${lifepath.personality || 'apenas os mais rápidos sobrevivem'}. Minha família enfrentou um golpe devastador quando ${lifepath.familyCrisis || 'perdemos tudo para o moedor de carne corporativo'}.\n\nHoje ganho a vida como ${role || 'Edgerunner'}. O que mais valorizo acima de qualquer eddie é ${lifepath.valueMost || 'minha honra e liberdade'}. Carrego sempre comigo ${lifepath.valuedPossession || 'minha arma de estimação'}, relíquia que me liga a ${lifepath.valuedPerson || 'quem me ensinou o ofício'}.\n\nMas Night City cobra seu preço em sangue: no passado, ${lifepath.tragicLoveAffair || 'uma tragédia amorosa me deixou cicatrizes incuráveis'}. E para piorar, ${lifepath.nemesis || 'um inimigo mortal'} segue no meu encalço. Mas nada vai me parar até eu ${lifepath.lifeGoals || 'me tornar uma lenda viva do Afterlife'}.`;
 }
 
-// 7. END-OF-SESSION REWARD GENERATOR & DEBRIEF (CYBERPUNK RED IP & PROGRESSION)
+// 12. END-OF-SESSION REWARD GENERATOR & DEBRIEF (CYBERPUNK RED IP & PROGRESSION)
 export async function generateAISessionRewards(options: {
   sessionTitle: string;
   difficultyId: SessionDifficultyId;
@@ -1084,43 +1120,15 @@ export async function generateAISessionRewards(options: {
   fixerName?: string;
   apiKey?: string;
 }): Promise<SessionRewardResult> {
-  const activeKey = getEffectiveApiKey(options.apiKey);
   const difficulty = SESSION_DIFFICULTY_TIERS[options.difficultyId] || SESSION_DIFFICULTY_TIERS.standard;
   const outcome = MISSION_OUTCOMES[options.outcomeId] || MISSION_OUTCOMES.standard_success;
-
-  // Se não houver chave válida, usa o motor offline inteligente baseado nas regras oficiais
-  if (!activeKey) {
-    return calculateSessionRewardsOffline({
-      sessionTitle: options.sessionTitle,
-      difficultyId: options.difficultyId,
-      outcomeId: options.outcomeId,
-      selectedTagIds: options.selectedTagIds,
-      partyMemberCount: options.partyMembers.length || 4,
-      fixerName: options.fixerName,
-    });
-  }
 
   const prompt = `Você é o "Cyberpunk Neural Co-GM", árbitro e co-mestre oficial do sistema de RPG Cyberpunk RED (R. Talsorian Games).
 Você foi chamado para conduzir o DEBRIEFING E AVALIAÇÃO DE RECOMPENSAS DE FIM DE SESSÃO da mesa.
 
 DIRETRIZES OFICIAIS DE REGRAS (CYBERPUNK RED CORE RULEBOOK págs. 410-412):
 1. Pontos de Investimento (IP / Improvement Points) são concedidos por sessão aos jogadores para progressão de fichas.
-   - Escala típica por sessão:
-     * Rutineira: 10 - 20 IP
-     * Padrão (Típica de Edgerunners): 30 - 50 IP
-     * Perigosa (Alto Risco Corporativo/Combate Letal): 50 - 75 IP
-     * Clímax de Arco / Vida ou Morte Lendária: 75 - 100+ IP
-   - Ajustes:
-     * Sucesso Total: mantém ou ganha bônus (+10 a +20 IP)
-     * Sucesso Parcial: 70-80% do valor
-     * Fracasso Heroico: ~50% do valor (pelo aprendizado)
-     * Desastre: 30% do valor
-     * Bônus adicionais: Atitude/Estilo (+5 a +10 IP), Trabalho em Equipe/Hacking (+5 a +10 IP), Superar Perigo Extremo (+10 a +15 IP).
-2. Pagamento do Contrato em Eurodólares (eb / Eddies) por jogador:
-     * Bico sem risco: 200 - 500 eb
-     * Missão Padrão: 800 - 1.500 eb
-     * Alto Risco Corporativo: 1.500 - 3.000 eb
-     * Clímax Lendário: 3.500 - 10.000+ eb
+2. Pagamento do Contrato em Eurodólares (eb / Eddies) por jogador.
 3. Reputação (Rep): 0 (discreto), +1 (notícia nas ruas/Data Pool), ou +2 (feito lendário no Afterlife).
 
 DADOS DA SESSÃO FORNECIDOS PELO MESTRE:
@@ -1132,7 +1140,7 @@ DADOS DA SESSÃO FORNECIDOS PELO MESTRE:
 - Tags Marcadas pelo Mestre: ${options.selectedTagIds.join(', ') || 'Nenhuma tag'}
 - Relato Detalhado do Mestre: "${options.sessionDescription || 'A equipe enfrentou oposição armada, cumpriu os objetivos e garantiu a extração.'}"
 
-Responda ESTRITAMENTE em formato JSON puro (sem marcações extras fora do JSON):
+Responda ESTRITAMENTE em formato JSON puro:
 {
   "totalIP": 55,
   "ipBreakdown": {
@@ -1146,11 +1154,11 @@ Responda ESTRITAMENTE em formato JSON puro (sem marcações extras fora do JSON)
   "cashEbPerPlayer": 1200,
   "reputationChange": 1,
   "screamsheetHeadline": "MANCHETE EM CAIXA ALTA ESTILO SCREAMSHEET DE NIGHT CITY",
-  "screamsheetArticle": "Parágrafo curto de 3 a 5 linhas como notícia pública publicada no CitiNet/Data Pool descrevendo os acontecimentos sob a ótica dos repórteres de rua.",
+  "screamsheetArticle": "Parágrafo curto de 3 a 5 linhas como notícia pública publicada no CitiNet/Data Pool.",
   "specialLoot": [
     {
       "id": "loot-ai-1",
-      "name": "Nome do item ou shard ou favor conquistado",
+      "name": "Nome do item ou favor conquistado",
       "category": "Cromo/Cyberware",
       "valueEb": 750,
       "description": "Breve descrição lore do item resgatado.",
@@ -1169,51 +1177,33 @@ Responda ESTRITAMENTE em formato JSON puro (sem marcações extras fora do JSON)
   "coGMVerdict": "Análise analítica e motivacional do Co-GM para o Mestre e jogadores justificando o IP e orientando a evolução das fichas."
 }`;
 
-  try {
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeKey}`;
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: { responseMimeType: 'application/json' },
-      }),
-    });
-
-    if (res.ok) {
-      const data = await res.json();
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (text) {
-        const parsed = JSON.parse(text);
-        const partyCount = Math.max(1, options.partyMembers.length || 4);
-        return {
-          sessionTitle: options.sessionTitle,
-          difficulty,
-          outcome,
-          totalIP: Number(parsed.totalIP) || 45,
-          ipBreakdown: parsed.ipBreakdown || {
-            base: difficulty.baseIP,
-            outcomeMultiplier: outcome.multiplierIP,
-            objectivesBonus: 10,
-            threatBonus: 5,
-            roleplayBonus: 5,
-            tacticsBonus: 5,
-          },
-          cashEbPerPlayer: Number(parsed.cashEbPerPlayer) || difficulty.baseEb,
-          totalGroupCashEb: (Number(parsed.cashEbPerPlayer) || difficulty.baseEb) * partyCount,
-          reputationChange: Number(parsed.reputationChange) || 0,
-          screamsheetHeadline: parsed.screamsheetHeadline || 'NOTÍCIA LOCAL: TIROTEIO EM NIGHT CITY',
-          screamsheetArticle: parsed.screamsheetArticle || 'Operação relatada no Data Pool.',
-          specialLoot: parsed.specialLoot?.length ? parsed.specialLoot : [SPECIAL_SALVAGE_POOL[0]],
-          mvpHighlights: parsed.mvpHighlights || ['Atuação sólida em combate e cumprimento de contrato.'],
-          nextSessionHooks: parsed.nextSessionHooks || ['Contratante cobra explicações sobre os custos da operação.'],
-          coGMVerdict: parsed.coGMVerdict || 'Excelente progresso operacional nas ruas.',
-          isAiGenerated: true,
-        };
-      }
-    }
-  } catch (err) {
-    console.warn('AI Session Rewards fallback to offline:', err);
+  const parsed = await callGeminiJSON<any>(prompt, { apiKey: options.apiKey });
+  if (parsed) {
+    const partyCount = Math.max(1, options.partyMembers.length || 4);
+    return {
+      sessionTitle: options.sessionTitle,
+      difficulty,
+      outcome,
+      totalIP: Number(parsed.totalIP) || 45,
+      ipBreakdown: parsed.ipBreakdown || {
+        base: difficulty.baseIP,
+        outcomeMultiplier: outcome.multiplierIP,
+        objectivesBonus: 10,
+        threatBonus: 5,
+        roleplayBonus: 5,
+        tacticsBonus: 5,
+      },
+      cashEbPerPlayer: Number(parsed.cashEbPerPlayer) || difficulty.baseEb,
+      totalGroupCashEb: (Number(parsed.cashEbPerPlayer) || difficulty.baseEb) * partyCount,
+      reputationChange: Number(parsed.reputationChange) || 0,
+      screamsheetHeadline: parsed.screamsheetHeadline || 'NOTÍCIA LOCAL: TIROTEIO EM NIGHT CITY',
+      screamsheetArticle: parsed.screamsheetArticle || 'Operação relatada no Data Pool.',
+      specialLoot: parsed.specialLoot?.length ? parsed.specialLoot : [SPECIAL_SALVAGE_POOL[0]],
+      mvpHighlights: parsed.mvpHighlights || ['Atuação sólida em combate e cumprimento de contrato.'],
+      nextSessionHooks: parsed.nextSessionHooks || ['Contratante cobra explicações sobre os custos da operação.'],
+      coGMVerdict: parsed.coGMVerdict || 'Excelente progresso operacional nas ruas.',
+      isAiGenerated: true,
+    };
   }
 
   // Fallback seguro usando motor offline
@@ -1231,7 +1221,7 @@ Responda ESTRITAMENTE em formato JSON puro (sem marcações extras fora do JSON)
   };
 }
 
-// 8. GERADOR NARRATIVO DE NPCS COM IA (DANGER GAL DOSSIER & COREBOOK)
+// 13. GERADOR NARRATIVO DE NPCS COM IA (DANGER GAL DOSSIER & COREBOOK)
 export async function generateAINarrativeNPC(options: {
   tier: NPCTier;
   archetypeId: NarrativeArchetypeId;
@@ -1241,15 +1231,11 @@ export async function generateAINarrativeNPC(options: {
   extraContext?: string;
   apiKey?: string;
 }): Promise<NPCSheet> {
-  const activeKey = getEffectiveApiKey(options.apiKey);
   const baseNPC = generateNarrativeNPCOffline(options);
-
-  if (!activeKey) {
-    return baseNPC;
-  }
 
   const prompt = `Você é o "Cyberpunk Neural Co-GM", gerador oficial de NPCs com profundidade narrativa para Cyberpunk RED (Core Rulebook e Danger Gal Dossier).
 Crie um NPC marcante com foco em NARRATIVA, MOTIVAÇÕES, FRAQUEZAS E DIÁLOGOS NOIR.
+IMPORTANTE: Crie um personagem totalmente NOVO, único e memorável.
 
 PARÂMETROS:
 - Escalão (Tier): ${options.tier.toUpperCase()}
@@ -1276,47 +1262,29 @@ Retorne ESTRITAMENTE em formato JSON puro:
   ]
 }`;
 
-  try {
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeKey}`;
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: { responseMimeType: 'application/json' },
-      }),
-    });
-
-    if (res.ok) {
-      const data = await res.json();
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (text) {
-        const parsed = JSON.parse(text);
-        return {
-          ...baseNPC,
-          name: parsed.name || baseNPC.name,
-          role: parsed.role || baseNPC.role,
-          appearance: parsed.appearance || baseNPC.appearance,
-          description: `${parsed.appearance || baseNPC.appearance} Conhecido como "${parsed.name || baseNPC.name}".`,
-          quirks: parsed.quirks || baseNPC.quirks,
-          motivation: parsed.motivation || baseNPC.motivation,
-          weaknessOrSecret: parsed.weaknessOrSecret || baseNPC.weaknessOrSecret,
-          dialogueHook: parsed.dialogueHook || baseNPC.dialogueHook,
-          surrenderTrigger: parsed.surrenderTrigger || baseNPC.surrenderTrigger,
-          tactics: `${parsed.tactics || baseNPC.tactics} ${parsed.surrenderTrigger || baseNPC.surrenderTrigger}`,
-          pocketLoot: parsed.pocketLoot?.length ? parsed.pocketLoot : baseNPC.pocketLoot,
-          gear: parsed.pocketLoot?.length ? parsed.pocketLoot : baseNPC.gear,
-        };
-      }
-    }
-  } catch (err) {
-    console.warn('AI Narrative NPC fallback to offline:', err);
+  const parsed = await callGeminiJSON<any>(prompt, { apiKey: options.apiKey });
+  if (parsed) {
+    return {
+      ...baseNPC,
+      name: parsed.name || baseNPC.name,
+      role: parsed.role || baseNPC.role,
+      appearance: parsed.appearance || baseNPC.appearance,
+      description: `${parsed.appearance || baseNPC.appearance} Conhecido como "${parsed.name || baseNPC.name}".`,
+      quirks: parsed.quirks || baseNPC.quirks,
+      motivation: parsed.motivation || baseNPC.motivation,
+      weaknessOrSecret: parsed.weaknessOrSecret || baseNPC.weaknessOrSecret,
+      dialogueHook: parsed.dialogueHook || baseNPC.dialogueHook,
+      surrenderTrigger: parsed.surrenderTrigger || baseNPC.surrenderTrigger,
+      tactics: `${parsed.tactics || baseNPC.tactics} ${parsed.surrenderTrigger || baseNPC.surrenderTrigger}`,
+      pocketLoot: parsed.pocketLoot?.length ? parsed.pocketLoot : baseNPC.pocketLoot,
+      gear: parsed.pocketLoot?.length ? parsed.pocketLoot : baseNPC.gear,
+    };
   }
 
   return baseNPC;
 }
 
-// 9. GERADOR DEDICADO DE PETS & BIOCRIATURAS COM IA (CYBERPUNK RED)
+// 14. GERADOR DEDICADO DE PETS & BIOCRIATURAS COM IA (CYBERPUNK RED)
 export async function generateAIPet(options: {
   natureId: PetNatureId;
   sizeId: PetSizeId;
@@ -1326,12 +1294,7 @@ export async function generateAIPet(options: {
   extraContext?: string;
   apiKey?: string;
 }): Promise<NPCSheet> {
-  const activeKey = getEffectiveApiKey(options.apiKey);
   const basePet = generatePetOffline(options);
-
-  if (!activeKey) {
-    return basePet;
-  }
 
   const prompt = `Você é o "Cyberpunk Neural Co-GM", gerador de animais cibernéticos e biocriaturas para Cyberpunk RED (p. 317 Animals & Interface RED Vol. 2 Pet Shop).
 Crie um Pet / Animal Cibernético único e cinematográfico.
@@ -1348,52 +1311,31 @@ Retorne ESTRITAMENTE em formato JSON puro:
   "name": "Nome e (Raça ou Linhagem)",
   "appearance": "Descrição sensorial detalhada da carcaça, pelagem, cromo visível e olhos",
   "quirks": "Comportamento animal peculiar ou cacoete característico",
-  "petInstinct": "Como reage a estranhos e a sons de combate",
-  "tactics": "Diretriz de combate (bote, mordida, imobilização ou fuga)",
-  "specialImplants": ["Implante 1", "Implante 2"],
-  "pocketLoot": [
-    "Item na coleira ou compartimento 1",
-    "Item na coleira ou compartimento 2"
-  ]
+  "petInstinct": "Instinto dominante e comportamento na presença de estranhos",
+  "tactics": "Como ataca ou defende em combate",
+  "specialImplants": ["Implante cibernético 1", "Implante 2"],
+  "pocketLoot": ["Item preso na coleira ou compartimento secreto"]
 }`;
 
-  try {
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeKey}`;
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: { responseMimeType: 'application/json' },
-      }),
-    });
-
-    if (res.ok) {
-      const data = await res.json();
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (text) {
-        const parsed = JSON.parse(text);
-        return {
-          ...basePet,
-          name: parsed.name || basePet.name,
-          appearance: parsed.appearance || basePet.appearance,
-          description: `${parsed.appearance || basePet.appearance} Pertencente a ${options.ownerFaction || 'Submundo'}.`,
-          quirks: parsed.quirks || basePet.quirks,
-          petInstinct: parsed.petInstinct || basePet.petInstinct,
-          tactics: `${parsed.tactics || basePet.tactics}`,
-          cyberware: parsed.specialImplants?.length ? parsed.specialImplants : basePet.cyberware,
-          pocketLoot: parsed.pocketLoot?.length ? parsed.pocketLoot : basePet.pocketLoot,
-        };
-      }
-    }
-  } catch (err) {
-    console.warn('AI Pet fallback to offline:', err);
+  const parsed = await callGeminiJSON<any>(prompt, { apiKey: options.apiKey });
+  if (parsed) {
+    return {
+      ...basePet,
+      name: parsed.name || basePet.name,
+      appearance: parsed.appearance || basePet.appearance,
+      description: `${parsed.appearance || basePet.appearance} Pertencente a ${options.ownerFaction || 'Submundo'}.`,
+      quirks: parsed.quirks || basePet.quirks,
+      petInstinct: parsed.petInstinct || basePet.petInstinct,
+      tactics: `${parsed.tactics || basePet.tactics}`,
+      cyberware: parsed.specialImplants?.length ? parsed.specialImplants : basePet.cyberware,
+      pocketLoot: parsed.pocketLoot?.length ? parsed.pocketLoot : basePet.pocketLoot,
+    };
   }
 
   return basePet;
 }
 
-// 10. LEITURA DE TAROT COM IA (MISTY'S ESOTERICA & CYBERPUNK 2077)
+// 15. LEITURA DE TAROT COM IA (MISTY'S ESOTERICA & CYBERPUNK 2077)
 export async function generateAITarotReading(options: {
   spreadTitle: string;
   cards: { name: string; number: string; position: string; isReversed: boolean; upright: string; reversed: string }[];
@@ -1406,24 +1348,9 @@ export async function generateAITarotReading(options: {
   coGMPlotTwist: string;
   mistyClosingWords: string;
 }> {
-  const activeKey = getEffectiveApiKey(options.apiKey);
-
   const cardListStr = options.cards
     .map(c => `- Posição [${c.position}]: ${c.number} - ${c.name} (${c.isReversed ? 'INVERTIDA / Sombra' : 'DIRETA / Luz'}) -> Significado Base: ${c.isReversed ? c.reversed : c.upright}`)
     .join('\n');
-
-  if (!activeKey) {
-    return {
-      cardsNarrative: options.cards.map(c => ({
-        position: c.position,
-        cardName: `${c.number} - ${c.name} (${c.isReversed ? 'Invertida' : 'Direta'})`,
-        interpretation: c.isReversed ? c.reversed : c.upright,
-      })),
-      overallInterpretation: `As cartas de Night City sussurram através das luzes de néon. O destino da equipe está entrelaçado com ${options.cards[0]?.name || 'o desconhecido'}, alertando que cada contrato tem um custo que não vem impresso em credsticks.`,
-      coGMPlotTwist: 'Uma traição inesperada nos bastidores ou uma complicação mecânica no cromo no momento mais decisivo da cena.',
-      mistyClosingWords: '"As cartas mostram o que pode ser, choomba, não o que tem que ser. Mantenha os olhos bem abertos lá fora."',
-    };
-  }
 
   const prompt = `Você é Misty Ollaszewski, a esotérica e cartomante mais respeitada de Night City (Cyberpunk 2077), atuando como Co-Mestre oracular de RPG.
 Você está realizando uma leitura mística de cartas de Tarot para ${options.characterName ? `o mercenário ${options.characterName}` : 'a equipe de Edgerunners'}.
@@ -1449,36 +1376,23 @@ Retorne ESTRITAMENTE em formato JSON puro:
   "mistyClosingWords": "Uma frase final de despedida comovente de Misty avisando o personagem sobre os perigos da cidade."
 }`;
 
-  try {
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeKey}`;
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: { responseMimeType: 'application/json' },
-      }),
-    });
-
-    if (res.ok) {
-      const data = await res.json();
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (text) {
-        return JSON.parse(text);
-      }
-    }
-  } catch (err) {
-    console.warn('AI Tarot reading fallback:', err);
+  const parsed = await callGeminiJSON<any>(prompt, { apiKey: options.apiKey });
+  if (parsed && parsed.cardsNarrative?.length) {
+    return parsed;
   }
 
+  // Fallback offline dinâmico construído a partir das cartas reais puxadas
+  const cardNames = options.cards.map(c => c.name).join(' e ');
   return {
     cardsNarrative: options.cards.map(c => ({
       position: c.position,
       cardName: `${c.number} - ${c.name} (${c.isReversed ? 'Invertida' : 'Direta'})`,
-      interpretation: c.isReversed ? c.reversed : c.upright,
+      interpretation: c.isReversed
+        ? `Na sombra desta posição, ${c.name} alerta: ${c.reversed}. Cuidado com a pressa e falsas promessas.`
+        : `Nesta posição luminosa, ${c.name} ilumina o caminho: ${c.upright}. Confie nos seus instintos mas mantenha a arma engatilhada.`,
     })),
-    overallInterpretation: `As cartas de Night City trazem uma mensagem clara. A presença de ${options.cards[0]?.name || 'arcanos'} aponta para encruzilhadas onde hesitar por um segundo pode ser fatal.`,
-    coGMPlotTwist: 'Um contato de confiança revela ter dívidas com a corporação inimiga e tenta vender a equipe.',
-    mistyClosingWords: '"Tome cuidado com quem você confia seus segredos, V. O néon esconde muitas sombras."',
+    overallInterpretation: `As cartas de Night City sussurram entre as brumas de incenso. A presença marcante de ${cardNames} revela que os fios do destino estão sob tensão máxima nos distritos escuros da cidade. Não há coincidências no ciberespaço nem nas ruas: cada contrato aceito cobra um pedaço da sua humanidade.`,
+    coGMPlotTwist: `Uma reviravolta dramática ligada à carta ${options.cards[0]?.name || 'dominante'}: o patrocinador da missão oculta um vínculo sanguíneo ou corporativo direto com o alvo do trabalho.`,
+    mistyClosingWords: '"As cartas mostram o que pode ser, choomba, não o que tem que ser. Mantenha os olhos bem abertos lá fora."',
   };
 }

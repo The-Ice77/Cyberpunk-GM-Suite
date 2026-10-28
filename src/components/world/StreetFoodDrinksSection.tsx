@@ -26,7 +26,7 @@ import {
   rollStreetDrink,
   rollVenditGoodie,
 } from '../../data/chanceOfLifetimeData';
-import { getEffectiveApiKey } from '../../services/aiService';
+import { getEffectiveApiKey, callGeminiJSON } from '../../services/aiService';
 
 export const StreetFoodDrinksSection: React.FC = () => {
   const [activeSubTab, setActiveSubTab] = useState<'food' | 'drinks' | 'vendit'>('food');
@@ -98,37 +98,17 @@ ${
 }`
 }`;
 
-    if (activeKey) {
-      try {
-        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeKey}`;
-        const res = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ role: 'user', parts: [{ text: prompt }] }],
-            generationConfig: { responseMimeType: 'application/json' },
-          }),
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (text) {
-            const parsed = JSON.parse(text);
-            if (aiItemType === 'food') {
-              setSelectedFood(parsed);
-              setActiveSubTab('food');
-            } else {
-              setSelectedDrink(parsed);
-              setActiveSubTab('drinks');
-            }
-            setIsAiLoading(false);
-            return;
-          }
-        }
-      } catch (e) {
-        console.warn('AI Street Food fallback:', e);
+    const parsed = await callGeminiJSON<any>(prompt);
+    if (parsed) {
+      if (aiItemType === 'food') {
+        setSelectedFood(parsed);
+        setActiveSubTab('food');
+      } else {
+        setSelectedDrink(parsed);
+        setActiveSubTab('drinks');
       }
+      setIsAiLoading(false);
+      return;
     }
 
     // Fallback

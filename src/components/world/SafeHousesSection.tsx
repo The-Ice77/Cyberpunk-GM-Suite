@@ -21,7 +21,7 @@ import {
   SAFE_HOUSES_LIST,
   rollSafeHouse,
 } from '../../data/chanceOfLifetimeData';
-import { getEffectiveApiKey } from '../../services/aiService';
+import { getEffectiveApiKey, callGeminiJSON } from '../../services/aiService';
 
 export const SafeHousesSection: React.FC = () => {
   const [selectedHouse, setSelectedHouse] = useState<SafeHouseItem>(SAFE_HOUSES_LIST[0]);
@@ -80,32 +80,12 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido:
   "rulesHook": "Regra mecânica / teste com DV para o Mestre resolver complicações"
 }`;
 
-    if (activeKey) {
-      try {
-        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeKey}`;
-        const res = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ role: 'user', parts: [{ text: prompt }] }],
-            generationConfig: { responseMimeType: 'application/json' },
-          }),
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (text) {
-            const parsed = JSON.parse(text);
-            setAiSafeHouse(parsed);
-            setSelectedHouse(parsed);
-            setIsAiLoading(false);
-            return;
-          }
-        }
-      } catch (e) {
-        console.warn('AI Safehouse fallback:', e);
-      }
+    const parsed = await callGeminiJSON<SafeHouseItem>(prompt);
+    if (parsed) {
+      setAiSafeHouse(parsed);
+      setSelectedHouse(parsed);
+      setIsAiLoading(false);
+      return;
     }
 
     // Fallback

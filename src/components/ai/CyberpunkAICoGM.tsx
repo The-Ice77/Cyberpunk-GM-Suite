@@ -136,7 +136,7 @@ Sou seu copiloto tático e narrativo em Night City. Conheço todas as regras ofi
             <h3 className="text-xs font-bold text-zinc-100 font-mono tracking-wider uppercase flex items-center gap-2">
               <span>Neural Co-GM</span>
               <span className="text-[9px] px-1.5 py-0.2 rounded bg-red-950/80 border border-red-800 text-red-300 font-mono">
-                IA 1.5
+                Gemini Flash
               </span>
             </h3>
             <span className="text-[10px] text-zinc-400 font-mono flex items-center gap-1.5">
@@ -408,7 +408,7 @@ Sou seu copiloto tático e narrativo em Night City. Conheço todas as regras ofi
             </div>
 
             <p className="text-xs text-zinc-400 leading-relaxed font-sans">
-              Insira sua chave gratuita da API do Gemini para respostas gerativas com o modelo <strong>Gemini 1.5 Flash</strong>. A chave é armazenada de forma privada no seu navegador (<code className="text-cyan-400 font-mono">localStorage</code>) ou no seu arquivo local <code className="text-amber-400 font-mono">.env.local</code>. Se não configurar nenhuma chave, o sistema opera no modo nativo <strong>Cyberpunk Oracle Offline</strong>.
+              Insira sua chave da API do Gemini para respostas gerativas ultra-rápidas e variadas com a família <strong>Gemini Flash</strong> (com cascata resiliente e anti-repetição). A chave é armazenada de forma privada no seu navegador (<code className="text-cyan-400 font-mono">localStorage</code>) ou no seu arquivo local <code className="text-amber-400 font-mono">.env.local</code>. Se não configurar nenhuma chave, o sistema opera no modo nativo <strong>Cyberpunk Oracle Offline</strong>.
             </p>
 
             <input
