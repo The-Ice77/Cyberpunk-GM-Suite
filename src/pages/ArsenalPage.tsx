@@ -33,6 +33,7 @@ import { POCKET_PERSONAL_ITEMS, BODY_BANK_HARVEST_TABLE } from '../data/lootData
 import { VEHICLES_LIST, NOMAD_UPGRADES_TABLE, VehicleModel, VehicleCategory } from '../data/vehiclesData';
 import { NPCTier, WeaponItem, CyberwareItem, ArmorItem, AttachmentItem, AmmunitionItem, GearItem, StreetDrugItem } from '../types/system';
 import { generateAICustomVehicle } from '../services/aiService';
+import { NightMarketSection } from '../components/world/NightMarketSection';
 
 type CatalogCategory =
   | 'all'
@@ -46,7 +47,7 @@ type CatalogCategory =
 
 export const ArsenalPage: React.FC = () => {
   const { system, isRed } = useSystem();
-  const [activeTab, setActiveTab] = useState<'catalog' | 'loot' | 'garage'>('catalog');
+  const [activeTab, setActiveTab] = useState<'catalog' | 'market' | 'loot' | 'garage'>('catalog');
 
   // LOOT STATE
   const [lootTier, setLootTier] = useState<NPCTier>('mook');
@@ -303,6 +304,16 @@ export const ArsenalPage: React.FC = () => {
             }`}
           >
             Catálogo Geral de Equipamentos
+          </button>
+          <button
+            onClick={() => setActiveTab('market')}
+            className={`px-3 py-1.5 rounded-lg transition ${
+              activeTab === 'market'
+                ? 'bg-zinc-800 text-zinc-100 font-bold shadow-sm'
+                : 'text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            Mercado Negro (Night Market)
           </button>
           <button
             onClick={() => setActiveTab('loot')}
@@ -819,7 +830,14 @@ export const ArsenalPage: React.FC = () => {
       )}
 
       {/* ======================================================== */}
-      {/* ABA 2: SAQUE DE ABATE (LOOT GENERATOR DETALHADO)         */}
+      {/* ABA 2: MERCADO NEGRO (NIGHT MARKET)                      */}
+      {/* ======================================================== */}
+      {activeTab === 'market' && (
+        <NightMarketSection />
+      )}
+
+      {/* ======================================================== */}
+      {/* ABA 3: SAQUE DE ABATE (LOOT GENERATOR DETALHADO)         */}
       {/* ======================================================== */}
       {activeTab === 'loot' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

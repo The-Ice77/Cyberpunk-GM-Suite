@@ -1,6 +1,7 @@
 import { RULES_CODEX_DATABASE } from '../data/rulesCodexData';
 import { GANGS_LIST } from '../data/gangsData';
 import { strangeWeatherTable } from '../data/weatherData';
+import { NightMarket } from '../data/nightMarketData';
 
 export const DEFAULT_USER_API_KEY = '';
 
@@ -784,6 +785,216 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido com a seguinte estrutura:
     complicationHook: 'Teste de Atuação DV 14 para fingir que são apenas um casal apaixonado e distrair os policiais, ou Furtividade DV 15 para sair pelos fundos.',
     conversationStarter: '"Você prefere morrer de velhice no tédio ou virar uma lenda de Night City queimando antes dos trinta?"',
     secretAgenda: 'Está sendo caçada pela NetWatch por quebrar um firewall corporativo e precisa de alguém com mira boa para cobrir sua retaguarda.',
+    isAi: true,
+  };
+}
+
+// 10. Night Market / Mercado Negro Generator with AI
+export async function generateAINightMarket(
+  preferences?: {
+    district?: string;
+    focusCategory?: string;
+    dangerLevel?: string;
+    prompt?: string;
+  },
+  apiKey?: string
+): Promise<NightMarket> {
+  const activeKey = getEffectiveApiKey(apiKey);
+  const contextDesc = [
+    preferences?.district ? `Distrito: ${preferences.district}` : '',
+    preferences?.focusCategory ? `Foco de Mercadorias: ${preferences.focusCategory}` : '',
+    preferences?.dangerLevel ? `Nível de Perigo / Segurança: ${preferences.dangerLevel}` : '',
+    preferences?.prompt ? `Instruções adicionais: ${preferences.prompt}` : '',
+  ].filter(Boolean).join(' | ');
+
+  const prompt = `Você é o Co-Mestre de Cyberpunk RED especialista nas regras oficiais de "Night Markets" (Mercados Noturnos / Mercado Negro, Livro Básico pp. 336-342).
+Gere um Mercado Negro clandestino completo, atmosférico e perigoso com base nos parâmetros: "${contextDesc || 'Mercado Negro secreto no submundo de Night City'}".
+
+Retorne EXCLUSIVAMENTE um objeto JSON válido com a seguinte estrutura:
+{
+  "id": "night-market-ai-${Date.now()}",
+  "name": "Nome evocativo do Mercado Noturno (ex: Mercado Negro do Esgoto da Linha F, Bazar Clandestino das Docas 44, Feira de Cromo Roubado de Vista del Rey)",
+  "district": "Distrito de Night City (Watson, Westbrook, Heywood, Pacifica, Santo Domingo ou Badlands)",
+  "exactLocation": "Localização secreta exata e acesso",
+  "operatorFixer": {
+    "name": "Nome e apelido do Fixer organizador",
+    "reputation": 6,
+    "quirk": "Cacoete, postura ou mania do Fixer",
+    "securityLevel": "Baixa (Pistolas) ou Média (Solos Armados & Cães K-9) ou Alta (Torres e Snipers nos Telhados)",
+    "entryCondition": "Regra para entrar no mercado (convite, senha, pedágio em eb ou revista de armas)"
+  },
+  "atmosphere": "Descrição sensorial rica (iluminação neon/lâmpadas a óleo, fumaça, cheiro de comida sintética frita, música e tensão armada)",
+  "stalls": [
+    {
+      "vendorName": "Nome do vendedor(a)",
+      "vendorTitle": "Título ou especialidade (ex: Armeiro Clandestino, Ripperdoc de Garagem, Químico dos Valentinos)",
+      "vendorStyle": "Descrição visual do vendedor e sua banca",
+      "vendorPersonality": "Personalidade de negociação e fala",
+      "category": "Armas Pesadas | Cromo & Implantes | Cyberdecks & Softwares | Químicos & Drogas | Contrabando Corporativo | Roupas Blindadas",
+      "specialService": "Serviço extra no local com custo e perícia (ex: Instalação cirúrgica de implante, lixar números de série de arma, quebrar senha de chip)",
+      "items": [
+        {
+          "name": "Nome exato do item",
+          "category": "Categoria do item",
+          "priceEb": 500,
+          "priceLabel": "500eb",
+          "condition": "Novo Lacrado ou Usado em Combate ou Militar Restrito ou Pirateado / Modificado",
+          "stock": 2,
+          "description": "Descrição detalhada do item no universo Cyberpunk",
+          "mechanicalEffect": "Efeito no sistema (dano, blindagem, bônus em perícia ou duração)"
+        }
+      ]
+    }
+  ],
+  "complication": {
+    "title": "Complicação imprevista no mercado (ex: Batida da NCPD, Caçador de Recompensas, Item com Rastreador GPS, Briga de Gangues)",
+    "description": "O que acontece enquanto os personagens estão negociando",
+    "mechanicalHook": "Regra mecânica / teste com DV para o Mestre resolver o evento"
+  },
+  "bargainTip": "Dica prática de pechincha ou negociação com o Fixer"
+}`;
+
+  if (activeKey) {
+    try {
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeKey}`;
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: { responseMimeType: 'application/json' },
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) {
+          const parsed = JSON.parse(text);
+          return {
+            ...parsed,
+            id: `night-market-ai-${Date.now()}`,
+            isAi: true,
+          };
+        }
+      }
+    } catch (e) {
+      console.warn('AI Night Market fallback:', e);
+    }
+  }
+
+  // Fallback se API falhar ou sem chave
+  return {
+    id: `night-market-fallback-${Date.now()}`,
+    name: 'Mercado Negro Clandestino do Subsolo de Kabuki',
+    district: preferences?.district || 'Watson (Kabuki)',
+    exactLocation: 'Túneis de ventilação sob a praça do mercado central de Kabuki, acesso por escada caracol atrás de um açougue sintético.',
+    operatorFixer: {
+      name: 'Rico "Centavo" Valente',
+      reputation: 6,
+      quirk: 'Fuma charutos sintéticos cubanos com ponta dourada e anota débitos em uma placa de ardósia digital.',
+      securityLevel: 'Média (Solos Armados & Cães K-9)',
+      entryCondition: 'Apresentar 20eb na portaria ou senha fornecida por um Ripperdoc de Watson.',
+    },
+    atmosphere: 'Vapor quente avermelhado de geradores a CHOOH2, bancas de ferro dobrável iluminadas por tiras de LED neon ciano, aroma acre de solda eletrônica misturado com carne de porco clonada grelhando.',
+    stalls: [
+      {
+        vendorName: 'Klaus "Balaço" Becker',
+        vendorTitle: 'Armeiro Militar Veterano',
+        vendorStyle: 'Colete tático gasto sem mangas revelando braços cobertos de queimaduras de pólvora e óculos balísticos amarelados.',
+        vendorPersonality: 'Direto, sem rodeios. Só aceita eurodólares em espécie ou munição pesada em troca.',
+        category: 'Armas Pesadas & Munições Especiais',
+        specialService: 'Lixar número de série e trocar agulha de percussão em 15 minutos (40eb).',
+        items: [
+          {
+            name: 'Fuzil de Precisão Sternmeyer Sniping-55',
+            category: 'Fuzil de Precisão',
+            priceEb: 1100,
+            priceLabel: '1.100eb',
+            condition: 'Militar Restrito',
+            stock: 1,
+            description: 'Fuzil antimaterial com luneta holográfica de zoom 12x e bipé retrátil de titânio.',
+            mechanicalEffect: 'Dano 5d6, ignora penalidades de distância longa acima de 50 metros se apoiado.',
+          },
+          {
+            name: 'Caixa de Balas Incendiárias 9mm (50 un)',
+            category: 'Munição Especial',
+            priceEb: 150,
+            priceLabel: '150eb',
+            condition: 'Novo Lacrado',
+            stock: 3,
+            description: 'Projéteis com ponta oca preenchida com gel inflamável de fósforo branco.',
+            mechanicalEffect: 'Se causar dano ao HP, o alvo pega fogo causando 2 de dano por turno até apagar.',
+          },
+        ],
+      },
+      {
+        vendorName: 'Doc Haruto "Nervo" Sato',
+        vendorTitle: 'Cirurgião Excluído da Arasaka',
+        vendorStyle: 'Máscara respiratória cirúrgica com filtros laterais cromados, avental emborrachado e ferramentas ultrassônicas na bancada.',
+        vendorPersonality: 'Metódico e frio. Explica os riscos de ciberpsicose com indiferença cirúrgica.',
+        category: 'Cromo de Combate & Implantes Ilicitamente Adquiridos',
+        specialService: 'Implantação estéril de cromo no furgão médico adjacente (Cirurgia DV 15, 120eb).',
+        items: [
+          {
+            name: 'Linear Frame Beta (Exoesqueleto Interno)',
+            category: 'Cibernético Corporal',
+            priceEb: 2500,
+            priceLabel: '2.500eb',
+            condition: 'Militar Restrito',
+            stock: 1,
+            description: 'Vigas de fibra de titânio aparafusadas na coluna e fêmures, elevando a força física a níveis desumanos.',
+            mechanicalEffect: 'Define o atributo BODY em 14. Dano desarmado sobe para 4d6. Exige Interface Neural.',
+          },
+          {
+            name: 'Olho Cibernético Kiroshi com Scanner de Drones',
+            category: 'Cibernético Óptico',
+            priceEb: 650,
+            priceLabel: '650eb',
+            condition: 'Usado em Combate',
+            stock: 2,
+            description: 'Íris carmesim que detecta sinais de radiofrequência e sobrevoo de drones espiões a até 200m.',
+            mechanicalEffect: '+2 em Percepção contra vigilância eletrônica e emboscadas aéreas.',
+          },
+        ],
+      },
+      {
+        vendorName: 'Nyx "Datastream"',
+        vendorTitle: 'Techie Clandestina de Hardware',
+        vendorStyle: 'Macacão de corrida com fiação exposta, soldador a laser pendurado no coldre e pulseira de leds de diagnóstico.',
+        vendorPersonality: 'Hiperativa e apaixonada por peças raras. Adora falar sobre overclocking de processadores.',
+        category: 'Cyberdecks, Softwares Proibidos & Gadgets Hackers',
+        specialService: 'Overclock de cyberdeck para adicionar +1 slot de memória temporário (80eb).',
+        items: [
+          {
+            name: 'Cyberdeck Arasaka Portátil Militar "Shinigami-3"',
+            category: 'Cyberdeck',
+            priceEb: 1400,
+            priceLabel: '1.400eb',
+            condition: 'Pirateado / Modificado',
+            stock: 1,
+            description: 'Carcaça preta fosca com placa de proteção contra contra-ataques neurais.',
+            mechanicalEffect: '8 slots de programas/hardware. Reduz em 2 o dano de Black ICE sofrido pelo Netrunner.',
+          },
+          {
+            name: 'Black ICE Defensivo: Vira-Lata (Bloodhound)',
+            category: 'Software Clandestino',
+            priceEb: 400,
+            priceLabel: '400eb',
+            condition: 'Novo Lacrado',
+            stock: 2,
+            description: 'Programa farejador que rastreia a localização física exata de quem tentar invadir seu cyberdeck.',
+            mechanicalEffect: 'Rastreia o IP e terminal do Netrunner invasor em até 1 minuto de combate na rede.',
+          },
+        ],
+      },
+    ],
+    complication: {
+      title: 'Tiroteio Repentino: Invasão da Gangue Tyger Claws',
+      description: 'Quatro membros da gangue Tyger Claws em motos katana aceleram pelos corredores estreitos do mercado exigindo que o Fixer pague a porcentagem de proteção da semana, atirando para o alto.',
+      mechanicalHook: 'Teste de Esquiva ou Tática DV 14 para se abrigar atrás das bancas blindadas sem perder as compras, ou Intimidação DV 16 para fazer os motoqueiros recuarem.',
+    },
+    bargainTip: 'Regra Oficial de Pechincha (CP:R p. 338): Faça um teste resistido de Negociação (Trading) contra o vendedor. Uma margem de vitória de +3 ou mais reduz o preço final em 10% a 20%.',
     isAi: true,
   };
 }

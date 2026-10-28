@@ -42,6 +42,7 @@ import { DATING_KEYWORDS, DATING_LOCATIONS, DATING_COMPLICATIONS } from '../data
 import { SCREAMSHEET_NETWORKS, SCREAMSHEET_TEMPLATES } from '../data/screamsheetData';
 import { GANGS_LIST, GangProfile } from '../data/gangsData';
 import { generateAIExtendedEncounter, generateAIScreamsheet, generateAICustomBar, generateAIDate, AIDateResult } from '../services/aiService';
+import { NightMarketSection } from '../components/world/NightMarketSection';
 
 // Gang Map Overlay Data
 interface MapGangSpot {
@@ -253,7 +254,7 @@ export const WorldPage: React.FC = () => {
   const [isAiLoading, setIsAiLoading] = useState<boolean>(false);
 
   // VENUES & SOCIAL STATE
-  const [venueSubTab, setVenueSubTab] = useState<'bars' | 'dating' | 'screamsheets'>('bars');
+  const [venueSubTab, setVenueSubTab] = useState<'bars' | 'market' | 'dating' | 'screamsheets'>('bars');
   const [barFilterTab, setBarFilterTab] = useState<'all' | 'official' | 'custom'>('all');
   const [customBars, setCustomBars] = useState<BarVenue[]>(() => {
     try {
@@ -703,7 +704,7 @@ export const WorldPage: React.FC = () => {
             onClick={() => setActiveTab('venues')}
             className={`px-3 py-1.5 rounded-md transition ${activeTab === 'venues' ? 'bg-zinc-800 text-zinc-100 font-bold' : 'text-zinc-400 hover:text-zinc-200'}`}
           >
-            Bares, Dating & Notícias
+            Bares, Mercado Negro, Dating & Notícias
           </button>
         </div>
       </div>
@@ -1950,6 +1951,12 @@ export const WorldPage: React.FC = () => {
               Bares & Boates Lendárias
             </button>
             <button
+              onClick={() => setVenueSubTab('market')}
+              className={`px-3 py-1.5 rounded-lg transition ${venueSubTab === 'market' ? 'bg-zinc-800 text-zinc-100 font-bold' : 'text-zinc-400'}`}
+            >
+              Mercado Negro (Night Market)
+            </button>
+            <button
               onClick={() => setVenueSubTab('dating')}
               className={`px-3 py-1.5 rounded-lg transition ${venueSubTab === 'dating' ? 'bg-zinc-800 text-zinc-100 font-bold' : 'text-zinc-400'}`}
             >
@@ -2529,7 +2536,12 @@ export const WorldPage: React.FC = () => {
             </div>
           )}
 
-          {/* 2. DATING */}
+          {/* 2. NIGHT MARKET / MERCADO NEGRO */}
+          {venueSubTab === 'market' && (
+            <NightMarketSection initialDistrict={selectedDistrict?.name} />
+          )}
+
+          {/* 3. DATING */}
           {venueSubTab === 'dating' && (
             <div className="p-6 rounded-2xl bg-[#121217] border border-[#27272a] max-w-2xl mx-auto space-y-5">
               <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
