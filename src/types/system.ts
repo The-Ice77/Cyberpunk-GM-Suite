@@ -192,14 +192,29 @@ export interface WeatherCondition {
   gearRecommendation: string;
 }
 
+export interface RuleStep {
+  step: number;
+  title: string;
+  desc: string;
+}
+
+export interface RuleTableData {
+  headers: string[];
+  rows: (string | number)[][];
+}
+
 export interface RuleEntry {
   id: string;
   title: string;
-  category: 'Combate' | 'Netrunning' | 'Cibernéticos' | 'Sobrevivência' | 'Sociais' | 'Economia';
+  category: 'Combate' | 'Netrunning' | 'Cibernéticos' | 'Sobrevivência' | 'Sociais' | 'Economia' | 'Veículos' | 'Medicina';
   system: 'RED' | '2020' | 'BOTH';
   summary: string;
   mechanics: string;
   formulaOrTable?: string;
   bookCitation: string;
   tags: string[];
+  steps?: RuleStep[];
+  gmTip?: string;
+  tableData?: RuleTableData;
+  quickFormula?: string;
 }

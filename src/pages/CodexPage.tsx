@@ -39,10 +39,34 @@ import {
 import { RuleEntry } from '../types/system';
 import { generateProceduralWeapon, generateProceduralCyberware } from '../data/customForgeData';
 import { generateAICustomWeaponDetailed, generateAICustomCyberwareDetailed } from '../services/aiService';
+import { GmReferenceTablesSection } from '../components/codex/GmReferenceTablesSection';
 
 type MainTab = 'official' | 'campaign' | 'homebrew';
 type OfficialSubTab = 'bestiary' | 'rules';
 type HomebrewSubTab = 'weapons' | 'cyberware' | 'enemies';
+
+const getCategoryBadgeClass = (category: string) => {
+  switch (category) {
+    case 'Combate':
+      return 'bg-red-950/60 text-red-300 border-red-800/60';
+    case 'Netrunning':
+      return 'bg-blue-950/60 text-blue-300 border-blue-800/60';
+    case 'Cibernéticos':
+      return 'bg-purple-950/60 text-purple-300 border-purple-800/60';
+    case 'Sobrevivência':
+      return 'bg-amber-950/60 text-amber-300 border-amber-800/60';
+    case 'Sociais':
+      return 'bg-yellow-950/60 text-yellow-300 border-yellow-800/60';
+    case 'Economia':
+      return 'bg-emerald-950/60 text-emerald-300 border-emerald-800/60';
+    case 'Veículos':
+      return 'bg-orange-950/60 text-orange-300 border-orange-800/60';
+    case 'Medicina':
+      return 'bg-rose-950/60 text-rose-300 border-rose-800/60';
+    default:
+      return 'bg-zinc-800 text-zinc-300 border-zinc-700';
+  }
+};
 
 export const CodexPage: React.FC = () => {
   const { system, isRed } = useSystem();
@@ -52,6 +76,7 @@ export const CodexPage: React.FC = () => {
   // Navigation State
   const [activeTab, setActiveTab] = useState<MainTab>('official');
   const [officialSubTab, setOfficialSubTab] = useState<OfficialSubTab>('bestiary');
+  const [rulesViewMode, setRulesViewMode] = useState<'tables' | 'codex'>('tables');
   const [homebrewSubTab, setHomebrewSubTab] = useState<HomebrewSubTab>('weapons');
 
   // Search and Filters for Official Rules
@@ -142,7 +167,7 @@ export const CodexPage: React.FC = () => {
   }, [homebrewData]);
 
   // Categories for Rules
-  const RULES_CATEGORIES = ['Todas', 'Combate', 'Netrunning', 'Cibernéticos', 'Sobrevivência', 'Sociais', 'Economia'];
+  const RULES_CATEGORIES = ['Todas', 'Combate', 'Netrunning', 'Cibernéticos', 'Sobrevivência', 'Sociais', 'Economia', 'Veículos', 'Medicina'];
 
   // Filter Rules
   const filteredRules = RULES_CODEX_DATABASE.filter(r => {
@@ -188,7 +213,9 @@ export const CodexPage: React.FC = () => {
 
   // Copy rule
   const handleCopyRule = (r: RuleEntry) => {
-    const txt = `[REGRA: ${r.title}] (${r.bookCitation})\n${r.summary}\n\nMecânica:\n${r.mechanics}\n\n${r.formulaOrTable || ''}`;
+    const formulaStr = r.quickFormula ? `\n⚡ Fórmula Rápida: ${r.quickFormula}\n` : '';
+    const tipStr = r.gmTip ? `\n💡 Dica do Mestre: ${r.gmTip}\n` : '';
+    const txt = `[REGRA: ${r.title}] (${r.bookCitation})${formulaStr}\nResumo:\n${r.summary}\n\nResolução Mecânica:\n${r.mechanics}${tipStr}\n${r.formulaOrTable || ''}`;
     navigator.clipboard.writeText(txt);
     setCopiedId(r.id);
     setTimeout(() => setCopiedId(null), 1500);
@@ -743,119 +770,260 @@ export const CodexPage: React.FC = () => {
           {/* SUB-VIEW 1.2: CÓDICE DE REGRAS OFICIAIS */}
           {officialSubTab === 'rules' && (
             <div className="space-y-4">
-              {/* Search and Category Filters */}
-              <div className="p-4 rounded-2xl bg-[#121217] border border-[#27272a] space-y-3">
-                <div className="flex flex-col sm:flex-row items-center gap-3">
-                  <div className="relative flex-1 w-full">
-                    <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-2.5" />
-                    <input
-                      type="text"
-                      placeholder="Pesquisar por regra (ex: Autofire, Ciberpsicose, Ferimento Crítico, Ablação, BTM...)"
-                      value={searchTerm}
-                      onChange={e => setSearchTerm(e.target.value)}
-                      className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-xl pl-9 pr-4 py-2 text-xs text-zinc-200 focus:outline-none focus:border-red-500"
-                    />
-                  </div>
-
-                  {/* System filter */}
-                  <select
-                    value={selectedSystem}
-                    onChange={e => setSelectedSystem(e.target.value as any)}
-                    className="w-full sm:w-auto bg-[#0a0a0d] border border-[#27272a] rounded-xl px-3 py-2 text-xs font-mono text-zinc-300 focus:outline-none"
+              {/* Rules Mode Selector: Escudo do Mestre vs Códice Detalhado */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-[#121217] p-2 rounded-2xl border border-[#27272a] gap-2">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setRulesViewMode('tables')}
+                    className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition ${
+                      rulesViewMode === 'tables'
+                        ? 'bg-red-600 text-white font-bold shadow-md shadow-red-950/40'
+                        : 'bg-[#0a0a0d] text-zinc-400 hover:text-zinc-200 border border-zinc-800'
+                    }`}
                   >
-                    <option value="BOTH">Ambos os Sistemas</option>
-                    <option value="RED">Apenas RED (2045)</option>
-                    <option value="2020">Apenas 2020</option>
-                  </select>
+                    <Shield className="w-4 h-4 text-amber-300" />
+                    <span>Escudo do Mestre (Tabelas Rápidas)</span>
+                  </button>
+
+                  <button
+                    onClick={() => setRulesViewMode('codex')}
+                    className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition ${
+                      rulesViewMode === 'codex'
+                        ? 'bg-red-600 text-white font-bold shadow-md shadow-red-950/40'
+                        : 'bg-[#0a0a0d] text-zinc-400 hover:text-zinc-200 border border-zinc-800'
+                    }`}
+                  >
+                    <BookOpen className="w-4 h-4 text-rose-300" />
+                    <span>Códice Explicativo de Regras ({filteredRules.length})</span>
+                  </button>
                 </div>
 
-                {/* Categories Pills */}
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  {RULES_CATEGORIES.map(cat => (
-                    <button
-                      key={cat}
-                      onClick={() => setSelectedCategory(cat)}
-                      className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
-                        selectedCategory === cat
-                          ? 'bg-zinc-800 text-zinc-100 font-bold border border-zinc-600'
-                          : 'bg-[#0a0a0d] text-zinc-400 hover:text-zinc-200 border border-[#27272a]'
-                      }`}
-                    >
-                      {cat}
-                    </button>
-                  ))}
-                </div>
+                <span className="text-[11px] font-mono text-zinc-500 px-2 hidden md:inline">
+                  {rulesViewMode === 'tables'
+                    ? '⚡ Matrizes de DVs, Rolador de Crítico 2d6, Coberturas e Sobrevivência'
+                    : '📖 Fórmulas passo a passo e resoluções mecânicas oficiais'}
+                </span>
               </div>
 
-              {/* Rules Cards Grid */}
-              {filteredRules.length > 0 ? (
+              {/* RENDER VIEW 1: ESCUDO DO MESTRE COM TABELAS RÁPIDAS */}
+              {rulesViewMode === 'tables' && <GmReferenceTablesSection />}
+
+              {/* RENDER VIEW 2: CÓDICE DETALHADO DE REGRAS */}
+              {rulesViewMode === 'codex' && (
                 <div className="space-y-4">
-                  {filteredRules.map(rule => (
-                    <div
-                      key={rule.id}
-                      className="p-6 rounded-2xl bg-[#121217] border border-[#27272a] space-y-4 shadow-sm hover:border-zinc-700 transition"
-                    >
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#27272a] gap-2">
-                        <div className="flex items-center gap-2.5">
-                          <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700">
-                            {rule.category}
-                          </span>
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-900 text-zinc-400">
-                            {rule.system}
-                          </span>
-                          <h2 className="text-base font-bold text-zinc-100">{rule.title}</h2>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <span className="text-[11px] font-mono text-red-400 bg-red-950/40 px-2 py-0.5 rounded border border-red-800/40">
-                            {rule.bookCitation}
-                          </span>
-                          <button
-                            onClick={() => handleCopyRule(rule)}
-                            className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200 border border-zinc-700 transition"
-                            title="Copiar Resumo da Regra"
-                          >
-                            {copiedId === rule.id ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                          </button>
-                        </div>
+                  {/* Search and Category Filters */}
+                  <div className="p-4 rounded-2xl bg-[#121217] border border-[#27272a] space-y-3">
+                    <div className="flex flex-col sm:flex-row items-center gap-3">
+                      <div className="relative flex-1 w-full">
+                        <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-2.5" />
+                        <input
+                          type="text"
+                          placeholder="Pesquisar por regra (ex: Autofire, Ciberpsicose, Ferimento Crítico, Ablação, BTM...)"
+                          value={searchTerm}
+                          onChange={e => setSearchTerm(e.target.value)}
+                          className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-xl pl-9 pr-4 py-2 text-xs text-zinc-200 focus:outline-none focus:border-red-500"
+                        />
                       </div>
 
-                      {/* Summary */}
-                      <p className="text-xs text-zinc-300 leading-relaxed font-sans font-medium">
-                        {rule.summary}
-                      </p>
-
-                      {/* Mechanics Detail */}
-                      <div className="p-3.5 rounded-xl bg-[#0a0a0d] border border-[#27272a] text-xs text-zinc-300 leading-relaxed space-y-1">
-                        <span className="text-[10px] font-mono uppercase text-zinc-500 font-bold block">
-                          Resolução Mecânica Completa:
-                        </span>
-                        <p>{rule.mechanics}</p>
-                      </div>
-
-                      {/* Formula or Table Breakdown */}
-                      {rule.formulaOrTable && (
-                        <div className="p-3.5 rounded-xl bg-[#0e0e14] border border-zinc-800/80 font-mono text-[11px] text-zinc-300 whitespace-pre-line leading-relaxed">
-                          {rule.formulaOrTable}
-                        </div>
-                      )}
-
-                      {/* Tags */}
-                      <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[10px] font-mono text-zinc-500">
-                        <Tag className="w-3 h-3 text-zinc-600" />
-                        {rule.tags.map((t, idx) => (
-                          <span key={idx} className="bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800">
-                            #{t}
-                          </span>
-                        ))}
-                      </div>
+                      {/* System filter */}
+                      <select
+                        value={selectedSystem}
+                        onChange={e => setSelectedSystem(e.target.value as any)}
+                        className="w-full sm:w-auto bg-[#0a0a0d] border border-[#27272a] rounded-xl px-3 py-2 text-xs font-mono text-zinc-300 focus:outline-none"
+                      >
+                        <option value="BOTH">Ambos os Sistemas</option>
+                        <option value="RED">Apenas RED (2045)</option>
+                        <option value="2020">Apenas 2020</option>
+                      </select>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="p-12 rounded-2xl bg-[#121217] border border-dashed border-[#27272a] text-center space-y-2">
-                  <BookOpen className="w-8 h-8 text-zinc-600 mx-auto" />
-                  <p className="text-xs text-zinc-400">Nenhuma regra encontrada para os termos digitados.</p>
+
+                    {/* Categories Pills */}
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {RULES_CATEGORIES.map(cat => (
+                        <button
+                          key={cat}
+                          onClick={() => setSelectedCategory(cat)}
+                          className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
+                            selectedCategory === cat
+                              ? 'bg-zinc-800 text-zinc-100 font-bold border border-zinc-600'
+                              : 'bg-[#0a0a0d] text-zinc-400 hover:text-zinc-200 border border-[#27272a]'
+                          }`}
+                        >
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Rules Cards Grid */}
+                  {filteredRules.length > 0 ? (
+                    <div className="space-y-4">
+                      {filteredRules.map(rule => (
+                        <div
+                          key={rule.id}
+                          className="p-6 rounded-2xl bg-[#121217] border border-[#27272a] space-y-4 shadow-sm hover:border-zinc-700 transition"
+                        >
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#27272a] gap-2">
+                            <div className="flex items-center gap-2.5 flex-wrap">
+                              <span
+                                className={`text-[10px] font-mono uppercase px-2.5 py-0.5 rounded border font-bold ${getCategoryBadgeClass(
+                                  rule.category
+                                )}`}
+                              >
+                                {rule.category}
+                              </span>
+                              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-900 text-zinc-400 border border-zinc-800">
+                                {rule.system === 'BOTH' ? 'RED & 2020' : rule.system}
+                              </span>
+                              <h2 className="text-base font-bold text-zinc-100">{rule.title}</h2>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <span className="text-[11px] font-mono text-red-400 bg-red-950/40 px-2 py-0.5 rounded border border-red-800/40">
+                                {rule.bookCitation}
+                              </span>
+                              <button
+                                onClick={() => handleCopyRule(rule)}
+                                className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200 border border-zinc-700 transition"
+                                title="Copiar Resumo da Regra"
+                              >
+                                {copiedId === rule.id ? (
+                                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                ) : (
+                                  <Copy className="w-3.5 h-3.5" />
+                                )}
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Quick Formula Banner */}
+                          {rule.quickFormula && (
+                            <div className="p-3 rounded-xl bg-cyan-950/20 border border-cyan-800/40 flex items-center gap-2 text-xs font-mono text-cyan-300">
+                              <Zap className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+                              <div>
+                                <strong className="text-cyan-400 uppercase text-[10px] tracking-wider block">
+                                  Fórmula de Resolução Rápida:
+                                </strong>
+                                <span>{rule.quickFormula}</span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Summary */}
+                          <p className="text-xs text-zinc-300 leading-relaxed font-sans font-medium">
+                            {rule.summary}
+                          </p>
+
+                          {/* Step-by-Step Resolution Workflow */}
+                          {rule.steps && rule.steps.length > 0 && (
+                            <div className="space-y-2 pt-1">
+                              <span className="text-[10px] font-mono uppercase text-zinc-400 font-bold flex items-center gap-1.5">
+                                <Layers className="w-3.5 h-3.5 text-red-400" />
+                                Passo a Passo de Resolução na Mesa:
+                              </span>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                                {rule.steps.map(s => (
+                                  <div
+                                    key={s.step}
+                                    className="p-3 rounded-xl bg-[#0a0a0d] border border-zinc-800/80 space-y-1 relative overflow-hidden"
+                                  >
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="w-4 h-4 rounded-full bg-red-950 text-red-400 border border-red-800 text-[10px] font-mono font-bold flex items-center justify-center">
+                                        {s.step}
+                                      </span>
+                                      <strong className="text-xs text-zinc-200">{s.title}</strong>
+                                    </div>
+                                    <p className="text-[11px] text-zinc-400 font-sans leading-relaxed">{s.desc}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Mechanics Detail */}
+                          <div className="p-3.5 rounded-xl bg-[#0a0a0d] border border-[#27272a] text-xs text-zinc-300 leading-relaxed space-y-1">
+                            <span className="text-[10px] font-mono uppercase text-zinc-500 font-bold block">
+                              Resolução Mecânica Completa:
+                            </span>
+                            <p className="whitespace-pre-line">{rule.mechanics}</p>
+                          </div>
+
+                          {/* Structured Table Data */}
+                          {rule.tableData ? (
+                            <div className="rounded-xl border border-zinc-800/80 overflow-hidden bg-[#0a0a0d]">
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-left text-xs border-collapse">
+                                  <thead>
+                                    <tr className="bg-zinc-900/90 text-zinc-400 font-mono text-[10px] border-b border-zinc-800">
+                                      {rule.tableData.headers.map((h, i) => (
+                                        <th key={i} className="py-2 px-3 whitespace-nowrap">
+                                          {h}
+                                        </th>
+                                      ))}
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-zinc-800/60 font-mono text-[11px]">
+                                    {rule.tableData.rows.map((row, rIdx) => (
+                                      <tr key={rIdx} className="hover:bg-zinc-800/20">
+                                        {row.map((cell, cIdx) => (
+                                          <td
+                                            key={cIdx}
+                                            className={`py-2 px-3 ${
+                                              cIdx === 0 ? 'font-bold text-zinc-200' : 'text-zinc-300'
+                                            }`}
+                                          >
+                                            {cell}
+                                          </td>
+                                        ))}
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          ) : (
+                            rule.formulaOrTable && (
+                              <div className="p-3.5 rounded-xl bg-[#0e0e14] border border-zinc-800/80 font-mono text-[11px] text-zinc-300 whitespace-pre-line leading-relaxed">
+                                {rule.formulaOrTable}
+                              </div>
+                            )
+                          )}
+
+                          {/* GM Tip Alert Box */}
+                          {rule.gmTip && (
+                            <div className="p-3.5 rounded-xl bg-amber-950/20 border border-amber-800/40 text-xs text-amber-200 flex items-start gap-2.5">
+                              <Sparkles className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                              <div>
+                                <strong className="text-amber-400 font-mono uppercase text-[10px] tracking-wider block">
+                                  Dica do Mestre (GM Tip):
+                                </strong>
+                                <p className="font-sans leading-relaxed">{rule.gmTip}</p>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Tags */}
+                          <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[10px] font-mono text-zinc-500">
+                            <Tag className="w-3 h-3 text-zinc-600" />
+                            {rule.tags.map((t, idx) => (
+                              <button
+                                key={idx}
+                                onClick={() => setSearchTerm(t)}
+                                className="bg-zinc-900 hover:bg-zinc-800 hover:text-zinc-300 px-1.5 py-0.5 rounded border border-zinc-800 transition"
+                              >
+                                #{t}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-12 rounded-2xl bg-[#121217] border border-dashed border-[#27272a] text-center space-y-2">
+                      <BookOpen className="w-8 h-8 text-zinc-600 mx-auto" />
+                      <p className="text-xs text-zinc-400">Nenhuma regra encontrada para os termos digitados.</p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -863,8 +1031,6 @@ export const CodexPage: React.FC = () => {
         </div>
       )}
 
-      {/* ======================================================== */}
-      {/* ABA 2: BIBLIOTECA DO MESTRE (CAMPANHA)                   */}
       {/* ======================================================== */}
       {activeTab === 'campaign' && (
         <div className="space-y-6">
