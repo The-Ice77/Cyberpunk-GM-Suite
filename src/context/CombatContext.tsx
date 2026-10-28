@@ -34,6 +34,7 @@ interface CombatContextType {
   activeTurnIndex: number;
   roundNumber: number;
   addCombatant: (c: Combatant) => void;
+  addMultipleCombatants: (items: Combatant[]) => void;
   removeCombatant: (id: string) => void;
   updateHP: (id: string, delta: number) => void;
   ablateSP: (id: string, location: 'head' | 'body' | 'torso' | 'rArm' | 'lArm' | 'rLeg' | 'lLeg', delta: number) => void;
@@ -71,6 +72,10 @@ export const CombatProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const addCombatant = (c: Combatant) => {
     setCombatants(prev => [...prev, c]);
+  };
+
+  const addMultipleCombatants = (items: Combatant[]) => {
+    setCombatants(prev => [...prev, ...items]);
   };
 
   const removeCombatant = (id: string) => {
@@ -216,6 +221,7 @@ export const CombatProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       activeTurnIndex,
       roundNumber,
       addCombatant,
+      addMultipleCombatants,
       removeCombatant,
       updateHP,
       ablateSP,

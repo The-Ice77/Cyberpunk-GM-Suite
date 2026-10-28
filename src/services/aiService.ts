@@ -30,6 +30,7 @@ import {
 } from '../data/petGeneratorData';
 import { TarotCard, TarotSpreadType, DrawnCard } from '../data/tarotData';
 import { NPCSheet, NPCTier, GameSystem } from '../types/system';
+import { EnemySquad, SquadGenerationOptions, generateEnemySquadOffline } from '../data/squadGeneratorData';
 
 export const DEFAULT_USER_API_KEY = '';
 
@@ -1716,4 +1717,93 @@ Retorne estritamente um JSON no seguinte formato:
     notes: 'Possui uma saída de emergência pelos túneis de esgoto e uma tranca biométrica com DV 15 para hackear.',
     rumor: 'Mercenários usam este local para negociar armas desviadas longe dos olhos da NCPD.',
   };
+}
+
+
+// 18. GERADOR DE QUADRILHAS E TROPAS INTEIRAS COM IA (NCPD, MAX-TAC, TRAUMA TEAM, GANGUES, CORPS)
+export async function generateAIEnemySquad(
+  options: SquadGenerationOptions & { apiKey?: string }
+): Promise<EnemySquad> {
+  const baseSquad = generateEnemySquadOffline(options);
+
+  const nonce = `[SQUAD-VARIATION-${Date.now().toString(36)}-${Math.floor(Math.random() * 88888)}]`;
+  const prompt = `Você é o "Cyberpunk Neural Co-GM", especialista em inteligência militar e tática de combate urbano em Night City 2045 (Cyberpunk RED e 2020).
+Crie uma TROPA / QUADRILHA INTEGRADA DE INIMIGOS cinematográfica, coesa e ameaçadora para uma cena de combate ou emboscada.
+${nonce}
+
+INFORMAÇÕES DA FORÇA:
+- Tipo / Preset: ${options.presetId}
+- Facção: ${baseSquad.factionName}
+- Nível de Ameaça: ${baseSquad.threatLevel}
+- Total de Membros: ${baseSquad.totalMembers}
+- Membros Base:
+${baseSquad.members.map((m, i) => `  ${i + 1}. [${m.roleTitle}] ${m.name} (${m.weapons.map(w => w.name).join(', ')})`).join('\n')}
+- Contexto da Missão / Cenário: ${options.missionContext || 'Combate armado imediato ou patrulha hostil nas ruas de Night City'}
+
+Retorne estritamente um JSON no seguinte formato:
+{
+  "squadName": "Nome impactante da tropa (ex: Patrulha de Choque 4-Bravo 'Os Martelos', Voo de Extração Platina TT-401, Esquadrão Max-Tac 01 'Ceifadores Azuis', Matilha Sangrenta Maelstrom)",
+  "radioCallsign": "Indicativo de rádio e frequência tática militar (ex: Delta-Zero-Nove // Freq 142.8)",
+  "doctrine": "Doutrina operacional e tática coletiva da tropa (2 a 3 frases explicando como lutam juntos)",
+  "tacticalDirectives": [
+    "Diretriz tática 1 (ordem de avanço, foco de fogo ou supressão)",
+    "Diretriz tática 2 (uso de granadas, coberturas ou suporte tecnológico)",
+    "Diretriz tática 3 (protocolo para retirada ou rendição)"
+  ],
+  "specialAssets": [
+    "Equipamento especial 1 (veículo blindado, drone, armas pesadas)",
+    "Equipamento especial 2",
+    "Equipamento especial 3"
+  ],
+  "surrenderThreshold": "Condição exata e psicológica sob a qual o bando debanda, foge ou se rende",
+  "members": [
+    ${baseSquad.members.map((m, i) => `{
+      "name": "Nome e 'Alcunha' Sobrenome",
+      "callsign": "${m.callsign}",
+      "roleTitle": "${m.roleTitle}",
+      "quoteOrBanter": "Frase que este membro grita no rádio ou no calor do combate",
+      "tacticalOrder": "O que este membro específico faz na formação (ordem direta)"
+    }`).join(',\n    ')}
+  ]
+}`;
+
+  try {
+    const parsed = await callGeminiJSON<any>(prompt, { apiKey: options.apiKey });
+    if (parsed && parsed.squadName) {
+      const mergedMembers = baseSquad.members.map((bm, idx) => {
+        const aiM = parsed.members && parsed.members[idx];
+        if (!aiM) return bm;
+        return {
+          ...bm,
+          name: aiM.name || bm.name,
+          callsign: aiM.callsign || bm.callsign,
+          roleTitle: aiM.roleTitle || bm.roleTitle,
+          quoteOrBanter: aiM.quoteOrBanter || bm.quoteOrBanter,
+          tacticalOrder: aiM.tacticalOrder || bm.tacticalOrder,
+          sheet: {
+            ...bm.sheet,
+            name: aiM.name || bm.name,
+            tactics: aiM.tacticalOrder || bm.tacticalOrder,
+            dialogueHook: aiM.quoteOrBanter || bm.quoteOrBanter,
+          },
+        };
+      });
+
+      return {
+        ...baseSquad,
+        squadName: parsed.squadName || baseSquad.squadName,
+        radioCallsign: parsed.radioCallsign || baseSquad.radioCallsign,
+        doctrine: parsed.doctrine || baseSquad.doctrine,
+        tacticalDirectives: parsed.tacticalDirectives?.length ? parsed.tacticalDirectives : baseSquad.tacticalDirectives,
+        specialAssets: parsed.specialAssets?.length ? parsed.specialAssets : baseSquad.specialAssets,
+        surrenderThreshold: parsed.surrenderThreshold || baseSquad.surrenderThreshold,
+        members: mergedMembers,
+        aiGenerated: true,
+      };
+    }
+  } catch (err) {
+    console.error('Erro ao gerar tropa com IA:', err);
+  }
+
+  return baseSquad;
 }

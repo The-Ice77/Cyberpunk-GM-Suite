@@ -30,6 +30,14 @@ import {
   MessageSquare,
   Compass,
   Radio,
+  Wand2,
+  Target,
+  Flame,
+  CheckCircle2,
+  Layers,
+  Sliders,
+  Dices,
+  Car,
 } from 'lucide-react';
 import { useSystem } from '../context/SystemContext';
 import { useCampaign } from '../context/CampaignContext';
@@ -60,7 +68,17 @@ import {
 import {
   generateAINarrativeNPC,
   generateAIPet,
+  generateAIEnemySquad,
 } from '../services/aiService';
+import {
+  SquadPresetId,
+  SquadThreatLevel,
+  SquadTacticalRole,
+  SquadMember,
+  EnemySquad,
+  SQUAD_PRESET_DEFINITIONS,
+  generateEnemySquadOffline,
+} from '../data/squadGeneratorData';
 
 const FIRST_NAMES = ['Kael', 'Jax', 'Raven', 'Vektor', 'Rocco', 'Slick', 'Nyx', 'Brick', 'T-Bug', 'Zero', 'Crash', 'Elena', 'Malik', 'Hana', 'Dante', 'Blaze', 'Cipher', 'Viper', 'Spike', 'Ghost'];
 const LAST_NAMES = ['Vance', 'Kowalski', 'Silver', 'Cross', 'Tanaka', 'Mendez', 'Steel', 'Frost', 'Mercer', 'Chen', 'Black', 'Reyes', 'Novak', 'Winter', 'Kane', 'Wolf', 'Stone', 'Sato'];
@@ -68,9 +86,32 @@ const LAST_NAMES = ['Vance', 'Kowalski', 'Silver', 'Cross', 'Tanaka', 'Mendez', 
 export const PeoplePage: React.FC = () => {
   const { system, isRed } = useSystem();
   const { savedNPCs, saveNPC, deleteNPC } = useCampaign();
-  const { addCombatant, combatants, updateHP, ablateSP, addCriticalInjury } = useCombat();
+  const { addCombatant, addMultipleCombatants, combatants, updateHP, ablateSP, addCriticalInjury } = useCombat();
 
-  const [activeTab, setActiveTab] = useState<'dossier' | 'generator' | 'pets' | 'builder' | 'library'>('dossier');
+  const [activeTab, setActiveTab] = useState<'dossier' | 'generator' | 'squads' | 'pets' | 'builder' | 'library'>('dossier');
+
+  // Dedicated Squad / Troop Generator State
+  const [squadPresetId, setSquadPresetId] = useState<SquadPresetId>('ncpd');
+  const [squadCustomFaction, setSquadCustomFaction] = useState<string>('');
+  const [squadThreatLevel, setSquadThreatLevel] = useState<SquadThreatLevel>('Médio');
+  const [squadSize, setSquadSize] = useState<number>(4);
+  const [squadIncludeNetrunner, setSquadIncludeNetrunner] = useState<boolean>(true);
+  const [squadIncludeHeavy, setSquadIncludeHeavy] = useState<boolean>(true);
+  const [squadIncludeSniper, setSquadIncludeSniper] = useState<boolean>(false);
+  const [squadMissionContext, setSquadMissionContext] = useState<string>('');
+  const [isGeneratingSquadAI, setIsGeneratingSquadAI] = useState<boolean>(false);
+  const [generatedSquad, setGeneratedSquad] = useState<EnemySquad | null>(() => {
+    return generateEnemySquadOffline({
+      presetId: 'ncpd',
+      threatLevel: 'Médio',
+      squadSize: 4,
+      system: 'RED',
+    });
+  });
+  const [squadCopied, setSquadCopied] = useState<boolean>(false);
+  const [squadSendSuccess, setSquadSendSuccess] = useState<boolean>(false);
+  const [squadToast, setSquadToast] = useState<string | null>(null);
+  const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null);
   const [selectedTier, setSelectedTier] = useState<NPCTier>('mook');
   const [selectedCategory, setSelectedCategory] = useState<'gangs' | 'corps' | 'police' | 'trauma' | 'nomads' | 'independent'>('gangs');
   const [selectedSubfaction, setSelectedSubfaction] = useState<string>('maelstrom');
@@ -214,6 +255,134 @@ export const PeoplePage: React.FC = () => {
     } finally {
       setIsGeneratingPetAI(false);
     }
+  };
+
+  // 5. Generate Squad Offline
+  const handleGenerateSquadOffline = () => {
+    const squad = generateEnemySquadOffline({
+      presetId: squadPresetId,
+      customFactionName: squadCustomFaction,
+      threatLevel: squadThreatLevel,
+      squadSize,
+      includeNetrunner: squadIncludeNetrunner,
+      includeHeavy: squadIncludeHeavy,
+      includeSniper: squadIncludeSniper,
+      missionContext: squadMissionContext,
+      system,
+    });
+    setGeneratedSquad(squad);
+    setSquadToast(`Tropa "${squad.squadName}" gerada com sucesso (${squad.members.length} membros)!`);
+    setTimeout(() => setSquadToast(null), 3500);
+  };
+
+  // 6. Generate Squad with AI Co-GM
+  const handleGenerateSquadAI = async () => {
+    setIsGeneratingSquadAI(true);
+    try {
+      const squad = await generateAIEnemySquad({
+        presetId: squadPresetId,
+        customFactionName: squadCustomFaction,
+        threatLevel: squadThreatLevel,
+        squadSize,
+        includeNetrunner: squadIncludeNetrunner,
+        includeHeavy: squadIncludeHeavy,
+        includeSniper: squadIncludeSniper,
+        missionContext: squadMissionContext,
+        system,
+      });
+      setGeneratedSquad(squad);
+      setSquadToast(`Tropa gerada e aprofundada com IA Co-GM com táticas únicas!`);
+      setTimeout(() => setSquadToast(null), 4000);
+    } catch (err) {
+      console.error(err);
+      handleGenerateSquadOffline();
+    } finally {
+      setIsGeneratingSquadAI(false);
+    }
+  };
+
+  // 7. Send Entire Squad to Combat Tracker
+  const handleSendSquadToCombat = () => {
+    if (!generatedSquad || generatedSquad.members.length === 0) return;
+    const combatantsToAdd = generatedSquad.members.map(m => ({
+      id: 'combat-' + m.sheet.id + '-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+      name: `${m.name} [${m.callsign}]`,
+      system: m.sheet.system,
+      initiative: Math.floor(Math.random() * 10) + 1 + m.ref,
+      currentHP: m.hp,
+      maxHP: m.maxHP,
+      headSP: m.headSP,
+      bodySP: m.bodySP,
+      conditions: [],
+      criticalInjuries: [],
+      deathSavePenalty: 0,
+      faction: generatedSquad.factionName,
+      weapons: m.weapons.map(w => ({
+        name: w.name,
+        damage: w.damage,
+        rof: w.rof || 1,
+      })),
+      combatNumber: m.combatNumber,
+      notes: `${m.roleTitle} • Ordem: ${m.tacticalOrder}`,
+      appearance: m.sheet.appearance || '',
+    }));
+
+    addMultipleCombatants(combatantsToAdd);
+    setSquadSendSuccess(true);
+    setSquadToast(`⚔️ ${combatantsToAdd.length} combatentes da tropa foram enviados ao Rastreador de Combate!`);
+    setTimeout(() => {
+      setSquadSendSuccess(false);
+      setSquadToast(null);
+    }, 3500);
+  };
+
+  // 8. Save Squad to Campaign
+  const handleSaveSquadToCampaign = () => {
+    if (!generatedSquad) return;
+    generatedSquad.members.forEach(m => {
+      saveNPC(m.sheet);
+    });
+    setSquadToast(`💾 ${generatedSquad.members.length} membros da tropa foram salvos na Biblioteca da Campanha!`);
+    setTimeout(() => setSquadToast(null), 3500);
+  };
+
+  // 9. Copy Squad Tactical Report
+  const handleCopySquadSummary = () => {
+    if (!generatedSquad) return;
+    const lines = [
+      `🚨 ESQUADRÃO DE COMBATE: ${generatedSquad.squadName}`,
+      `Facção: ${generatedSquad.factionName} | Indicativo: ${generatedSquad.radioCallsign} | Ameaça: ${generatedSquad.threatLevel}`,
+      `Doutrina: ${generatedSquad.doctrine}`,
+      `Diretrizes Táticas:`,
+      ...generatedSquad.tacticalDirectives.map(d => ` - ${d}`),
+      `Equipamentos Especiais: ${generatedSquad.specialAssets.join(', ')}`,
+      `Gatilho de Rendição: ${generatedSquad.surrenderThreshold}`,
+      ``,
+      `MEMBROS DA TROPA (${generatedSquad.members.length}):`,
+      ...generatedSquad.members.map(m => 
+        `• [${m.callsign}] ${m.name} (${m.roleTitle}) - HP: ${m.hp}/${m.maxHP} | SP Cabeça: ${m.headSP} | SP Corpo: ${m.bodySP} | CN: ${m.combatNumber}\n  Armas: ${m.weapons.map(w => `${w.name} [${w.damage}]`).join(', ')}\n  Ordem: ${m.tacticalOrder}\n  Grito: ${m.quoteOrBanter}`
+      ),
+    ];
+    navigator.clipboard.writeText(lines.join('\n'));
+    setSquadCopied(true);
+    setSquadToast('📋 Resumo tático completo copiado para a área de transferência!');
+    setTimeout(() => {
+      setSquadCopied(false);
+      setSquadToast(null);
+    }, 3000);
+  };
+
+  // 10. Remove Member from Squad
+  const handleRemoveSquadMember = (memberId: string) => {
+    if (!generatedSquad) return;
+    const remaining = generatedSquad.members.filter(m => m.id !== memberId);
+    setGeneratedSquad({
+      ...generatedSquad,
+      totalMembers: remaining.length,
+      members: remaining,
+    });
+    setSquadToast('Membro removido da formação.');
+    setTimeout(() => setSquadToast(null), 2000);
   };
 
   // Send Pet to combat tracker
@@ -860,6 +1029,20 @@ Táticas: ${generatedNPC.tactics}`;
             <span>Gerador Narrativo de NPCs</span>
             <span className="px-1.5 py-0.2 rounded-full text-[9px] font-mono bg-cyan-950/60 text-cyan-400 border border-cyan-800/40">
               Livros
+            </span>
+          </button>
+          <button
+            onClick={() => setActiveTab('squads')}
+            className={`px-3 py-1.5 rounded-md transition flex items-center gap-1.5 ${
+              activeTab === 'squads'
+                ? 'bg-zinc-800 text-amber-400 shadow-sm font-semibold border border-amber-500/50'
+                : 'text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
+            <span>Tropas & Quadrilhas</span>
+            <span className="px-1.5 py-0.2 rounded-full text-[9px] font-mono bg-amber-950/60 text-amber-400 border border-amber-800/40 font-bold">
+              NCPD • Trauma • Max-Tac
             </span>
           </button>
           <button
@@ -1970,6 +2153,540 @@ Táticas: ${generatedNPC.tactics}`;
                   <h3 className="text-sm font-semibold text-zinc-300">Nenhum combatente gerado ainda</h3>
                   <p className="text-xs text-zinc-500 max-w-sm mx-auto">
                     Selecione o escalão de ameaça, o arquétipo e a facção ao lado e clique em <strong>"Gerar por Tabelas"</strong> ou <strong>"Gerar com IA Co-GM"</strong>.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* TAB NOVO: GERADOR DE TROPAS & QUADRILHAS DE INIMIGOS     */}
+      {/* ======================================================== */}
+      {activeTab === 'squads' && (
+        <div className="space-y-6">
+          {/* Toast Notification */}
+          {squadToast && (
+            <div className="p-3.5 rounded-xl bg-amber-950/80 border border-amber-500/60 text-amber-300 font-mono text-xs flex items-center justify-between shadow-lg animate-in fade-in zoom-in-95 duration-150">
+              <span className="flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4 text-amber-400 animate-pulse" />
+                {squadToast}
+              </span>
+              <button onClick={() => setSquadToast(null)} className="text-zinc-400 hover:text-zinc-100">&times;</button>
+            </div>
+          )}
+
+          {/* SQUAD PRESET SELECTOR STRIP */}
+          <div className="p-4 rounded-2xl bg-[#121217] border border-[#27272a] space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h3 className="text-sm font-bold text-zinc-100 flex items-center gap-2">
+                  <ShieldAlert className="w-4 h-4 text-amber-500" />
+                  <span>Tipo de Tropa / Esquadrão Especializado</span>
+                </h3>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  Selecione uma força canônica ou monte uma quadrilha customizada para gerar a tropa inteira pronta para o combate.
+                </p>
+              </div>
+              <span className="text-[11px] font-mono text-zinc-500 self-start sm:self-auto">
+                13 Presets Oficiais & Personalizável
+              </span>
+            </div>
+
+            {/* Presets Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+              {Object.values(SQUAD_PRESET_DEFINITIONS).map(preset => {
+                const isSelected = squadPresetId === preset.id;
+                return (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => {
+                      setSquadPresetId(preset.id);
+                      setSquadThreatLevel(preset.defaultThreat);
+                      setSquadSize(preset.defaultSize);
+                      if (preset.id !== 'custom') {
+                        setSquadCustomFaction('');
+                      }
+                    }}
+                    className={`p-2.5 rounded-xl border text-left transition relative flex flex-col justify-between ${
+                      isSelected
+                        ? `${preset.colorTheme.badgeBg} ${preset.colorTheme.badgeBorder} ring-2 ring-amber-500/50 shadow-md`
+                        : 'bg-[#0a0a0d] border-zinc-800 hover:border-zinc-700 text-zinc-300'
+                    }`}
+                  >
+                    <div>
+                      <span className={`text-[9px] font-mono uppercase tracking-wider block font-bold mb-1 ${
+                        isSelected ? preset.colorTheme.badgeText : 'text-zinc-500'
+                      }`}>
+                        {preset.badge}
+                      </span>
+                      <h4 className="text-xs font-bold text-zinc-100 leading-tight">
+                        {preset.name.split(' (')[0]}
+                      </h4>
+                    </div>
+                    <div className="flex items-center justify-between mt-2 pt-1 border-t border-zinc-800/60 text-[10px] font-mono text-zinc-400">
+                      <span>{preset.defaultThreat}</span>
+                      <span>{preset.defaultSize} membros</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* MAIN SQUAD GENERATOR GRID (CONTROLS + DISPLAY) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* LEFT COLUMN: CONFIGURATION PANEL */}
+            <div className="lg:col-span-4 p-5 rounded-2xl bg-[#121217] border border-[#27272a] space-y-4">
+              <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
+                <h3 className="text-xs font-mono uppercase font-bold text-zinc-300 flex items-center gap-1.5">
+                  <Sliders className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Parâmetros da Tropa</span>
+                </h3>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700">
+                  {SQUAD_PRESET_DEFINITIONS[squadPresetId].category.toUpperCase()}
+                </span>
+              </div>
+
+              {/* Faction Field */}
+              <div>
+                <label className="block text-zinc-400 font-mono text-xs mb-1">Facção / Organização:</label>
+                {squadPresetId === 'custom' ? (
+                  <div className="space-y-1.5">
+                    <input
+                      type="text"
+                      value={squadCustomFaction}
+                      onChange={e => setSquadCustomFaction(e.target.value)}
+                      placeholder="ex: Mercenários da Zona de Combate, Segurança de Cassino..."
+                      className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-lg p-2 text-xs text-zinc-200 focus:outline-none focus:border-amber-500 font-mono"
+                    />
+                    <select
+                      onChange={e => setSquadCustomFaction(e.target.value)}
+                      className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-lg p-2 text-xs text-zinc-400 focus:outline-none focus:border-amber-500"
+                    >
+                      <option value="">Ou selecione uma facção do sistema...</option>
+                      {GANGS_LIST.map(g => (
+                        <option key={g.id} value={g.name}>{g.name} ({g.category})</option>
+                      ))}
+                      {FACTIONS_LIST.map(f => (
+                        <option key={f.id} value={f.name}>{f.name} ({f.category})</option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <div className="p-2.5 rounded-lg bg-[#0a0a0d] border border-zinc-800 text-xs font-mono text-amber-300 flex items-center justify-between">
+                    <span>{SQUAD_PRESET_DEFINITIONS[squadPresetId].defaultFaction}</span>
+                    <button
+                      type="button"
+                      onClick={() => setSquadPresetId('custom')}
+                      className="text-[10px] text-zinc-500 hover:text-amber-400 underline"
+                    >
+                      Mudar
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Threat Level */}
+              <div>
+                <label className="block text-zinc-400 font-mono text-xs mb-1.5">Nível de Ameaça do Esquadrão:</label>
+                <div className="grid grid-cols-5 gap-1 text-[11px] font-mono">
+                  {(['Baixo', 'Médio', 'Alto', 'Extremo', 'Pesadelo'] as SquadThreatLevel[]).map(t => {
+                    const isSelected = squadThreatLevel === t;
+                    const color =
+                      t === 'Pesadelo' ? 'text-purple-400 border-purple-600 bg-purple-950/60' :
+                      t === 'Extremo' ? 'text-red-400 border-red-600 bg-red-950/60' :
+                      t === 'Alto' ? 'text-orange-400 border-orange-600 bg-orange-950/60' :
+                      t === 'Médio' ? 'text-amber-400 border-amber-600 bg-amber-950/60' :
+                      'text-emerald-400 border-emerald-600 bg-emerald-950/60';
+                    return (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setSquadThreatLevel(t)}
+                        className={`py-1.5 px-1 rounded-lg border text-center transition font-bold ${
+                          isSelected ? `${color} ring-1 ring-white/20` : 'bg-[#0a0a0d] border-zinc-800 text-zinc-500 hover:text-zinc-300'
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Squad Size Slider */}
+              <div>
+                <div className="flex items-center justify-between text-xs font-mono text-zinc-400 mb-1">
+                  <span>Tamanho do Esquadrão:</span>
+                  <span className="text-amber-300 font-bold text-sm">{squadSize} combatentes</span>
+                </div>
+                <input
+                  type="range"
+                  min="2"
+                  max="10"
+                  value={squadSize}
+                  onChange={e => setSquadSize(Number(e.target.value))}
+                  className="w-full accent-amber-500"
+                />
+                <div className="flex items-center justify-between text-[10px] font-mono text-zinc-500 mt-1">
+                  <button type="button" onClick={() => setSquadSize(3)} className="hover:text-amber-400">Patrulha (3)</button>
+                  <button type="button" onClick={() => setSquadSize(4)} className="hover:text-amber-400">Padrão (4)</button>
+                  <button type="button" onClick={() => setSquadSize(6)} className="hover:text-amber-400">Choque (6)</button>
+                  <button type="button" onClick={() => setSquadSize(8)} className="hover:text-amber-400">Bando (8)</button>
+                </div>
+              </div>
+
+              {/* Composition Toggles */}
+              <div className="space-y-2 pt-1 border-t border-zinc-800/80">
+                <span className="block text-[11px] font-mono text-zinc-400 font-bold">Composição Tática Especial:</span>
+                <label className="flex items-center gap-2 text-xs text-zinc-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={squadIncludeHeavy}
+                    onChange={e => setSquadIncludeHeavy(e.target.checked)}
+                    className="rounded border-zinc-700 bg-zinc-900 text-amber-500 focus:ring-0"
+                  />
+                  <span>Incluir Operador Pesado / Escudeiro</span>
+                </label>
+                <label className="flex items-center gap-2 text-xs text-zinc-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={squadIncludeNetrunner}
+                    onChange={e => setSquadIncludeNetrunner(e.target.checked)}
+                    className="rounded border-zinc-700 bg-zinc-900 text-amber-500 focus:ring-0"
+                  />
+                  <span>Incluir Netrunner Especialista (Black ICE)</span>
+                </label>
+                <label className="flex items-center gap-2 text-xs text-zinc-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={squadIncludeSniper}
+                    onChange={e => setSquadIncludeSniper(e.target.checked)}
+                    className="rounded border-zinc-700 bg-zinc-900 text-amber-500 focus:ring-0"
+                  />
+                  <span>Incluir Franco-Atirador / Sniper</span>
+                </label>
+              </div>
+
+              {/* Mission Context */}
+              <div>
+                <label className="block text-zinc-400 font-mono text-xs mb-1">Contexto da Cena / Missão (Opcional):</label>
+                <textarea
+                  rows={2}
+                  value={squadMissionContext}
+                  onChange={e => setSquadMissionContext(e.target.value)}
+                  placeholder="ex: Mandado de prisão em hotel barato; Emboscada no beco do Totentanz; Resgate de VIP em AV-4 caído..."
+                  className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-lg p-2 text-xs text-zinc-200 focus:outline-none focus:border-amber-500 placeholder:text-zinc-600"
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="space-y-2 pt-2 border-t border-[#27272a]">
+                <button
+                  type="button"
+                  onClick={handleGenerateSquadAI}
+                  disabled={isGeneratingSquadAI}
+                  className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-600 via-red-600 to-purple-600 hover:from-amber-500 hover:via-red-500 hover:to-purple-500 text-white font-mono font-bold text-xs shadow-lg shadow-amber-950/40 flex items-center justify-center gap-2 transition"
+                >
+                  <Wand2 className={`w-4 h-4 text-amber-200 ${isGeneratingSquadAI ? 'animate-spin' : ''}`} />
+                  <span>{isGeneratingSquadAI ? 'Gerando com IA Co-GM...' : '⚡ Criar Tropa com IA Co-GM'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleGenerateSquadOffline}
+                  className="w-full py-2 px-4 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-mono text-xs flex items-center justify-center gap-2 transition border border-zinc-700"
+                >
+                  <Dices className="w-3.5 h-3.5 text-zinc-400" />
+                  <span>Gerar Procedural (Offline Rápido)</span>
+                </button>
+              </div>
+            </div>
+
+            {/* RIGHT COLUMN: SQUAD DISPLAY & COMBAT COMMAND HUD */}
+            <div className="lg:col-span-8 space-y-4">
+              {generatedSquad ? (
+                <>
+                  {/* SQUAD HEADER HUD */}
+                  <div className="p-5 rounded-2xl bg-gradient-to-br from-[#16161f] to-[#0f0f14] border border-[#27272a] shadow-xl space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 border-b border-zinc-800/80 pb-4">
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase font-bold bg-amber-950/90 text-amber-400 border border-amber-600/60 flex items-center gap-1.5">
+                            <Radio className="w-3 h-3 text-amber-500 animate-pulse" />
+                            <span>{generatedSquad.radioCallsign}</span>
+                          </span>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold border ${
+                            generatedSquad.threatLevel === 'Pesadelo' ? 'bg-purple-950/80 text-purple-300 border-purple-600/70' :
+                            generatedSquad.threatLevel === 'Extremo' ? 'bg-red-950/80 text-red-300 border-red-600/70' :
+                            generatedSquad.threatLevel === 'Alto' ? 'bg-orange-950/80 text-orange-300 border-orange-600/70' :
+                            generatedSquad.threatLevel === 'Médio' ? 'bg-amber-950/80 text-amber-300 border-amber-600/70' :
+                            'bg-emerald-950/80 text-emerald-300 border-emerald-600/70'
+                          }`}>
+                            Ameaça: {generatedSquad.threatLevel}
+                          </span>
+                          <span className="text-[10px] font-mono text-zinc-400">
+                            • {generatedSquad.members.length} Combatentes
+                          </span>
+                          {generatedSquad.aiGenerated && (
+                            <span className="text-[10px] font-mono text-cyan-400 flex items-center gap-1">
+                              <Sparkles className="w-3 h-3" />
+                              <span>IA Enriquecida</span>
+                            </span>
+                          )}
+                        </div>
+                        <h2 className="text-lg font-black text-zinc-100 tracking-tight">
+                          {generatedSquad.squadName}
+                        </h2>
+                        <span className="text-xs font-mono text-zinc-400">
+                          Facção: <strong className="text-zinc-200">{generatedSquad.factionName}</strong>
+                        </span>
+                      </div>
+
+                      {/* Immediate Master Action: Send to Combat Tracker */}
+                      <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+                        <button
+                          type="button"
+                          onClick={handleSendSquadToCombat}
+                          className="py-2 px-3.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-mono font-bold text-xs shadow-lg shadow-red-950/50 flex items-center gap-1.5 transition active:scale-95"
+                          title="Adiciona todos os membros desta tropa diretamente na fila de iniciativa do combate"
+                        >
+                          <Sword className="w-4 h-4" />
+                          <span>{squadSendSuccess ? '✓ Enviados ao Combate!' : `⚔️ Enviar Tropa ao Combate (${generatedSquad.members.length})`}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleSaveSquadToCampaign}
+                          className="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white border border-zinc-700 transition"
+                          title="Salvar todos os membros na Biblioteca de NPCs da Campanha"
+                        >
+                          <Bookmark className="w-4 h-4" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleCopySquadSummary}
+                          className="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white border border-zinc-700 transition"
+                          title="Copiar relatório tático completo"
+                        >
+                          {squadCopied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* TACTICAL DOCTRINE & DIRECTIVES */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                      <div className="p-3 rounded-xl bg-[#0a0a0d] border border-zinc-800/80 space-y-1.5">
+                        <span className="text-[10px] font-mono uppercase text-amber-400 font-bold flex items-center gap-1">
+                          <Target className="w-3 h-3 text-amber-500" />
+                          <span>Doutrina Operacional Coletiva</span>
+                        </span>
+                        <p className="text-zinc-300 leading-relaxed text-[11px]">
+                          {generatedSquad.doctrine}
+                        </p>
+                        <div className="pt-1.5 border-t border-zinc-800 text-[10px] font-mono text-rose-300">
+                          <strong className="text-zinc-400">Limite de Rendição / Fuga: </strong>
+                          {generatedSquad.surrenderThreshold}
+                        </div>
+                      </div>
+
+                      <div className="p-3 rounded-xl bg-[#0a0a0d] border border-zinc-800/80 space-y-1.5">
+                        <span className="text-[10px] font-mono uppercase text-cyan-400 font-bold flex items-center gap-1">
+                          <Layers className="w-3 h-3 text-cyan-500" />
+                          <span>Ativos & Equipamentos Especiais</span>
+                        </span>
+                        <div className="flex flex-wrap gap-1">
+                          {generatedSquad.specialAssets.map((asset, i) => (
+                            <span key={i} className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-300">
+                              {asset}
+                            </span>
+                          ))}
+                        </div>
+                        {generatedSquad.tacticalDirectives.length > 0 && (
+                          <div className="pt-1.5 border-t border-zinc-800 text-[10px] text-zinc-400 space-y-0.5">
+                            {generatedSquad.tacticalDirectives.map((d, i) => (
+                              <p key={i} className="truncate">• {d}</p>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* SQUAD MEMBERS ROSTER (TACTICAL CARDS) */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xs font-mono uppercase font-bold text-zinc-300 flex items-center gap-1.5">
+                        <Users className="w-3.5 h-3.5 text-amber-500" />
+                        <span>Formação Tática do Esquadrão ({generatedSquad.members.length} Combatentes)</span>
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={handleSendSquadToCombat}
+                        className="text-[11px] font-mono text-red-400 hover:text-red-300 hover:underline flex items-center gap-1"
+                      >
+                        <Sword className="w-3 h-3" />
+                        <span>Rolar Iniciativas & Lutar</span>
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {generatedSquad.members.map((member, idx) => {
+                        const isExpanded = expandedMemberId === member.id;
+                        const roleColor =
+                          member.isLeader ? 'bg-amber-950/80 text-amber-300 border-amber-600/70' :
+                          member.tacticalRole === 'heavy' ? 'bg-purple-950/80 text-purple-300 border-purple-600/70' :
+                          member.tacticalRole === 'specialist' ? 'bg-cyan-950/80 text-cyan-300 border-cyan-600/70' :
+                          member.tacticalRole === 'support' ? 'bg-emerald-950/80 text-emerald-300 border-emerald-600/70' :
+                          member.tacticalRole === 'sniper' ? 'bg-rose-950/80 text-rose-300 border-rose-600/70' :
+                          'bg-zinc-800 text-zinc-300 border-zinc-700';
+
+                        return (
+                          <div
+                            key={member.id}
+                            className={`p-3.5 rounded-xl border transition space-y-2.5 ${
+                              member.isLeader
+                                ? 'bg-[#15151e] border-amber-500/40 shadow-md'
+                                : 'bg-[#0e0e13] border-zinc-800 hover:border-zinc-700'
+                            }`}
+                          >
+                            {/* Member Card Header */}
+                            <div className="flex items-start justify-between gap-2 border-b border-zinc-800/60 pb-2">
+                              <div>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded border uppercase font-bold ${roleColor}`}>
+                                    {member.isLeader ? '★ LÍDER' : member.roleTitle.split(' / ')[0]}
+                                  </span>
+                                  <span className="text-[10px] font-mono text-zinc-400 font-bold">
+                                    [{member.callsign}]
+                                  </span>
+                                </div>
+                                <h4 className="text-xs font-bold text-zinc-100 mt-1">
+                                  {member.name}
+                                </h4>
+                              </div>
+
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveSquadMember(member.id)}
+                                  className="p-1 rounded text-zinc-600 hover:text-red-400 transition"
+                                  title="Remover este membro da formação"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Combat Stats Line (HP, SP, CN) */}
+                            <div className="grid grid-cols-4 gap-1.5 text-center text-[10px] font-mono">
+                              <div className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800">
+                                <span className="text-zinc-500 block text-[9px]">HP</span>
+                                <span className="text-emerald-400 font-bold text-xs">{member.hp}</span>
+                              </div>
+                              <div className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800">
+                                <span className="text-zinc-500 block text-[9px]">SP Cab.</span>
+                                <span className="text-cyan-300 font-bold text-xs">{member.headSP}</span>
+                              </div>
+                              <div className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800">
+                                <span className="text-zinc-500 block text-[9px]">SP Corp.</span>
+                                <span className="text-cyan-300 font-bold text-xs">{member.bodySP}</span>
+                              </div>
+                              <div className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800">
+                                <span className="text-zinc-500 block text-[9px]">Comb. Nº</span>
+                                <span className="text-amber-300 font-bold text-xs">{member.combatNumber}</span>
+                              </div>
+                            </div>
+
+                            {/* Weapons list */}
+                            <div className="space-y-1">
+                              <span className="text-[9px] font-mono text-zinc-500 block uppercase">Armas Prontas:</span>
+                              <div className="space-y-1 text-[11px] font-sans">
+                                {member.weapons.map((w, wIdx) => (
+                                  <div key={wIdx} className="flex items-center justify-between p-1.5 rounded-lg bg-[#08080b] border border-zinc-900 text-zinc-200">
+                                    <span className="font-semibold truncate">{w.name}</span>
+                                    <div className="flex items-center gap-1.5 flex-shrink-0 font-mono text-[10px]">
+                                      <span className="px-1.5 py-0.5 rounded bg-red-950 text-red-300 border border-red-900">
+                                        {w.damage}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setNpcAttackModal({
+                                            isOpen: true,
+                                            npc: member.sheet,
+                                            weapon: { name: w.name, damage: w.damage },
+                                            combatNumber: member.combatNumber,
+                                            aimMode: 'normal',
+                                            targetId: combatants[0]?.id || '',
+                                            distanceDV: 15,
+                                            isEvading: false,
+                                            evasionBonus: 14,
+                                          });
+                                          setNpcAttackResult(null);
+                                        }}
+                                        className="p-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white"
+                                        title="Rolar teste de ataque para esta arma"
+                                      >
+                                        <Crosshair className="w-3 h-3 text-red-400" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Tactical Order & Quote */}
+                            <div className="p-2 rounded-lg bg-[#08080b] border border-zinc-900 text-[10px] space-y-1">
+                              <p className="text-zinc-300">
+                                <strong className="text-amber-400 font-mono">Ordem: </strong>
+                                {member.tacticalOrder}
+                              </p>
+                              <p className="text-zinc-500 italic">
+                                "{member.quoteOrBanter}"
+                              </p>
+                            </div>
+
+                            {/* Expand toggle */}
+                            <button
+                              type="button"
+                              onClick={() => setExpandedMemberId(isExpanded ? null : member.id)}
+                              className="w-full text-center text-[10px] font-mono text-zinc-500 hover:text-zinc-300 pt-1 flex items-center justify-center gap-1"
+                            >
+                              <span>{isExpanded ? 'Menos Detalhes ▲' : 'Ciberware & Detalhes ▼'}</span>
+                            </button>
+
+                            {isExpanded && (
+                              <div className="p-2.5 rounded-lg bg-[#060608] border border-zinc-900 text-[10px] font-mono text-zinc-400 space-y-1.5 animate-in fade-in duration-100">
+                                <div>
+                                  <strong className="text-cyan-400 block mb-0.5">Ciberimplantes:</strong>
+                                  <span>{member.cyberware.join(', ') || 'Nenhum visível'}</span>
+                                </div>
+                                <div>
+                                  <strong className="text-zinc-300 block mb-0.5">Equipamento:</strong>
+                                  <span>{member.gear.join(', ')}</span>
+                                </div>
+                                <div className="pt-1 text-[9px] text-zinc-500">
+                                  REF: {member.ref} | DEX: {member.dex} | BODY: {member.body}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="p-12 text-center rounded-2xl bg-[#121217] border border-[#27272a] space-y-3">
+                  <ShieldAlert className="w-12 h-12 text-zinc-600 mx-auto" />
+                  <h3 className="text-sm font-semibold text-zinc-300">Nenhuma tropa gerada ainda</h3>
+                  <p className="text-xs text-zinc-500 max-w-sm mx-auto">
+                    Selecione um preset (NCPD, Max-Tac, Trauma Team ou Gangue) ao lado e clique em <strong>"Criar Tropa com IA Co-GM"</strong> ou <strong>"Gerar Procedural"</strong>.
                   </p>
                 </div>
               )}
