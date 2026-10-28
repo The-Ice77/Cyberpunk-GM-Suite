@@ -24,6 +24,7 @@ import { useCombat, Combatant } from '../../context/CombatContext';
 interface CombatDrawerProps {
   isOpen: boolean;
   onClose: () => void;
+  onOpenTarot?: () => void;
 }
 
 const CONDITIONS_LIST = [
@@ -44,7 +45,7 @@ const PRESET_WEAPONS = [
   { name: 'Ataque Desarmado (Soco/Chute)', damage: '1d6', rof: 2 },
 ];
 
-export const CombatDrawer: React.FC<CombatDrawerProps> = ({ isOpen, onClose }) => {
+export const CombatDrawer: React.FC<CombatDrawerProps> = ({ isOpen, onClose, onOpenTarot }) => {
   const {
     combatants,
     activeTurnIndex,
@@ -86,6 +87,7 @@ export const CombatDrawer: React.FC<CombatDrawerProps> = ({ isOpen, onClose }) =
     spAblated: boolean;
     hpDeducted: number;
     critInjuryTriggered?: string;
+    tarotTriggered?: boolean;
   } | null>(null);
 
   // VISUAL APPEARANCE MODAL STATE
@@ -188,13 +190,14 @@ export const CombatDrawer: React.FC<CombatDrawerProps> = ({ isOpen, onClose }) =
       damageSum += roll;
     }
 
-    // Check for critical injury: two 6s
+    // Check for critical injury: two 6s (Standard RED) or three 6s (Night City Tarot DLC)
     const sixCount = diceResults.filter(r => r === 6).length;
     let critInjury: string | undefined = undefined;
     if (sixCount >= 2) {
       critInjury = CRITICAL_INJURIES_QUICK_LIST[Math.floor(Math.random() * CRITICAL_INJURIES_QUICK_LIST.length)];
       addCriticalInjury(target.id, critInjury);
     }
+    const tarotTriggered = sixCount >= 3;
 
     // 4. Armor & Ablation calculation
     const armorSP = isAimedHeadShot ? target.headSP : target.bodySP;
@@ -219,6 +222,7 @@ export const CombatDrawer: React.FC<CombatDrawerProps> = ({ isOpen, onClose }) =
       spAblated,
       hpDeducted,
       critInjuryTriggered: critInjury,
+      tarotTriggered,
     });
   };
 
@@ -249,13 +253,25 @@ export const CombatDrawer: React.FC<CombatDrawerProps> = ({ isOpen, onClose }) =
           <ShieldAlert className="w-5 h-5 text-red-500" />
           <span>Rastreador de Combate, Ataques & Ferimentos</span>
         </div>
-        <button
-          onClick={onClose}
-          className="p-1 rounded text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition"
-          aria-label="Fechar gaveta"
-        >
-          <X className="w-5 h-5" />
-        </button>
+        <div className="flex items-center gap-2">
+          {onOpenTarot && (
+            <button
+              onClick={onOpenTarot}
+              className="flex items-center gap-1 px-2.5 py-1 rounded bg-purple-950/70 hover:bg-purple-900 border border-purple-700/60 text-purple-300 text-xs font-mono transition shadow-sm"
+              title="Abrir Cartas de Tarot (Críticos RED & Misty)"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+              <span className="hidden sm:inline">Tarot Crítico</span>
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className="p-1 rounded text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition"
+            aria-label="Fechar gaveta"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
       {/* Control Bar: Round, Next, Sort */}
@@ -836,6 +852,29 @@ export const CombatDrawer: React.FC<CombatDrawerProps> = ({ isOpen, onClose }) =
                     <div className="p-2 rounded bg-red-950 border border-red-700 text-red-200 font-bold text-[11px] flex items-center gap-1.5 mt-1">
                       <Skull className="w-3.5 h-3.5 text-red-400 shrink-0" />
                       <span>FERIMENTO CRÍTICO DETECTADO: {attackResult.critInjuryTriggered}!</span>
+                    </div>
+                  )}
+
+                  {attackResult.tarotTriggered && (
+                    <div className="p-2.5 rounded-xl bg-purple-950/80 border border-purple-600 text-purple-200 font-bold text-[11px] flex items-center justify-between gap-2 mt-1.5 shadow-lg">
+                      <div className="flex items-center gap-1.5">
+                        <Sparkles className="w-4 h-4 text-purple-400 shrink-0 animate-pulse" />
+                        <div>
+                          <div>NIGHT CITY TAROT: 3+ Seis no Dano!</div>
+                          <div className="text-[10px] font-normal text-purple-300">Regra Oficial RED: o atacante puxa uma Carta de Tarot Arcano.</div>
+                        </div>
+                      </div>
+                      {onOpenTarot && (
+                        <button
+                          onClick={() => {
+                            onOpenTarot();
+                            setAttackingCombatant(null);
+                          }}
+                          className="px-2.5 py-1 rounded bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-mono whitespace-nowrap shadow transition"
+                        >
+                          Puxar Carta
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

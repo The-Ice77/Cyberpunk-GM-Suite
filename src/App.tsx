@@ -9,6 +9,7 @@ import { MobileBottomNav } from './components/layout/MobileBottomNav';
 import { DiceDrawer } from './components/dice/DiceDrawer';
 import { CombatDrawer } from './components/combat/CombatDrawer';
 import { CyberpunkAICoGM } from './components/ai/CyberpunkAICoGM';
+import { TarotDrawer } from './components/tarot/TarotDrawer';
 
 import { HubPage } from './pages/HubPage';
 import { PeoplePage } from './pages/PeoplePage';
@@ -28,6 +29,7 @@ export const AppContent: React.FC = () => {
   const [isDiceOpen, setIsDiceOpen] = useState<boolean>(false);
   const [isCombatOpen, setIsCombatOpen] = useState<boolean>(false);
   const [isAiOpen, setIsAiOpen] = useState<boolean>(false);
+  const [isTarotOpen, setIsTarotOpen] = useState<boolean>(false);
 
   return (
     <div className="min-h-screen bg-[#09090b] text-[#f4f4f5] flex flex-col">
@@ -38,6 +40,7 @@ export const AppContent: React.FC = () => {
           if (!isDiceOpen) {
             setIsCombatOpen(false);
             setIsAiOpen(false);
+            setIsTarotOpen(false);
           }
         }}
         onToggleCombat={() => {
@@ -45,6 +48,7 @@ export const AppContent: React.FC = () => {
           if (!isCombatOpen) {
             setIsDiceOpen(false);
             setIsAiOpen(false);
+            setIsTarotOpen(false);
           }
         }}
         onToggleAi={() => {
@@ -52,6 +56,15 @@ export const AppContent: React.FC = () => {
           if (!isAiOpen) {
             setIsDiceOpen(false);
             setIsCombatOpen(false);
+            setIsTarotOpen(false);
+          }
+        }}
+        onToggleTarot={() => {
+          setIsTarotOpen(prev => !prev);
+          if (!isTarotOpen) {
+            setIsDiceOpen(false);
+            setIsCombatOpen(false);
+            setIsAiOpen(false);
           }
         }}
         onToggleSidebar={() => setIsSidebarOpen(prev => !prev)}
@@ -69,7 +82,12 @@ export const AppContent: React.FC = () => {
 
         {/* Independent Page Display with Mobile Bottom Bar Clearance */}
         <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 lg:p-8 pb-24 lg:pb-8">
-          {activePage === 'hub' && <HubPage onNavigate={page => setActivePage(page)} />}
+          {activePage === 'hub' && (
+            <HubPage
+              onNavigate={page => setActivePage(page)}
+              onOpenTarot={() => setIsTarotOpen(true)}
+            />
+          )}
           {activePage === 'people' && <PeoplePage />}
           {activePage === 'world' && <WorldPage />}
           {activePage === 'campaign' && <CampaignPage />}
@@ -113,11 +131,20 @@ export const AppContent: React.FC = () => {
       <CombatDrawer
         isOpen={isCombatOpen}
         onClose={() => setIsCombatOpen(false)}
+        onOpenTarot={() => {
+          setIsCombatOpen(false);
+          setIsTarotOpen(true);
+        }}
       />
 
       <CyberpunkAICoGM
         isOpen={isAiOpen}
         onClose={() => setIsAiOpen(false)}
+      />
+
+      <TarotDrawer
+        isOpen={isTarotOpen}
+        onClose={() => setIsTarotOpen(false)}
       />
     </div>
   );

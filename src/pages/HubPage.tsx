@@ -11,6 +11,7 @@ import {
   Zap,
   Activity,
   FileText,
+  Sparkles,
 } from 'lucide-react';
 import { useSystem } from '../context/SystemContext';
 import { useCampaign } from '../context/CampaignContext';
@@ -19,9 +20,10 @@ import { ActivePage } from '../components/layout/Sidebar';
 
 interface HubPageProps {
   onNavigate: (page: ActivePage) => void;
+  onOpenTarot?: () => void;
 }
 
-export const HubPage: React.FC<HubPageProps> = ({ onNavigate }) => {
+export const HubPage: React.FC<HubPageProps> = ({ onNavigate, onOpenTarot }) => {
   const { system, isRed, toggleSystem } = useSystem();
   const { savedNPCs, notes, setNotes } = useCampaign();
   const { combatants } = useCombat();
@@ -177,6 +179,35 @@ export const HubPage: React.FC<HubPageProps> = ({ onNavigate }) => {
           <Shield className="w-5 h-5 text-emerald-500" />
         </div>
       </div>
+
+      {/* Cyberpunk Tarot Feature Spotlight Banner */}
+      {onOpenTarot && (
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-purple-950/40 via-indigo-950/30 to-[#121218] border border-purple-800/40 p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-lg group hover:border-purple-600/60 transition">
+          <div className="space-y-1.5 max-w-2xl">
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded bg-purple-900/60 text-purple-300 border border-purple-700/50 text-[10px] font-mono uppercase tracking-wider flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-purple-400" />
+                DLC Oficial RED & Misty 2077
+              </span>
+              <span className="text-[10px] text-zinc-400 font-mono">22 Arcanos Maiores + 4 Reis de Phantom Liberty</span>
+            </div>
+            <h2 className="text-base sm:text-lg font-bold text-zinc-100 flex items-center gap-2">
+              <span>Tarot de Night City: Tiragem Oracular & Críticos de Combate</span>
+            </h2>
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              Puxe as cartas arcanas pintadas pelas ruas de Night City com animação holográfica de virada, leituras oraculares com IA de Misty, e o sistema oficial de Lesões Críticas de Combate ativado ao rolar 3 ou mais dados 6 no dano.
+            </p>
+          </div>
+          <button
+            onClick={onOpenTarot}
+            className="self-stretch md:self-auto px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 active:scale-95 text-white font-mono text-xs font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-purple-900/40 whitespace-nowrap"
+          >
+            <Sparkles className="w-4 h-4 text-purple-200" />
+            <span>Puxar Cartas de Tarot</span>
+            <ArrowRight className="w-4 h-4 text-purple-200" />
+          </button>
+        </div>
+      )}
 
       {/* 6 Category Independent Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">

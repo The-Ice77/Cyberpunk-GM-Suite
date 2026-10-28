@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Dices, ShieldAlert, Download, Upload, Cpu, Menu, Bot, UserCheck, Shield, Crown } from 'lucide-react';
+import { Dices, ShieldAlert, Download, Upload, Cpu, Menu, Bot, UserCheck, Shield, Crown, Sparkles } from 'lucide-react';
 import { useSystem } from '../../context/SystemContext';
 import { useCombat } from '../../context/CombatContext';
 import { useCampaign } from '../../context/CampaignContext';
@@ -10,6 +10,7 @@ interface NavbarProps {
   onToggleCombat: () => void;
   onToggleSidebar: () => void;
   onToggleAi: () => void;
+  onToggleTarot: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -17,6 +18,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onToggleCombat,
   onToggleSidebar,
   onToggleAi,
+  onToggleTarot,
 }) => {
   const { system, setSystem, isRed } = useSystem();
   const { role, setRole, showOnboarding, setShowOnboarding } = useUserRole();
@@ -155,6 +157,16 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <Bot className="w-4 h-4 text-emerald-400" />
             <span className="hidden md:inline">Co-GM IA</span>
+          </button>
+
+          {/* Tarot Drawer Toggle */}
+          <button
+            onClick={onToggleTarot}
+            className="flex items-center gap-1.5 p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg bg-[#14141a] hover:bg-zinc-800 text-zinc-200 border border-[#27272a] text-xs font-medium transition group"
+            title="Abrir Cartas de Tarot de Night City (DLC Oficial RED & Misty 2077)"
+          >
+            <Sparkles className="w-4 h-4 text-purple-400 group-hover:scale-110 transition-transform" />
+            <span className="hidden md:inline">Tarot</span>
           </button>
 
           {/* Dice Drawer Toggle */}

@@ -21,6 +21,7 @@ import {
   PetSizeId,
   PetTrainingId,
 } from '../data/petGeneratorData';
+import { TarotCard, TarotSpreadType, DrawnCard } from '../data/tarotData';
 import { NPCSheet, NPCTier, GameSystem } from '../types/system';
 
 export const DEFAULT_USER_API_KEY = '';
@@ -1390,4 +1391,94 @@ Retorne ESTRITAMENTE em formato JSON puro:
   }
 
   return basePet;
+}
+
+// 10. LEITURA DE TAROT COM IA (MISTY'S ESOTERICA & CYBERPUNK 2077)
+export async function generateAITarotReading(options: {
+  spreadTitle: string;
+  cards: { name: string; number: string; position: string; isReversed: boolean; upright: string; reversed: string }[];
+  campaignContext?: string;
+  characterName?: string;
+  apiKey?: string;
+}): Promise<{
+  cardsNarrative: { position: string; cardName: string; interpretation: string }[];
+  overallInterpretation: string;
+  coGMPlotTwist: string;
+  mistyClosingWords: string;
+}> {
+  const activeKey = getEffectiveApiKey(options.apiKey);
+
+  const cardListStr = options.cards
+    .map(c => `- Posição [${c.position}]: ${c.number} - ${c.name} (${c.isReversed ? 'INVERTIDA / Sombra' : 'DIRETA / Luz'}) -> Significado Base: ${c.isReversed ? c.reversed : c.upright}`)
+    .join('\n');
+
+  if (!activeKey) {
+    return {
+      cardsNarrative: options.cards.map(c => ({
+        position: c.position,
+        cardName: `${c.number} - ${c.name} (${c.isReversed ? 'Invertida' : 'Direta'})`,
+        interpretation: c.isReversed ? c.reversed : c.upright,
+      })),
+      overallInterpretation: `As cartas de Night City sussurram através das luzes de néon. O destino da equipe está entrelaçado com ${options.cards[0]?.name || 'o desconhecido'}, alertando que cada contrato tem um custo que não vem impresso em credsticks.`,
+      coGMPlotTwist: 'Uma traição inesperada nos bastidores ou uma complicação mecânica no cromo no momento mais decisivo da cena.',
+      mistyClosingWords: '"As cartas mostram o que pode ser, choomba, não o que tem que ser. Mantenha os olhos bem abertos lá fora."',
+    };
+  }
+
+  const prompt = `Você é Misty Ollaszewski, a esotérica e cartomante mais respeitada de Night City (Cyberpunk 2077), atuando como Co-Mestre oracular de RPG.
+Você está realizando uma leitura mística de cartas de Tarot para ${options.characterName ? `o mercenário ${options.characterName}` : 'a equipe de Edgerunners'}.
+
+TIRAGEM REALIZADA: "${options.spreadTitle}"
+CARTAS PUXADAS DO BARALHO DE NIGHT CITY:
+${cardListStr}
+
+CONTEXTO DA MESA/CAMPANHA:
+${options.campaignContext || 'Sessão mercenária no submundo de Night City'}
+
+Retorne ESTRITAMENTE em formato JSON puro:
+{
+  "cardsNarrative": [
+    {
+      "position": "Nome da posição",
+      "cardName": "Nome da carta",
+      "interpretation": "Interpretação poética e visceral de Misty sobre como essa carta afeta a vida do personagem na cena."
+    }
+  ],
+  "overallInterpretation": "Síntese geral da tiragem (2 parágrafos no tom noir espiritual de Misty, com incenso, gírias do universo e pressentimento sombrio).",
+  "coGMPlotTwist": "Uma sugestão concreta de reviravolta dramática para o Mestre de RPG introduzir na aventura baseada no arcano dominante.",
+  "mistyClosingWords": "Uma frase final de despedida comovente de Misty avisando o personagem sobre os perigos da cidade."
+}`;
+
+  try {
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeKey}`;
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: { responseMimeType: 'application/json' },
+      }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (text) {
+        return JSON.parse(text);
+      }
+    }
+  } catch (err) {
+    console.warn('AI Tarot reading fallback:', err);
+  }
+
+  return {
+    cardsNarrative: options.cards.map(c => ({
+      position: c.position,
+      cardName: `${c.number} - ${c.name} (${c.isReversed ? 'Invertida' : 'Direta'})`,
+      interpretation: c.isReversed ? c.reversed : c.upright,
+    })),
+    overallInterpretation: `As cartas de Night City trazem uma mensagem clara. A presença de ${options.cards[0]?.name || 'arcanos'} aponta para encruzilhadas onde hesitar por um segundo pode ser fatal.`,
+    coGMPlotTwist: 'Um contato de confiança revela ter dívidas com a corporação inimiga e tenta vender a equipe.',
+    mistyClosingWords: '"Tome cuidado com quem você confia seus segredos, V. O néon esconde muitas sombras."',
+  };
 }
