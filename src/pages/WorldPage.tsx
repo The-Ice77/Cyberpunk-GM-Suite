@@ -26,6 +26,9 @@ import {
   Bot,
   RotateCcw,
   Trash2,
+  Flame,
+  Check,
+  Info,
 } from 'lucide-react';
 import { useSystem } from '../context/SystemContext';
 import { useUserRole } from '../context/UserRoleContext';
@@ -270,7 +273,15 @@ export const WorldPage: React.FC = () => {
   const [newBarSecurity, setNewBarSecurity] = useState<'Nenhuma (Faroeste)' | 'Baixa' | 'Média' | 'Pesada / Militar'>('Média');
   const [newBarDrinkName, setNewBarDrinkName] = useState<string>('Red Chrome Cocktail');
   const [newBarDrinkCost, setNewBarDrinkCost] = useState<string>('30eb');
-  const [newBarDrinkEffect, setNewBarDrinkEffect] = useState<string>('+1 em Iniciativa por 1 hora');
+  const [newBarDrinkCategory, setNewBarDrinkCategory] = useState<string>('Destilado Pesado');
+  const [newBarDrinkGlassware, setNewBarDrinkGlassware] = useState<string>('Copo tumbler de cristal com base de chumbo');
+  const [newBarDrinkVisual, setNewBarDrinkVisual] = useState<string>('Névoa rubra efervescente com borda de sal picante');
+  const [newBarDrinkIngredients, setNewBarDrinkIngredients] = useState<string>('CHOOH2 destilado triplo, licor de romã ácida, pimenta tabasco');
+  const [newBarDrinkTasting, setNewBarDrinkTasting] = useState<string>('Entrada doce que explode em queimação química anestesiando a garganta e aguçando a visão.');
+  const [newBarDrinkEffect, setNewBarDrinkEffect] = useState<string>('+1 em Iniciativa pela próxima 1 hora');
+  const [newBarDrinkSideEffect, setNewBarDrinkSideEffect] = useState<string>('Tremedeira leve nas mãos após duas doses');
+  const [newBarDrinkTrivia, setNewBarDrinkTrivia] = useState<string>('Bebida preferida dos mercenários locais antes de invasões perigosas.');
+  const [drinkOrderedToast, setDrinkOrderedToast] = useState<{ drinkName: string; tastingNotes: string; effect: string; glassware?: string } | null>(null);
   const [newBarRumor, setNewBarRumor] = useState<string>('Dizem que mercenários da Arasaka estão recrutando nas mesas do fundo.');
 
   const [generatedDate, setGeneratedDate] = useState<any | null>(null);
@@ -348,7 +359,16 @@ export const WorldPage: React.FC = () => {
       if (res.signatureDrink) {
         setNewBarDrinkName(res.signatureDrink.name);
         setNewBarDrinkCost(res.signatureDrink.cost);
+        if (res.signatureDrink.category) setNewBarDrinkCategory(res.signatureDrink.category);
+        if (res.signatureDrink.glassware) setNewBarDrinkGlassware(res.signatureDrink.glassware);
+        if (res.signatureDrink.visualServing) setNewBarDrinkVisual(res.signatureDrink.visualServing);
+        if (res.signatureDrink.ingredients) {
+          setNewBarDrinkIngredients(Array.isArray(res.signatureDrink.ingredients) ? res.signatureDrink.ingredients.join(', ') : res.signatureDrink.ingredients);
+        }
+        if (res.signatureDrink.tastingNotes) setNewBarDrinkTasting(res.signatureDrink.tastingNotes);
         setNewBarDrinkEffect(res.signatureDrink.inGameEffect);
+        if (res.signatureDrink.sideEffect) setNewBarDrinkSideEffect(res.signatureDrink.sideEffect);
+        if (res.signatureDrink.loreTrivia) setNewBarDrinkTrivia(res.signatureDrink.loreTrivia);
       }
       if (res.localRumors && res.localRumors.length > 0) {
         setNewBarRumor(res.localRumors[0]);
@@ -358,6 +378,16 @@ export const WorldPage: React.FC = () => {
     } finally {
       setIsGeneratingBarAI(false);
     }
+  };
+
+  // Order drink toast handler
+  const handleOrderDrink = (drink: any) => {
+    setDrinkOrderedToast({
+      drinkName: drink.name,
+      tastingNotes: drink.tastingNotes || drink.description,
+      effect: drink.inGameEffect,
+      glassware: drink.glassware,
+    });
   };
 
   // Save Custom Bar
@@ -374,8 +404,15 @@ export const WorldPage: React.FC = () => {
       signatureDrink: {
         name: newBarDrinkName,
         cost: newBarDrinkCost,
-        description: 'Bebida energética destilada com xarope sintético de frutas.',
+        category: newBarDrinkCategory as any,
+        glassware: newBarDrinkGlassware,
+        visualServing: newBarDrinkVisual,
+        ingredients: newBarDrinkIngredients.split(',').map(i => i.trim()).filter(Boolean),
+        tastingNotes: newBarDrinkTasting,
+        description: newBarDrinkTasting || 'Bebida artesanal energética destilada com xarope sintético de frutas.',
         inGameEffect: newBarDrinkEffect,
+        sideEffect: newBarDrinkSideEffect,
+        loreTrivia: newBarDrinkTrivia,
       },
       localRumors: newBarRumor ? [newBarRumor] : ['Rumores de negociações ilícitas no estacionamento.'],
       citation: 'Bar Customizado do Mestre',
@@ -2040,24 +2077,117 @@ export const WorldPage: React.FC = () => {
 
                     <p className="text-xs text-zinc-300 leading-relaxed">{selectedBar.aesthetic}</p>
 
+                    {/* SHOWCASE DA BEBIDA ESPECIAL DA CASA */}
+                    <div className="p-4 rounded-2xl bg-gradient-to-br from-[#181216] via-[#121217] to-[#0d0d12] border border-amber-900/40 space-y-3.5 shadow-xl">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-zinc-800/80 pb-2.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <div className="p-1.5 rounded-lg bg-amber-950/60 border border-amber-800/50 text-amber-400">
+                            <Wine className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <span className="text-[10px] font-mono uppercase text-amber-400 font-bold block">
+                              Bebida Especial da Casa (Signature Drink)
+                            </span>
+                            <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                              <h3 className="text-sm font-bold text-zinc-100">{selectedBar.signatureDrink.name}</h3>
+                              <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-red-950/80 text-red-300 border border-red-800/60 font-bold">
+                                {selectedBar.signatureDrink.cost}
+                              </span>
+                              {selectedBar.signatureDrink.category && (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-zinc-800 text-zinc-300 border border-zinc-700">
+                                  {selectedBar.signatureDrink.category}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => handleOrderDrink(selectedBar.signatureDrink)}
+                          className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-600 to-red-600 hover:from-amber-500 hover:to-red-500 text-white font-bold text-xs uppercase tracking-wider transition shadow flex items-center gap-1.5 shrink-0"
+                          title="Simular beber este drink especial no balcão"
+                        >
+                          <Wine className="w-3.5 h-3.5" />
+                          <span>Virar Dose / Beber</span>
+                        </button>
+                      </div>
+
+                      {/* Glassware and Visual Serving */}
+                      {(selectedBar.signatureDrink.glassware || selectedBar.signatureDrink.visualServing) && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                          {selectedBar.signatureDrink.glassware && (
+                            <div className="p-2.5 rounded-lg bg-[#0a0a0d] border border-zinc-800/80">
+                              <span className="text-[10px] font-mono uppercase text-zinc-500 block mb-0.5">Estilo do Copo (Glassware):</span>
+                              <p className="text-zinc-300 text-[11px] font-mono">{selectedBar.signatureDrink.glassware}</p>
+                            </div>
+                          )}
+                          {selectedBar.signatureDrink.visualServing && (
+                            <div className="p-2.5 rounded-lg bg-[#0a0a0d] border border-zinc-800/80">
+                              <span className="text-[10px] font-mono uppercase text-zinc-500 block mb-0.5">Apresentação & Efeito Visual:</span>
+                              <p className="text-zinc-300 text-[11px]">{selectedBar.signatureDrink.visualServing}</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Ingredients Matrix */}
+                      {selectedBar.signatureDrink.ingredients && selectedBar.signatureDrink.ingredients.length > 0 && (
+                        <div>
+                          <span className="text-[10px] font-mono uppercase text-zinc-500 block mb-1">Ingredientes da Receita:</span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {selectedBar.signatureDrink.ingredients.map((ing, iIdx) => (
+                              <span key={iIdx} className="px-2 py-0.5 rounded-md bg-[#0a0a0d] border border-zinc-800 text-zinc-300 text-[10px] font-mono">
+                                🥃 {ing}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Tasting Notes / Sensory Experience */}
+                      <div className="p-3 rounded-xl bg-[#0a0a0d] border border-zinc-800/90 text-xs space-y-1">
+                        <span className="text-[10px] font-mono uppercase text-amber-400 font-bold block flex items-center gap-1">
+                          <Sparkles className="w-3 h-3" /> Paladar & Sensação Sensorial:
+                        </span>
+                        <p className="text-zinc-300 italic text-[11px] leading-relaxed">
+                          "{selectedBar.signatureDrink.tastingNotes || selectedBar.signatureDrink.description}"
+                        </p>
+                      </div>
+
+                      {/* Mechanical Effect & Side Effect */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                        <div className="p-2.5 rounded-lg bg-amber-950/30 border border-amber-900/50 space-y-0.5">
+                          <span className="text-amber-400 text-[10px] font-mono font-bold uppercase block">
+                            ⚡ Efeito em Regras (Buff In-Game):
+                          </span>
+                          <p className="text-amber-200 text-xs">{selectedBar.signatureDrink.inGameEffect}</p>
+                        </div>
+                        {selectedBar.signatureDrink.sideEffect && (
+                          <div className="p-2.5 rounded-lg bg-red-950/20 border border-red-900/40 space-y-0.5">
+                            <span className="text-red-400 text-[10px] font-mono font-bold uppercase block flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3" /> Efeito Colateral / Ressaca:
+                            </span>
+                            <p className="text-red-300 text-[11px]">{selectedBar.signatureDrink.sideEffect}</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Lore Trivia */}
+                      {selectedBar.signatureDrink.loreTrivia && (
+                        <div className="text-[10px] font-mono text-zinc-500 italic pt-1 border-t border-zinc-800/60">
+                          <strong>Origem do Drink:</strong> {selectedBar.signatureDrink.loreTrivia}
+                        </div>
+                      )}
+                    </div>
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                       <div className="p-3.5 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-1">
-                        <span className="text-[10px] text-zinc-500 font-mono uppercase block mb-1">Bebida da Casa:</span>
-                        <strong className="text-red-400 block text-xs">{selectedBar.signatureDrink.name} ({selectedBar.signatureDrink.cost})</strong>
-                        <span className="text-zinc-400 text-[11px] block">{selectedBar.signatureDrink.description}</span>
-                        <span className="text-amber-400 text-[10px] font-mono mt-1.5 block bg-amber-950/30 p-1.5 rounded border border-amber-900/40">
-                          {selectedBar.signatureDrink.inGameEffect}
-                        </span>
+                        <span className="text-[10px] text-zinc-500 font-mono uppercase block mb-0.5">Público Frequente:</span>
+                        <p className="text-zinc-300 text-[11px] leading-relaxed">{selectedBar.clientele}</p>
                       </div>
-                      <div className="p-3.5 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-2">
-                        <div>
-                          <span className="text-[10px] text-zinc-500 font-mono uppercase block mb-0.5">Público Frequente:</span>
-                          <p className="text-zinc-300 text-[11px]">{selectedBar.clientele}</p>
-                        </div>
-                        <div>
-                          <span className="text-[10px] text-zinc-500 font-mono uppercase block mb-0.5">Estilo Musical:</span>
-                          <p className="text-zinc-400 text-[11px] font-mono">{selectedBar.musicStyle}</p>
-                        </div>
+                      <div className="p-3.5 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-1">
+                        <span className="text-[10px] text-zinc-500 font-mono uppercase block mb-0.5">Estilo Musical:</span>
+                        <p className="text-zinc-400 text-[11px] font-mono">{selectedBar.musicStyle}</p>
                       </div>
                     </div>
 
@@ -2174,33 +2304,104 @@ export const WorldPage: React.FC = () => {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-2">
+                      {/* Signature Drink Section in Modal */}
+                      <div className="p-3.5 rounded-xl bg-[#0e0e13] border border-amber-900/30 space-y-2.5">
+                        <span className="text-amber-400 font-mono font-bold text-xs uppercase flex items-center gap-1.5">
+                          <Wine className="w-3.5 h-3.5" /> Detalhes da Bebida Especial da Casa
+                        </span>
+
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <label className="block text-zinc-400 font-mono text-[11px] mb-1">Nome do Drink:</label>
+                            <input
+                              type="text"
+                              value={newBarDrinkName}
+                              onChange={e => setNewBarDrinkName(e.target.value)}
+                              placeholder="ex: Neon Venom"
+                              className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-lg p-2 text-zinc-200 focus:outline-none text-xs"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-zinc-400 font-mono text-[11px] mb-1">Preço (eb):</label>
+                            <input
+                              type="text"
+                              value={newBarDrinkCost}
+                              onChange={e => setNewBarDrinkCost(e.target.value)}
+                              placeholder="ex: 35eb (Costly)"
+                              className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-lg p-2 text-zinc-200 focus:outline-none text-xs"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-zinc-400 font-mono text-[11px] mb-1">Categoria:</label>
+                            <select
+                              value={newBarDrinkCategory}
+                              onChange={e => setNewBarDrinkCategory(e.target.value)}
+                              className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-lg p-2 text-zinc-200 focus:outline-none text-xs"
+                            >
+                              <option value="Coquetel Lendário">Coquetel Lendário</option>
+                              <option value="Destilado Pesado">Destilado Pesado</option>
+                              <option value="Energético Cibernético">Energético Cibernético</option>
+                              <option value="Elixir Bioquímico">Elixir Bioquímico</option>
+                              <option value="Cerveja de Sarjeta">Cerveja de Sarjeta</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-zinc-400 font-mono text-[11px] mb-1">Copo & Apresentação (Glassware):</label>
+                            <input
+                              type="text"
+                              value={newBarDrinkGlassware}
+                              onChange={e => setNewBarDrinkGlassware(e.target.value)}
+                              placeholder="ex: Copo de chumbo, névoa de gelo seco..."
+                              className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-lg p-2 text-zinc-200 focus:outline-none text-xs"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-zinc-400 font-mono text-[11px] mb-1">Ingredientes da Mistura:</label>
+                            <input
+                              type="text"
+                              value={newBarDrinkIngredients}
+                              onChange={e => setNewBarDrinkIngredients(e.target.value)}
+                              placeholder="separados por vírgula (ex: Tequila, Pimenta, Gelo Seco)"
+                              className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-lg p-2 text-zinc-200 focus:outline-none text-xs"
+                            />
+                          </div>
+                        </div>
+
                         <div>
-                          <label className="block text-zinc-400 font-mono mb-1">Drink da Casa:</label>
+                          <label className="block text-zinc-400 font-mono text-[11px] mb-1">Paladar & Sensação Sensorial (Tasting Notes):</label>
                           <input
                             type="text"
-                            value={newBarDrinkName}
-                            onChange={e => setNewBarDrinkName(e.target.value)}
-                            className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-lg p-2 text-zinc-200 focus:outline-none"
+                            value={newBarDrinkTasting}
+                            onChange={e => setNewBarDrinkTasting(e.target.value)}
+                            placeholder="como queima na garganta, aroma, gosto e reação..."
+                            className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-lg p-2 text-zinc-200 focus:outline-none text-xs"
                           />
                         </div>
-                        <div>
-                          <label className="block text-zinc-400 font-mono mb-1">Preço (eb):</label>
-                          <input
-                            type="text"
-                            value={newBarDrinkCost}
-                            onChange={e => setNewBarDrinkCost(e.target.value)}
-                            className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-lg p-2 text-zinc-200 focus:outline-none"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-zinc-400 font-mono mb-1">Efeito em Regra:</label>
-                          <input
-                            type="text"
-                            value={newBarDrinkEffect}
-                            onChange={e => setNewBarDrinkEffect(e.target.value)}
-                            className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-lg p-2 text-zinc-200 focus:outline-none"
-                          />
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-zinc-400 font-mono text-[11px] mb-1">Efeito em Regra (Buff):</label>
+                            <input
+                              type="text"
+                              value={newBarDrinkEffect}
+                              onChange={e => setNewBarDrinkEffect(e.target.value)}
+                              placeholder="ex: +1 em COOL por 1 hora"
+                              className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-lg p-2 text-zinc-200 focus:outline-none text-xs"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-zinc-400 font-mono text-[11px] mb-1">Efeito Colateral / Ressaca:</label>
+                            <input
+                              type="text"
+                              value={newBarDrinkSideEffect}
+                              onChange={e => setNewBarDrinkSideEffect(e.target.value)}
+                              placeholder="ex: DV 12 Resistência contra náusea"
+                              className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-lg p-2 text-zinc-200 focus:outline-none text-xs"
+                            />
+                          </div>
                         </div>
                       </div>
 
@@ -2230,6 +2431,47 @@ export const WorldPage: React.FC = () => {
                         Salvar Bar
                       </button>
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {/* MODAL / TOAST: BEBER NO BALCÃO */}
+              {drinkOrderedToast && (
+                <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+                  <div className="bg-[#121217] border border-amber-600/60 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl animate-in zoom-in-95 duration-200">
+                    <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+                      <div className="flex items-center gap-2">
+                        <Wine className="w-5 h-5 text-amber-500" />
+                        <h3 className="text-sm font-bold text-zinc-100 font-mono">Bebida Servida no Balcão!</h3>
+                      </div>
+                      <button onClick={() => setDrinkOrderedToast(null)} className="p-1 rounded text-zinc-400 hover:text-zinc-200">
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    <div className="text-center space-y-1">
+                      <span className="text-[10px] font-mono uppercase text-amber-400">Você vira a dose de</span>
+                      <h2 className="text-xl font-bold text-zinc-100">{drinkOrderedToast.drinkName}</h2>
+                      {drinkOrderedToast.glassware && (
+                        <span className="text-xs font-mono text-zinc-400 block">Servido em: {drinkOrderedToast.glassware}</span>
+                      )}
+                    </div>
+
+                    <div className="p-4 rounded-xl bg-[#0a0a0d] border border-zinc-800 text-xs text-zinc-300 italic leading-relaxed">
+                      "{drinkOrderedToast.tastingNotes}"
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-amber-950/30 border border-amber-800/50 space-y-1 text-xs">
+                      <span className="text-amber-400 font-mono font-bold block">⚡ Efeito Mecânico em Regra:</span>
+                      <p className="text-amber-200">{drinkOrderedToast.effect}</p>
+                    </div>
+
+                    <button
+                      onClick={() => setDrinkOrderedToast(null)}
+                      className="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-red-600 hover:from-amber-500 hover:to-red-500 text-white font-semibold text-xs transition uppercase tracking-wider shadow"
+                    >
+                      Bater o Copo no Balcão & Continuar
+                    </button>
                   </div>
                 </div>
               )}

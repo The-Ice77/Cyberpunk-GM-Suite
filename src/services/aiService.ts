@@ -599,7 +599,19 @@ export async function generateAICustomBar(
   musicStyle: string;
   clientele: string;
   securityRating: string;
-  signatureDrink: { name: string; cost: string; description: string; inGameEffect: string };
+  signatureDrink: {
+    name: string;
+    cost: string;
+    category?: any;
+    glassware?: string;
+    visualServing?: string;
+    ingredients?: string[];
+    tastingNotes?: string;
+    description: string;
+    inGameEffect: string;
+    sideEffect?: string;
+    loreTrivia?: string;
+  };
   localRumors: string[];
 }> {
   const activeKey = getEffectiveApiKey(apiKey);
@@ -613,10 +625,17 @@ Retorne em JSON:
   "clientele": "quem frequenta o local",
   "securityRating": "Nenhuma (Faroeste) / Baixa / Média / Pesada / Militar",
   "signatureDrink": {
-    "name": "nome do drink",
-    "cost": "preço em eb",
-    "description": "ingredientes e sabor",
-    "inGameEffect": "bônus ou penalidade de regra após beber"
+    "name": "nome do drink especial",
+    "cost": "preço em eb (ex: 35eb)",
+    "category": "Coquetel Lendário / Destilado Pesado / Energético Cibernético / Elixir Bioquímico / Cerveja de Sarjeta",
+    "glassware": "estilo do copo (ex: Copo tumbler pesado com borda de sal)",
+    "visualServing": "como é servido, cores, névoa ou efervescência",
+    "ingredients": ["ingrediente 1", "ingrediente 2", "ingrediente 3"],
+    "tastingNotes": "sensação sensorial detalhada no primeiro gole e queimação",
+    "description": "resumo direto dos ingredientes e sabor",
+    "inGameEffect": "bônus mecânico exato de regra e duração",
+    "sideEffect": "ressaca ou teste de resistência se houver",
+    "loreTrivia": "história ou lenda sobre a criação do drink"
   },
   "localRumors": ["rumor 1 com gancho de missão", "rumor 2"]
 }`;
@@ -653,8 +672,19 @@ Retorne em JSON:
     signatureDrink: {
       name: `Siren's Byte`,
       cost: '40eb',
+      category: 'Elixir Bioquímico',
+      glassware: 'Copo térmico de policarbonato fosco com LED azul na base',
+      visualServing: 'Líquido azul neon com microbolhas efervescentes que brilham sob luz ambiente e soltam aroma de mentol gelado.',
+      ingredients: [
+        'Vodka sintética 70% com infusão de cafeína pura',
+        'Xarope de mirtilo radioativo com taurina',
+        'Gotas de eletrólito neuronal efervescente',
+      ],
+      tastingNotes: 'Gosto gélido de menta e frutas escuras que faz a língua formigar e anestesia levemente os dentes, gerando um surto imediato de clareza cognitiva.',
       description: 'Vodka sintética azul misturada com energético de taurina e cristais efervescentes de cafeína pura.',
-      inGameEffect: '+1 em testes de Interface de Netrunning pela próxima hora; insônia garantida pelas próximas 8 horas.',
+      inGameEffect: '+1 em testes de Interface de Netrunning e Cybertech pela próxima 1 hora.',
+      sideEffect: 'Insônia e taquicardia leve pelas próximas 6 horas.',
+      loreTrivia: 'Criado pelo barman em celebração à invasão da subestação de dados da Ziggurat em 2043.',
     },
     localRumors: [
       `Dizem que o barman esconde uma antena transmissora ligada diretamente à fortaleza de dados da Ziggurat no porão.`,
