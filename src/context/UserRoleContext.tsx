@@ -3,7 +3,7 @@ import { PlayerCharacter, PREMADE_ARCHETYPES } from '../data/playerArchetypes';
 
 export type UserRole = 'GM' | 'PLAYER';
 
-interface CustomDistrictLocation {
+export interface CustomDistrictLocation {
   id: string;
   name: string;
   districtId: string;
@@ -13,6 +13,11 @@ interface CustomDistrictLocation {
   x?: number;
   y?: number;
   dangerLevel: string;
+  color?: string;
+  icon?: string;
+  factionId?: string;
+  isAiGenerated?: boolean;
+  gmSecrets?: string;
 }
 
 interface CampaignWorldState {

@@ -36,16 +36,21 @@ import {
   UtensilsCrossed,
   Train,
   Church,
+  Edit3,
+  Sliders,
+  Wand2,
+  Target,
+  Radio,
 } from 'lucide-react';
 import { useSystem } from '../context/SystemContext';
-import { useUserRole } from '../context/UserRoleContext';
-import { NIGHT_CITY_DISTRICTS, MapDistrict } from '../data/mapData';
+import { useUserRole, CustomDistrictLocation } from '../context/UserRoleContext';
+import { NIGHT_CITY_DISTRICTS, MapDistrict, isPointInPolygon, detectDistrictByCoords } from '../data/mapData';
 import { seasonalWeatherTables, strangeWeatherTable, urbanEventsList, StrangeWeatherRoll, UrbanEvent } from '../data/weatherData';
 import { NIGHT_CITY_BARS, BarVenue } from '../data/barsData';
 import { DATING_KEYWORDS, DATING_LOCATIONS, DATING_COMPLICATIONS } from '../data/datingData';
 import { SCREAMSHEET_NETWORKS, SCREAMSHEET_TEMPLATES } from '../data/screamsheetData';
 import { GANGS_LIST, GangProfile } from '../data/gangsData';
-import { generateAIExtendedEncounter, generateAIScreamsheet, generateAICustomBar, generateAIDate, AIDateResult } from '../services/aiService';
+import { generateAIExtendedEncounter, generateAIScreamsheet, generateAICustomBar, generateAIDate, AIDateResult, generateAICustomMapLocation } from '../services/aiService';
 import { NightMarketSection } from '../components/world/NightMarketSection';
 import { SafeHousesSection } from '../components/world/SafeHousesSection';
 import { StreetFoodDrinksSection } from '../components/world/StreetFoodDrinksSection';
@@ -244,6 +249,194 @@ export const WorldPage: React.FC = () => {
   const [newPinDesc, setNewPinDesc] = useState<string>('');
   const [newPinNotes, setNewPinNotes] = useState<string>('');
   const [clickCoords, setClickCoords] = useState<{ xPct: number; yPct: number } | null>(null);
+  const [editingPinId, setEditingPinId] = useState<string | null>(null);
+  const [newPinIcon, setNewPinIcon] = useState<string>('MapPin');
+  const [enableClustering, setEnableClustering] = useState<boolean>(true);
+  const [activeCluster, setActiveCluster] = useState<any | null>(null);
+  const [isAiGeneratingPin, setIsAiGeneratingPin] = useState<boolean>(false);
+  const [contextMenu, setContextMenu] = useState<{
+    visible: boolean;
+    screenX: number;
+    screenY: number;
+    xPct: number;
+    yPct: number;
+    district: MapDistrict;
+    targetPin?: CustomDistrictLocation | null;
+  } | null>(null);
+
+  // Close context menu on outside click
+  useEffect(() => {
+    const handleCloseCtx = () => {
+      setContextMenu(null);
+    };
+    window.addEventListener('click', handleCloseCtx);
+    return () => window.removeEventListener('click', handleCloseCtx);
+  }, []);
+
+  // Map Right-Click Context Menu Handler
+  const handleMapContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!viewportRef.current) return;
+    const rect = viewportRef.current.getBoundingClientRect();
+    const clientXInCanvas = (e.clientX - rect.left - (rect.width / 2) - panOffset.x) / zoomLevel + (rect.width / 2);
+    const clientYInCanvas = (e.clientY - rect.top - (rect.height / 2) - panOffset.y) / zoomLevel + (rect.height / 2);
+    const xPct = Math.max(1, Math.min(99, Math.round((clientXInCanvas / rect.width) * 1000) / 10));
+    const yPct = Math.max(1, Math.min(99, Math.round((clientYInCanvas / rect.height) * 1000) / 10));
+
+    const detectedDistrict = detectDistrictByCoords(xPct, yPct);
+    setContextMenu({
+      visible: true,
+      screenX: Math.min(window.innerWidth - 280, Math.max(10, e.clientX)),
+      screenY: Math.min(window.innerHeight - 360, Math.max(10, e.clientY)),
+      xPct,
+      yPct,
+      district: detectedDistrict,
+      targetPin: null,
+    });
+  };
+
+  // Quick AI Point Generator at Coordinates
+  const handleCreatePointWithAI = async (xPct: number, yPct: number, district: MapDistrict) => {
+    setIsAiGeneratingPin(true);
+    try {
+      const aiLoc = await generateAICustomMapLocation(district.name);
+      const newPin: CustomDistrictLocation = {
+        id: 'pin-ai-' + Date.now(),
+        name: aiLoc.name,
+        districtId: district.id,
+        type: aiLoc.type,
+        description: aiLoc.description,
+        notes: `[Notas Secretas]: ${aiLoc.notes}\n[Boatos]: ${aiLoc.rumor}`,
+        dangerLevel: aiLoc.dangerLevel,
+        x: xPct,
+        y: yPct,
+        color: aiLoc.dangerLevel === 'Extremo' ? 'red' : aiLoc.dangerLevel === 'Alto' ? 'purple' : 'amber',
+        icon: 'Sparkles',
+        isAiGenerated: true,
+      };
+      addCustomLocation(newPin);
+      setSelectedCustomPin(newPin);
+      setSelectedDistrictId(district.id);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsAiGeneratingPin(false);
+      setContextMenu(null);
+    }
+  };
+
+  // Open Edit Modal for existing pin
+  const handleOpenEditPin = (pin: CustomDistrictLocation) => {
+    setEditingPinId(pin.id);
+    setNewPinName(pin.name);
+    setNewPinType(pin.type);
+    setNewPinDistrict(pin.districtId);
+    setNewPinDanger(pin.dangerLevel);
+    setNewPinColor(pin.color || 'amber');
+    setNewPinIcon(pin.icon || 'MapPin');
+    setNewPinGangId(pin.factionId || '');
+    setNewPinDesc(pin.description || '');
+    setNewPinNotes(pin.notes || '');
+    setClickCoords({ xPct: pin.x ?? 50, yPct: pin.y ?? 50 });
+    setShowAddPinModal(true);
+    setContextMenu(null);
+  };
+
+  // Open Create Modal for new pin
+  const handleOpenCreatePin = (coords?: { xPct: number; yPct: number }, distId?: string) => {
+    setEditingPinId(null);
+    setNewPinName('');
+    setNewPinType('Clube / Bar Noturno');
+    setNewPinDistrict(distId || selectedDistrictId);
+    setNewPinDanger('Médio');
+    setNewPinColor('amber');
+    setNewPinIcon('MapPin');
+    setNewPinGangId('');
+    setNewPinDesc('');
+    setNewPinNotes('');
+    setClickCoords(coords || { xPct: 50, yPct: 50 });
+    setShowAddPinModal(true);
+    setContextMenu(null);
+  };
+
+  // Procedural random name for custom pin
+  const handleRollRandomPinName = () => {
+    const prefixes = ['Toca do', 'Bar', 'Clínica Ripper', 'Esconderijo', 'Depósito Clandestino', 'Bunker', 'Cyber-Lounge', 'Oásis do'];
+    const names = ['Cromo Negro', 'Chacal', 'Dragão de Neon', 'Afterlife II', 'Zero Grau', 'Maelstrom Sul', 'Silverhand', 'Corvo Branco', 'Sombra'];
+    const p = prefixes[Math.floor(Math.random() * prefixes.length)];
+    const n = names[Math.floor(Math.random() * names.length)];
+    setNewPinName(`${p} ${n}`);
+  };
+
+  // Structure entities for map and cluster computation
+  interface MapEntity {
+    id: string;
+    kind: 'gang' | 'corp' | 'poi' | 'custom';
+    name: string;
+    xPct: number;
+    yPct: number;
+    data: any;
+  }
+
+  interface MapClusterGroup {
+    id: string;
+    xPct: number;
+    yPct: number;
+    items: MapEntity[];
+  }
+
+  const mapClusters: MapClusterGroup[] = React.useMemo(() => {
+    const visible: MapEntity[] = [];
+    if (filterGangs) {
+      MAP_GANG_SPOTS.forEach(g => visible.push({ id: g.id, kind: 'gang', name: g.name, xPct: g.xPct, yPct: g.yPct, data: g }));
+    }
+    if (filterCorps) {
+      MAP_CORP_FACILITIES.forEach(c => visible.push({ id: c.id, kind: 'corp', name: c.name, xPct: c.xPct, yPct: c.yPct, data: c }));
+    }
+    if (filterPOIs) {
+      MAP_POI_MARKERS.forEach(p => visible.push({ id: p.id, kind: 'poi', name: p.name, xPct: p.xPct, yPct: p.yPct, data: p }));
+    }
+    if (filterCustomPins) {
+      worldState.customLocations.forEach(c => visible.push({ id: c.id, kind: 'custom', name: c.name, xPct: c.x ?? 50, yPct: c.y ?? 50, data: c }));
+    }
+
+    if (!enableClustering) {
+      return visible.map(it => ({ id: it.id, xPct: it.xPct, yPct: it.yPct, items: [it] }));
+    }
+
+    const clusters: MapClusterGroup[] = [];
+    const assigned = new Set<string>();
+    const radius = 3.6 / Math.max(1, zoomLevel);
+
+    for (let i = 0; i < visible.length; i++) {
+      const it = visible[i];
+      if (assigned.has(it.id)) continue;
+      const group: MapEntity[] = [it];
+      assigned.add(it.id);
+
+      for (let j = i + 1; j < visible.length; j++) {
+        const other = visible[j];
+        if (assigned.has(other.id)) continue;
+        const dist = Math.hypot(it.xPct - other.xPct, it.yPct - other.yPct);
+        if (dist <= radius) {
+          group.push(other);
+          assigned.add(other.id);
+        }
+      }
+
+      const avgX = group.reduce((acc, g) => acc + g.xPct, 0) / group.length;
+      const avgY = group.reduce((acc, g) => acc + g.yPct, 0) / group.length;
+
+      clusters.push({
+        id: `c-${i}-${group.length}`,
+        xPct: Math.round(avgX * 10) / 10,
+        yPct: Math.round(avgY * 10) / 10,
+        items: group,
+      });
+    }
+
+    return clusters;
+  }, [filterGangs, filterCorps, filterPOIs, filterCustomPins, worldState.customLocations, enableClustering, zoomLevel]);
 
   // WEATHER STATE
   const [selectedSeasonIdx, setSelectedSeasonIdx] = useState<number>(0);
@@ -836,6 +1029,19 @@ export const WorldPage: React.FC = () => {
                 <Sparkles className="w-3 h-3 text-amber-400" />
                 <span>Pins do Mestre ({worldState.customLocations.length})</span>
               </button>
+
+              <button
+                onClick={() => setEnableClustering(p => !p)}
+                className={`px-2.5 py-1 rounded-lg border text-[11px] font-mono transition flex items-center gap-1 ${
+                  enableClustering
+                    ? 'bg-purple-950/70 border-purple-500 text-purple-300 font-bold shadow-sm'
+                    : 'bg-transparent border-zinc-800 text-zinc-500 hover:text-zinc-300'
+                }`}
+                title="Agrupa marcadores muito próximos para evitar sobreposição caótica no mapa"
+              >
+                <Layers className="w-3 h-3 text-purple-400" />
+                <span>Agrupar Pontos ({enableClustering ? 'Ativo' : 'Desligado'})</span>
+              </button>
             </div>
 
             {/* Right: Zoom Controls, Pan Reset & Add Custom Pin */}
@@ -906,6 +1112,7 @@ export const WorldPage: React.FC = () => {
                 onTouchStart={onTouchStartMap}
                 onTouchMove={onTouchMoveMap}
                 onTouchEnd={onTouchEndMap}
+                onContextMenu={handleMapContextMenu}
                 style={{ cursor: isDragging ? 'grabbing' : 'grab', touchAction: 'none' }}
                 onClick={e => {
                   if (dragDistance > 6) return;
@@ -935,82 +1142,118 @@ export const WorldPage: React.FC = () => {
                     draggable={false}
                   />
 
-                  {/* 1. DISTRICT ZONE SECTOR OVERLAYS WITH LUMINOUS CLEAR BOUNDS */}
-                  {filterDistricts &&
-                    MAP_DISTRICT_ZONES.map(zone => {
-                      const isSelected = selectedDistrictId === zone.id;
-                      return (
-                        <React.Fragment key={zone.id}>
-                          {/* Translucent Territory Sector Overlay */}
-                          <div
+                  {/* 1. PRECISE VECTOR DISTRICT POLYGONS (SEGUINDO AS LINHAS DO MAPA) */}
+                  {filterDistricts && (
+                    <svg
+                      viewBox="0 0 100 100"
+                      preserveAspectRatio="none"
+                      className="absolute inset-0 w-full h-full pointer-events-none z-10"
+                    >
+                      <defs>
+                        <filter id="neon-district-glow" x="-20%" y="-20%" width="140%" height="140%">
+                          <feGaussianBlur stdDeviation="0.8" result="blur" />
+                          <feMerge>
+                            <feMergeNode in="blur" />
+                            <feMergeNode in="SourceGraphic" />
+                          </feMerge>
+                        </filter>
+                      </defs>
+                      {NIGHT_CITY_DISTRICTS.map(district => {
+                        const isSelected = selectedDistrictId === district.id;
+                        return (
+                          <polygon
+                            key={district.id}
+                            points={district.polygonPoints}
+                            fill={isSelected ? district.fillColor.replace('0.20', '0.38').replace('0.22', '0.40').replace('0.18', '0.35') : district.fillColor}
+                            stroke={district.strokeColor}
+                            strokeWidth={isSelected ? '0.7' : '0.32'}
+                            strokeDasharray={isSelected ? undefined : '1.4 0.7'}
+                            filter={isSelected ? 'url(#neon-district-glow)' : undefined}
+                            className="pointer-events-auto cursor-pointer transition-all duration-200 hover:brightness-150"
                             onClick={e => {
                               e.stopPropagation();
-                              setSelectedDistrictId(zone.id);
+                              setSelectedDistrictId(district.id);
                             }}
-                            className={`absolute rounded-2xl border-2 transition-all duration-200 cursor-pointer ${
-                              isSelected
-                                ? 'bg-red-500/15 border-red-500 ring-2 ring-red-500/50 z-10 shadow-lg'
-                                : 'bg-zinc-950/20 border-dashed border-zinc-700/60 hover:border-amber-500/70 hover:bg-amber-950/15 z-5'
-                            }`}
-                            style={{
-                              left: `${zone.bounds.left}%`,
-                              top: `${zone.bounds.top}%`,
-                              width: `${zone.bounds.width}%`,
-                              height: `${zone.bounds.height}%`,
-                            }}
-                            title={`Distrito: ${zone.name} (Nível de Ameaça: ${zone.threatLevel})`}
-                          />
-
-                          {/* Center Zone Badge */}
-                          <div
-                            onClick={e => {
-                              e.stopPropagation();
-                              setSelectedDistrictId(zone.id);
-                            }}
-                            className="absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer z-15 transition group"
-                            style={{ left: `${zone.xPct}%`, top: `${zone.yPct}%` }}
                           >
-                            <div
-                              className={`px-2.5 py-0.5 rounded-full border text-[9px] font-mono font-bold tracking-wider backdrop-blur-md shadow-md transition transform group-hover:scale-110 ${
-                                isSelected
-                                  ? 'bg-red-600 text-white border-white ring-2 ring-red-400 scale-105'
-                                  : `${zone.color} hover:brightness-125`
-                              }`}
-                            >
-                              {zone.shortName}
-                            </div>
-                          </div>
-                        </React.Fragment>
-                      );
-                    })}
+                            <title>{`${district.name} (${district.threatLevel})`}</title>
+                          </polygon>
+                        );
+                      })}
+                    </svg>
+                  )}
 
-                  {/* 2. MEGACORPORATE FORTRESSES & COMPLEXES OVERLAY */}
-                  {filterCorps &&
-                    MAP_CORP_FACILITIES.map(corp => {
+                  {/* 2. CENTER DISTRICT SECTOR BADGES */}
+                  {filterDistricts &&
+                    NIGHT_CITY_DISTRICTS.map(d => {
+                      const isSelected = selectedDistrictId === d.id;
                       return (
                         <div
-                          key={corp.id}
+                          key={`badge-${d.id}`}
                           onClick={e => {
                             e.stopPropagation();
-                            setSelectedCorp(corp);
+                            setSelectedDistrictId(d.id);
                           }}
-                          className="absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer z-25 group transition"
-                          style={{ left: `${corp.xPct}%`, top: `${corp.yPct}%` }}
-                          title={`Corporação: ${corp.name} (${corp.securityRating})`}
+                          className="absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer z-15 transition group pointer-events-auto"
+                          style={{ left: `${d.centerCoords.x}%`, top: `${d.centerCoords.y}%` }}
                         >
-                          <div className="p-1 rounded-md bg-[#0a0a0d]/95 border border-cyan-400 text-cyan-300 shadow-xl group-hover:scale-125 group-hover:border-white transition flex items-center gap-1">
-                            <Building2 className="w-3.5 h-3.5 text-cyan-400" />
+                          <div
+                            className={`px-2.5 py-0.5 rounded-full border text-[9px] font-mono font-bold tracking-wider backdrop-blur-md shadow-md transition transform group-hover:scale-110 ${
+                              isSelected
+                                ? 'bg-red-600 text-white border-white ring-2 ring-red-400 scale-105'
+                                : `${d.colorTheme} hover:brightness-125`
+                            }`}
+                          >
+                            {d.shortName}
                           </div>
-                          <span className="hidden group-hover:block absolute left-1/2 -translate-x-1/2 -bottom-5 whitespace-nowrap bg-black/95 text-cyan-300 border border-cyan-600 text-[9px] font-mono px-1.5 py-0.5 rounded shadow-lg pointer-events-none z-30">
-                            🏢 {corp.name}
-                          </span>
                         </div>
                       );
                     })}
 
-                  {/* 3. ALL 43 GANG LOGOS ON TURF */}
-                  {filterGangs &&
-                    MAP_GANG_SPOTS.map(spot => {
+                  {/* 3. CLUSTERED & INDIVIDUAL MAP MARKERS (PREVENÇÃO DE SOBREPOSIÇÃO) */}
+                  {mapClusters.map(cluster => {
+                    // CASE A: CLUSTER OF MULTIPLE OVERLAPPING POINTS
+                    if (cluster.items.length > 1) {
+                      const hasGang = cluster.items.some(it => it.kind === 'gang');
+                      const hasCustom = cluster.items.some(it => it.kind === 'custom');
+                      const hasCorp = cluster.items.some(it => it.kind === 'corp');
+                      return (
+                        <div
+                          key={cluster.id}
+                          onClick={e => {
+                            e.stopPropagation();
+                            setActiveCluster(cluster);
+                          }}
+                          className="absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer z-30 group pointer-events-auto"
+                          style={{ left: `${cluster.xPct}%`, top: `${cluster.yPct}%` }}
+                          title={`${cluster.items.length} locais agrupados neste ponto (Clique para expandir)`}
+                        >
+                          <div className="relative">
+                            <div className="px-2 py-1 rounded-full bg-purple-950/90 border-2 border-purple-400 text-purple-200 font-mono text-[11px] font-bold shadow-2xl flex items-center gap-1 group-hover:scale-125 transition ring-2 ring-purple-600/50 backdrop-blur-md">
+                              {hasGang ? (
+                                <Skull className="w-3.5 h-3.5 text-red-400 animate-pulse" />
+                              ) : hasCustom ? (
+                                <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+                              ) : hasCorp ? (
+                                <Building2 className="w-3.5 h-3.5 text-cyan-400" />
+                              ) : (
+                                <Layers className="w-3.5 h-3.5 text-purple-400" />
+                              )}
+                              <span>{cluster.items.length}</span>
+                            </div>
+                            <span className="hidden group-hover:block absolute left-1/2 -translate-x-1/2 -bottom-5 whitespace-nowrap bg-black/95 text-purple-300 border border-purple-700 text-[9px] font-mono px-2 py-0.5 rounded shadow-xl pointer-events-none z-50">
+                              {cluster.items.length} locais próximos (Clique para abrir)
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // CASE B: SINGLE MARKER
+                    const item = cluster.items[0];
+
+                    // B.1 Gang Marker
+                    if (item.kind === 'gang') {
+                      const spot = item.data;
                       const isHighlighted = highlightedGangId === spot.gangId;
                       return (
                         <div
@@ -1018,15 +1261,13 @@ export const WorldPage: React.FC = () => {
                           onClick={e => {
                             e.stopPropagation();
                             const gData = GANGS_LIST.find(g => g.id === spot.gangId) || null;
-                            if (gData) {
-                              focusGangOnMap(gData);
-                            }
+                            if (gData) focusGangOnMap(gData);
                           }}
-                          className={`absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer z-20 group transition ${
+                          className={`absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer z-20 group transition pointer-events-auto ${
                             isHighlighted ? 'scale-125 z-40' : ''
                           }`}
                           style={{ left: `${spot.xPct}%`, top: `${spot.yPct}%` }}
-                          title={`Gangue: ${spot.name} (${spot.turfText}) - Clique para ver território e covil`}
+                          title={`Gangue: ${spot.name} (${spot.turfText}) - Clique para ver território`}
                         >
                           <div className="relative">
                             <div
@@ -1045,17 +1286,41 @@ export const WorldPage: React.FC = () => {
                                 }}
                               />
                             </div>
-                            <span className="hidden group-hover:block absolute left-1/2 -translate-x-1/2 -bottom-5 whitespace-nowrap bg-black/95 text-red-300 border border-red-700 text-[9px] font-mono px-1.5 py-0.5 rounded shadow-lg pointer-events-none z-30">
+                            <span className="hidden group-hover:block absolute left-1/2 -translate-x-1/2 -bottom-5 whitespace-nowrap bg-black/95 text-red-300 border border-red-700 text-[9px] font-mono px-1.5 py-0.5 rounded shadow-lg pointer-events-none z-40">
                               {spot.name}
                             </span>
                           </div>
                         </div>
                       );
-                    })}
+                    }
 
-                  {/* 4. OFFICIAL POI PINS */}
-                  {filterPOIs &&
-                    MAP_POI_MARKERS.map(poi => {
+                    // B.2 Corp Facility Marker
+                    if (item.kind === 'corp') {
+                      const corp = item.data;
+                      return (
+                        <div
+                          key={corp.id}
+                          onClick={e => {
+                            e.stopPropagation();
+                            setSelectedCorp(corp);
+                          }}
+                          className="absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer z-25 group transition pointer-events-auto"
+                          style={{ left: `${corp.xPct}%`, top: `${corp.yPct}%` }}
+                          title={`Corporação: ${corp.name} (${corp.securityRating})`}
+                        >
+                          <div className="p-1 rounded-md bg-[#0a0a0d]/95 border border-cyan-400 text-cyan-300 shadow-xl group-hover:scale-125 group-hover:border-white transition flex items-center gap-1">
+                            <Building2 className="w-3.5 h-3.5 text-cyan-400" />
+                          </div>
+                          <span className="hidden group-hover:block absolute left-1/2 -translate-x-1/2 -bottom-5 whitespace-nowrap bg-black/95 text-cyan-300 border border-cyan-600 text-[9px] font-mono px-1.5 py-0.5 rounded shadow-lg pointer-events-none z-40">
+                            🏢 {corp.name}
+                          </span>
+                        </div>
+                      );
+                    }
+
+                    // B.3 Official POI Marker
+                    if (item.kind === 'poi') {
+                      const poi = item.data;
                       return (
                         <div
                           key={poi.id}
@@ -1063,23 +1328,23 @@ export const WorldPage: React.FC = () => {
                             e.stopPropagation();
                             setSelectedDistrictId(poi.districtId);
                           }}
-                          className="absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer z-15 group transition"
+                          className="absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer z-15 group transition pointer-events-auto"
                           style={{ left: `${poi.xPct}%`, top: `${poi.yPct}%` }}
                           title={`${poi.name} (${poi.type})`}
                         >
                           <div className="p-1 rounded-full bg-amber-950/80 border border-amber-400 text-amber-300 shadow-md group-hover:scale-125 transition">
                             <MapPin className="w-3 h-3" />
                           </div>
-                          <span className="hidden group-hover:block absolute left-1/2 -translate-x-1/2 -bottom-5 whitespace-nowrap bg-black/95 text-amber-200 border border-amber-700 text-[9px] font-mono px-1.5 py-0.5 rounded shadow-lg pointer-events-none z-30">
+                          <span className="hidden group-hover:block absolute left-1/2 -translate-x-1/2 -bottom-5 whitespace-nowrap bg-black/95 text-amber-200 border border-amber-700 text-[9px] font-mono px-1.5 py-0.5 rounded shadow-lg pointer-events-none z-40">
                             {poi.name}
                           </span>
                         </div>
                       );
-                    })}
+                    }
 
-                  {/* 5. GM DRAGGABLE CUSTOM PINS ("ARRASTAR AS COISAS") */}
-                  {filterCustomPins &&
-                    worldState.customLocations.map(loc => {
+                    // B.4 Custom GM Pin
+                    if (item.kind === 'custom') {
+                      const loc = item.data;
                       const x = loc.x ?? 50;
                       const y = loc.y ?? 50;
                       const isBeingDragged = draggedPinId === loc.id;
@@ -1095,34 +1360,255 @@ export const WorldPage: React.FC = () => {
                             setSelectedDistrictId(loc.districtId);
                             setSelectedCustomPin(loc);
                           }}
-                          className={`absolute -translate-x-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing z-30 group transition-transform ${
+                          onContextMenu={e => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const dist = NIGHT_CITY_DISTRICTS.find(d => d.id === loc.districtId) || NIGHT_CITY_DISTRICTS[0];
+                            setContextMenu({
+                              visible: true,
+                              screenX: Math.min(window.innerWidth - 280, Math.max(10, e.clientX)),
+                              screenY: Math.min(window.innerHeight - 360, Math.max(10, e.clientY)),
+                              xPct: x,
+                              yPct: y,
+                              district: dist,
+                              targetPin: loc,
+                            });
+                          }}
+                          className={`absolute -translate-x-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing z-30 group transition-transform pointer-events-auto ${
                             isBeingDragged ? 'scale-150 z-50 ring-4 ring-amber-400 rounded-full' : ''
                           }`}
                           style={{ left: `${x}%`, top: `${y}%` }}
-                          title={`Pin Customizado: ${loc.name} (Clique e arraste para reposicionar no mapa)`}
+                          title={`Marcador: ${loc.name} (Clique direito para opções / Arraste para mover)`}
                         >
                           <div
                             className={`p-1 rounded-full border shadow-lg group-hover:scale-125 transition ${
-                              (loc as any).color === 'red'
+                              loc.color === 'red'
                                 ? 'bg-red-950/90 border-red-500 text-red-300'
-                                : (loc as any).color === 'cyan'
+                                : loc.color === 'cyan'
                                 ? 'bg-cyan-950/90 border-cyan-500 text-cyan-300'
-                                : (loc as any).color === 'purple'
+                                : loc.color === 'purple'
                                 ? 'bg-purple-950/90 border-purple-500 text-purple-300'
-                                : (loc as any).color === 'emerald'
+                                : loc.color === 'emerald'
                                 ? 'bg-emerald-950/90 border-emerald-500 text-emerald-300'
                                 : 'bg-amber-950/90 border-amber-400 text-amber-300'
                             }`}
                           >
                             <Sparkles className="w-3.5 h-3.5" />
                           </div>
-                          <span className="hidden group-hover:block absolute left-1/2 -translate-x-1/2 -bottom-5 whitespace-nowrap bg-black/95 text-amber-300 border border-amber-600 text-[9px] font-mono px-1.5 py-0.5 rounded shadow-lg pointer-events-none z-30">
-                            ★ {loc.name} (Arraste para mover)
+                          <span className="hidden group-hover:block absolute left-1/2 -translate-x-1/2 -bottom-5 whitespace-nowrap bg-black/95 text-amber-300 border border-amber-600 text-[9px] font-mono px-1.5 py-0.5 rounded shadow-lg pointer-events-none z-40">
+                            ★ {loc.name} (Botão direito para editar)
                           </span>
                         </div>
                       );
-                    })}
-                </div>
+                    }
+
+                    return null;
+                  })}
+
+                  {/* 4. ACTIVE CLUSTER POPOVER (SPIDERFY EXPANDED CARD) */}
+                  {activeCluster && (
+                    <div
+                      className="absolute z-50 p-4 rounded-2xl bg-[#0c0c12]/95 border-2 border-purple-500 shadow-2xl backdrop-blur-md w-72 space-y-3 pointer-events-auto animate-in fade-in zoom-in-95 duration-150"
+                      style={{
+                        left: `${Math.min(72, Math.max(28, activeCluster.xPct))}%`,
+                        top: `${Math.min(70, Math.max(25, activeCluster.yPct))}%`,
+                      }}
+                      onClick={e => e.stopPropagation()}
+                    >
+                      <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
+                        <div className="flex items-center gap-1.5 font-mono text-purple-300 font-bold text-xs">
+                          <Layers className="w-4 h-4 text-purple-400" />
+                          <span>{activeCluster.items.length} Pontos Agrupados</span>
+                        </div>
+                        <button
+                          onClick={() => setActiveCluster(null)}
+                          className="p-1 rounded text-zinc-400 hover:text-zinc-200"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <div className="max-h-56 overflow-y-auto space-y-1.5 pr-1 divide-y divide-zinc-800/60 font-sans text-xs">
+                        {activeCluster.items.map((it: any) => (
+                          <div
+                            key={it.id}
+                            onClick={() => {
+                              if (it.kind === 'gang') {
+                                const g = GANGS_LIST.find(gx => gx.id === it.data.gangId);
+                                if (g) focusGangOnMap(g);
+                              } else if (it.kind === 'corp') {
+                                setSelectedCorp(it.data);
+                              } else if (it.kind === 'poi') {
+                                setSelectedDistrictId(it.data.districtId);
+                              } else if (it.kind === 'custom') {
+                                setSelectedCustomPin(it.data);
+                                setSelectedDistrictId(it.data.districtId);
+                              }
+                              setActiveCluster(null);
+                            }}
+                            className="pt-1.5 first:pt-0 p-1.5 rounded-lg hover:bg-zinc-800/60 cursor-pointer transition flex items-center justify-between group"
+                          >
+                            <div className="flex items-center gap-2 overflow-hidden">
+                              <span className="font-bold text-zinc-200 truncate group-hover:text-purple-300">
+                                {it.name}
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400 uppercase flex-shrink-0">
+                              {it.kind === 'gang' ? 'Gangue' : it.kind === 'corp' ? 'Corp' : it.kind === 'custom' ? 'Meu Pin' : 'POI'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="pt-2 border-t border-zinc-800 flex gap-2">
+                        <button
+                          onClick={() => {
+                            setZoomLevel(prev => Math.min(2.5, prev + 0.5));
+                            setPanOffset({
+                              x: (50 - activeCluster.xPct) * 4,
+                              y: (50 - activeCluster.yPct) * 4,
+                            });
+                            setActiveCluster(null);
+                          }}
+                          className="flex-1 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-mono text-[11px] font-bold transition flex items-center justify-center gap-1.5 shadow"
+                        >
+                          <ZoomIn className="w-3.5 h-3.5" />
+                          <span>Ampliar (+Zoom)</span>
+                        </button>
+                        <button
+                          onClick={() => setActiveCluster(null)}
+                          className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-mono"
+                        >
+                          Fechar
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 5. FLOATING RIGHT-CLICK CONTEXT MENU (PODER DE EDITAR DO LUGAR) */}
+                  {contextMenu && contextMenu.visible && (
+                    <div
+                      className="fixed z-50 w-64 p-3 rounded-2xl bg-[#0e0e14]/98 border-2 border-red-500/80 shadow-2xl backdrop-blur-md text-xs font-sans space-y-2 animate-in fade-in zoom-in-95 duration-100"
+                      style={{
+                        left: `${contextMenu.screenX}px`,
+                        top: `${contextMenu.screenY}px`,
+                      }}
+                      onClick={e => e.stopPropagation()}
+                    >
+                      <div className="border-b border-zinc-800 pb-2 space-y-0.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-mono uppercase tracking-wider text-red-400 font-bold flex items-center gap-1">
+                            <Radio className="w-3 h-3 text-red-500 animate-pulse" />
+                            <span>Radar Tático</span>
+                          </span>
+                          <span className="text-[10px] font-mono text-zinc-500">
+                            {contextMenu.xPct}%, {contextMenu.yPct}%
+                          </span>
+                        </div>
+                        <h4 className="text-xs font-bold text-zinc-200">
+                          {contextMenu.targetPin ? contextMenu.targetPin.name : contextMenu.district.name}
+                        </h4>
+                      </div>
+
+                      {/* Context actions */}
+                      <div className="space-y-1">
+                        {!contextMenu.targetPin ? (
+                          <>
+                            <button
+                              onClick={() => {
+                                handleOpenCreatePin({ xPct: contextMenu.xPct, yPct: contextMenu.yPct }, contextMenu.district.id);
+                              }}
+                              className="w-full text-left px-2.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white flex items-center gap-2 transition"
+                            >
+                              <Plus className="w-3.5 h-3.5 text-amber-400" />
+                              <span>Adicionar Marcador Aqui</span>
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                handleCreatePointWithAI(contextMenu.xPct, contextMenu.yPct, contextMenu.district);
+                              }}
+                              disabled={isAiGeneratingPin}
+                              className="w-full text-left px-2.5 py-2 rounded-xl bg-gradient-to-r from-red-950/60 to-purple-950/60 hover:from-red-900/60 hover:to-purple-900/60 text-amber-300 flex items-center gap-2 border border-red-800/40 transition"
+                            >
+                              <Wand2 className={`w-3.5 h-3.5 text-amber-400 ${isAiGeneratingPin ? 'animate-spin' : ''}`} />
+                              <span>{isAiGeneratingPin ? 'Gerando com IA...' : '⚡ Criar Ponto com IA Gemini'}</span>
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                setNewBarDistrict(contextMenu.district.id);
+                                setShowAddBarModal(true);
+                                setContextMenu(null);
+                              }}
+                              className="w-full text-left px-2.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white flex items-center gap-2 transition"
+                            >
+                              <Wine className="w-3.5 h-3.5 text-rose-400" />
+                              <span>Criar Bar / Safehouse Aqui</span>
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                setActiveTab('encounters');
+                                handleRollEncounter();
+                                setContextMenu(null);
+                              }}
+                              className="w-full text-left px-2.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white flex items-center gap-2 transition"
+                            >
+                              <Compass className="w-3.5 h-3.5 text-cyan-400" />
+                              <span>Rolar Encontro Neste Local</span>
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(`X: ${contextMenu.xPct}%, Y: ${contextMenu.yPct}% (${contextMenu.district.name})`);
+                                setContextMenu(null);
+                              }}
+                              className="w-full text-left px-2.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 flex items-center gap-2 transition text-[11px] font-mono"
+                            >
+                              <MapPin className="w-3.5 h-3.5 text-zinc-500" />
+                              <span>Copiar Coordenadas</span>
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => {
+                                handleOpenEditPin(contextMenu.targetPin!);
+                              }}
+                              className="w-full text-left px-2.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white flex items-center gap-2 transition"
+                            >
+                              <Edit3 className="w-3.5 h-3.5 text-amber-400" />
+                              <span>Editar Informações do Ponto</span>
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                setDraggedPinId(contextMenu.targetPin!.id);
+                                setContextMenu(null);
+                              }}
+                              className="w-full text-left px-2.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white flex items-center gap-2 transition"
+                            >
+                              <Target className="w-3.5 h-3.5 text-cyan-400" />
+                              <span>Arrastar para Mover</span>
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                deleteCustomLocation(contextMenu.targetPin!.id);
+                                setContextMenu(null);
+                              }}
+                              className="w-full text-left px-2.5 py-2 rounded-xl bg-red-950/50 hover:bg-red-900/60 text-red-300 flex items-center gap-2 border border-red-800/40 transition"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                              <span>Excluir Marcador do Mapa</span>
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
+</div>
               </div>
 
               {/* Quick District Selector & 43 Gangs Directory Toggle */}
@@ -1479,32 +1965,49 @@ export const WorldPage: React.FC = () => {
             </div>
           )}
 
-          {/* ADD CUSTOM PIN MODAL */}
+          {/* SUPERCHARGED ADD / EDIT CUSTOM PIN MODAL */}
           {showAddPinModal && (
             <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-              <div className="bg-[#121217] border border-[#27272a] rounded-2xl max-w-lg w-full p-4 sm:p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
+              <div className="bg-[#121217] border border-[#27272a] rounded-2xl max-w-lg w-full p-4 sm:p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
                 <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
-                  <h3 className="text-sm font-bold text-zinc-100 flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-amber-500" />
-                    <span>Adicionar Novo Ponto ao Mapa ({clickCoords ? `${clickCoords.xPct}%, ${clickCoords.yPct}%` : 'Centro'})</span>
-                  </h3>
+                  <div className="space-y-0.5">
+                    <h3 className="text-sm font-bold text-zinc-100 flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-amber-500" />
+                      <span>{editingPinId ? 'Editar Marcador do Mapa' : 'Adicionar Novo Ponto ao Mapa'}</span>
+                    </h3>
+                    <span className="text-[11px] font-mono text-zinc-400">
+                      Coordenadas: {clickCoords ? `X: ${clickCoords.xPct}%, Y: ${clickCoords.yPct}%` : 'Centro'}
+                    </span>
+                  </div>
                   <button onClick={() => setShowAddPinModal(false)} className="p-1 rounded text-zinc-400 hover:text-zinc-200">
                     <X className="w-5 h-5" />
                   </button>
                 </div>
 
                 <div className="space-y-3 text-xs max-h-[70vh] overflow-y-auto pr-1">
+                  {/* Name + Randomize Button */}
                   <div>
-                    <label className="block text-zinc-400 font-mono mb-1">Nome do Ponto:</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-zinc-400 font-mono">Nome do Ponto:</label>
+                      <button
+                        type="button"
+                        onClick={handleRollRandomPinName}
+                        className="text-[10px] font-mono text-amber-400 hover:underline flex items-center gap-1"
+                      >
+                        <Dices className="w-3 h-3" />
+                        <span>Sortear Nome</span>
+                      </button>
+                    </div>
                     <input
                       type="text"
                       value={newPinName}
                       onChange={e => setNewPinName(e.target.value)}
-                      placeholder="ex: Bar Totentanz II, Laboratório Clandestino, Esconderijo Maelstrom..."
+                      placeholder="ex: Bar Totentanz II, Clínica Ripperdoc Dr. Cho, Covil Maelstrom..."
                       className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-lg p-2 text-zinc-200 focus:outline-none focus:border-red-500"
                     />
                   </div>
 
+                  {/* District & Danger */}
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-zinc-400 font-mono mb-1">Distrito:</label>
@@ -1528,6 +2031,7 @@ export const WorldPage: React.FC = () => {
                         onChange={e => setNewPinDanger(e.target.value)}
                         className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-lg p-2 text-zinc-200 focus:outline-none focus:border-red-500"
                       >
+                        <option value="Seguro">Seguro (Zona Verde)</option>
                         <option value="Baixo">Baixo (Área Civil / Vigiada)</option>
                         <option value="Médio">Médio (Tensão de Rua)</option>
                         <option value="Alto">Alto (Zona Hostil Armada)</option>
@@ -1536,6 +2040,7 @@ export const WorldPage: React.FC = () => {
                     </div>
                   </div>
 
+                  {/* Category & Controlling Faction */}
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-zinc-400 font-mono mb-1">Categoria:</label>
@@ -1550,13 +2055,15 @@ export const WorldPage: React.FC = () => {
                         <option value="Instalação Corporativa">Instalação Corporativa</option>
                         <option value="Safehouse / Esconderijo">Safehouse / Esconderijo</option>
                         <option value="Bazar / Mercado Negro">Bazar / Mercado Negro</option>
-                        <option value="Ponto de Perigo / Emboscada">Ponto de Perigo / Emboscada</option>
+                        <option value="Data Fortress / QG Netrunner">Data Fortress / QG Netrunner</option>
+                        <option value="Residência / Apartamento">Residência / Apartamento</option>
+                        <option value="Ponto de Encontro Fixer">Ponto de Encontro Fixer</option>
                         <option value="Objetivo de Missão">Objetivo de Missão</option>
                       </select>
                     </div>
 
                     <div>
-                      <label className="block text-zinc-400 font-mono mb-1">Gangue Vinculada (43 Oficiais):</label>
+                      <label className="block text-zinc-400 font-mono mb-1">Gangue ou Facção Vinculada:</label>
                       <select
                         value={newPinGangId}
                         onChange={e => setNewPinGangId(e.target.value)}
@@ -1572,6 +2079,7 @@ export const WorldPage: React.FC = () => {
                     </div>
                   </div>
 
+                  {/* Color Selection */}
                   <div>
                     <label className="block text-zinc-400 font-mono mb-1">Cor do Marcador no Mapa:</label>
                     <div className="flex items-center gap-3">
@@ -1595,6 +2103,47 @@ export const WorldPage: React.FC = () => {
                     </div>
                   </div>
 
+                  {/* Precise Coordinates Sliders (Poder de colocar pontos em qualquer lugar) */}
+                  <div className="p-3 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-2">
+                    <span className="text-[10px] font-mono text-zinc-400 uppercase font-bold flex items-center gap-1.5">
+                      <Sliders className="w-3 h-3 text-cyan-400" />
+                      <span>Ajuste Fino de Coordenadas no Mapa</span>
+                    </span>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <div className="flex justify-between text-[11px] font-mono text-zinc-400 mb-0.5">
+                          <span>Posição X:</span>
+                          <span className="text-cyan-300 font-bold">{clickCoords?.xPct ?? 50}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="2"
+                          max="98"
+                          step="0.5"
+                          value={clickCoords?.xPct ?? 50}
+                          onChange={e => setClickCoords(prev => ({ xPct: Number(e.target.value), yPct: prev?.yPct ?? 50 }))}
+                          className="w-full accent-cyan-400"
+                        />
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-[11px] font-mono text-zinc-400 mb-0.5">
+                          <span>Posição Y:</span>
+                          <span className="text-cyan-300 font-bold">{clickCoords?.yPct ?? 50}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="2"
+                          max="98"
+                          step="0.5"
+                          value={clickCoords?.yPct ?? 50}
+                          onChange={e => setClickCoords(prev => ({ xPct: prev?.xPct ?? 50, yPct: Number(e.target.value) }))}
+                          className="w-full accent-cyan-400"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Descriptions */}
                   <div>
                     <label className="block text-zinc-400 font-mono mb-1">Descrição Pública (O que os jogadores veem):</label>
                     <textarea
@@ -1607,7 +2156,7 @@ export const WorldPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-zinc-400 font-mono mb-1">Notas Secretas do Mestre:</label>
+                    <label className="block text-zinc-400 font-mono mb-1">Notas Secretas do Mestre (Confidencial):</label>
                     <textarea
                       rows={2}
                       value={newPinNotes}
@@ -1618,38 +2167,68 @@ export const WorldPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="pt-2 border-t border-[#27272a] flex items-center justify-end gap-2">
-                  <button
-                    onClick={() => setShowAddPinModal(false)}
-                    className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (!newPinName.trim()) return;
-                      addCustomLocation({
-                        id: 'pin-' + Date.now(),
-                        name: newPinName.trim(),
-                        districtId: newPinDistrict,
-                        type: newPinType,
-                        description: newPinDesc,
-                        notes: newPinNotes,
-                        dangerLevel: newPinDanger,
-                        x: clickCoords?.xPct ?? 50,
-                        y: clickCoords?.yPct ?? 50,
-                        ...(newPinGangId ? { gangId: newPinGangId } : {}),
-                        ...({ color: newPinColor }),
-                      } as any);
-                      setNewPinName('');
-                      setNewPinDesc('');
-                      setNewPinNotes('');
-                      setShowAddPinModal(false);
-                    }}
-                    className="px-4 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-medium"
-                  >
-                    Salvar Ponto no Mapa
-                  </button>
+                <div className="pt-2 border-t border-[#27272a] flex items-center justify-between gap-2">
+                  {editingPinId ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        deleteCustomLocation(editingPinId);
+                        setShowAddPinModal(false);
+                      }}
+                      className="px-3 py-1.5 rounded-lg bg-red-950/60 hover:bg-red-900/80 text-red-300 border border-red-800/40 text-xs flex items-center gap-1.5"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Excluir Ponto</span>
+                    </button>
+                  ) : <div />}
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowAddPinModal(false)}
+                      className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!newPinName.trim()) return;
+                        if (editingPinId) {
+                          updateCustomLocation(editingPinId, {
+                            name: newPinName.trim(),
+                            districtId: newPinDistrict,
+                            type: newPinType,
+                            description: newPinDesc,
+                            notes: newPinNotes,
+                            dangerLevel: newPinDanger,
+                            x: clickCoords?.xPct ?? 50,
+                            y: clickCoords?.yPct ?? 50,
+                            color: newPinColor,
+                            factionId: newPinGangId,
+                          });
+                        } else {
+                          addCustomLocation({
+                            id: 'pin-' + Date.now(),
+                            name: newPinName.trim(),
+                            districtId: newPinDistrict,
+                            type: newPinType,
+                            description: newPinDesc,
+                            notes: newPinNotes,
+                            dangerLevel: newPinDanger,
+                            x: clickCoords?.xPct ?? 50,
+                            y: clickCoords?.yPct ?? 50,
+                            color: newPinColor,
+                            factionId: newPinGangId,
+                          });
+                        }
+                        setShowAddPinModal(false);
+                      }}
+                      className="px-4 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white font-mono font-bold text-xs shadow-lg shadow-red-950/40"
+                    >
+                      {editingPinId ? 'Atualizar Marcador' : 'Salvar no Mapa'}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1693,15 +2272,28 @@ export const WorldPage: React.FC = () => {
                 </div>
 
                 <div className="pt-2 border-t border-[#27272a] flex items-center justify-between">
-                  <button
-                    onClick={() => {
-                      deleteCustomLocation(selectedCustomPin.id);
-                      setSelectedCustomPin(null);
-                    }}
-                    className="px-3 py-1.5 rounded-lg bg-red-950 hover:bg-red-900 text-red-300 border border-red-800/50 text-xs font-mono transition"
-                  >
-                    Excluir Este Ponto
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        deleteCustomLocation(selectedCustomPin.id);
+                        setSelectedCustomPin(null);
+                      }}
+                      className="px-3 py-1.5 rounded-lg bg-red-950 hover:bg-red-900 text-red-300 border border-red-800/50 text-xs font-mono transition"
+                    >
+                      Excluir
+                    </button>
+                    <button
+                      onClick={() => {
+                        const pinToEdit = selectedCustomPin;
+                        setSelectedCustomPin(null);
+                        handleOpenEditPin(pinToEdit);
+                      }}
+                      className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-amber-300 border border-amber-500/40 text-xs font-mono transition flex items-center gap-1.5"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                      <span>Editar</span>
+                    </button>
+                  </div>
 
                   <button
                     onClick={() => setSelectedCustomPin(null)}

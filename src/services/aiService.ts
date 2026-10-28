@@ -1663,3 +1663,57 @@ Retorne ESTRITAMENTE em formato JSON puro:
 
   return proceduralFallback;
 }
+
+export interface AICustomMapLocation {
+  name: string;
+  type: string;
+  dangerLevel: string;
+  faction?: string;
+  description: string;
+  notes: string;
+  rumor: string;
+}
+
+export async function generateAICustomMapLocation(
+  districtName: string,
+  preferredType?: string,
+  options?: { apiKey?: string }
+): Promise<AICustomMapLocation> {
+  const nonce = `[Entropia-${Date.now().toString(36)}-${Math.floor(Math.random() * 99999)}]`;
+  const prompt = `Crie um ponto de interesse ou local marcante para o mapa de Night City no distrito "${districtName}" para Cyberpunk RED.
+${preferredType ? `Tipo sugerido: ${preferredType}.` : ''}
+${nonce}
+Retorne estritamente um JSON no seguinte formato:
+{
+  "name": "Nome temático (ex: Clínica Ripperdoc Dr. Cho, Covil Maelstrom Ferro Velho, Bar Oásis de Cromo)",
+  "type": "Clube / Bar Noturno | Clínica Ripperdoc | Armazém Clandestino | Loja de Armas | Safehouse | Covil de Gangue | QG Netrunner",
+  "dangerLevel": "Seguro | Baixo | Médio | Alto | Extremo",
+  "faction": "Facção ou gangue que controla o local ou 'Independente'",
+  "description": "Descrição sensorial pública e atmosfera para os jogadores (2 a 3 frases)",
+  "notes": "Notas secretas do mestre com ganchos de campanha, senhas ou segredos (2 frases)",
+  "rumor": "Um boato que corre na rua sobre o lugar"
+}`;
+
+  const parsed = await callGeminiJSON<any>(prompt, { apiKey: options?.apiKey });
+  if (parsed && parsed.name) {
+    return {
+      name: parsed.name,
+      type: parsed.type || 'Ponto de Interesse',
+      dangerLevel: parsed.dangerLevel || 'Médio',
+      faction: parsed.faction || 'Independente',
+      description: parsed.description || 'Local movimentado em Night City.',
+      notes: parsed.notes || 'Ponto de encontro neutro.',
+      rumor: parsed.rumor || 'Dizem que coisas estranhas acontecem no beco dos fundos.',
+    };
+  }
+
+  return {
+    name: `Esconderijo Clandestino de ${districtName}`,
+    type: preferredType || 'Esconderijo / Safehouse',
+    dangerLevel: 'Médio',
+    faction: 'Fixers Locais',
+    description: `Instalação oculta atrás de contêineres e letreiros de neon piscantes em ${districtName}.`,
+    notes: 'Possui uma saída de emergência pelos túneis de esgoto e uma tranca biométrica com DV 15 para hackear.',
+    rumor: 'Mercenários usam este local para negociar armas desviadas longe dos olhos da NCPD.',
+  };
+}
