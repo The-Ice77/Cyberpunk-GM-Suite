@@ -39,6 +39,7 @@ import {
   Sliders,
   Dices,
   Car,
+  PawPrint,
 } from 'lucide-react';
 import { useSystem } from '../context/SystemContext';
 import { useCampaign } from '../context/CampaignContext';
@@ -95,7 +96,7 @@ const LAST_NAMES = ['Vance', 'Kowalski', 'Silver', 'Cross', 'Tanaka', 'Mendez', 
 
 export const PeoplePage: React.FC = () => {
   const { system, isRed } = useSystem();
-  const { savedNPCs, saveNPC, deleteNPC } = useCampaign();
+  const { savedNPCs, saveNPC, deleteNPC, updateNPC } = useCampaign();
   const { addCombatant, addMultipleCombatants, combatants, updateHP, ablateSP, addCriticalInjury } = useCombat();
 
   const [activeTab, setActiveTab] = useState<'enemies' | 'civilians' | 'squads' | 'pets' | 'dossier' | 'builder' | 'library'>('enemies');
@@ -133,6 +134,16 @@ export const PeoplePage: React.FC = () => {
   const [sendSuccess, setSendSuccess] = useState<boolean>(false);
   const [npcToast, setNpcToast] = useState<string | null>(null);
   const [showEnemyAiOptions, setShowEnemyAiOptions] = useState<boolean>(false);
+
+  // Unified Edit & Manual Creation Modal State
+  const [editingNPC, setEditingNPC] = useState<NPCSheet | null>(null);
+  const [editSource, setEditSource] = useState<'enemy' | 'civilian' | 'pet' | 'library' | 'squad'>('enemy');
+  const [editingSquadMemberId, setEditingSquadMemberId] = useState<string | null>(null);
+  const [editTab, setEditTab] = useState<'identity' | 'stats' | 'weapons' | 'cyberware' | 'narrative' | 'pet'>('identity');
+  const [editWeaponsInput, setEditWeaponsInput] = useState<string>('');
+  const [editCyberwareInput, setEditCyberwareInput] = useState<string>('');
+  const [editPocketLootInput, setEditPocketLootInput] = useState<string>('');
+  const [editGearInput, setEditGearInput] = useState<string>('');
 
   // Dedicated Civilian (Everyday People) State
   const [civilianOccupationId, setCivilianOccupationId] = useState<CivilianOccupationId>('street_vendor');
@@ -199,17 +210,267 @@ export const PeoplePage: React.FC = () => {
   } | null>(null);
 
   // Manual Builder Form State
-  const [manualName, setManualName] = useState<string>('');
-  const [manualFaction, setManualFaction] = useState<string>('Mercenário Independente');
-  const [manualRole, setManualRole] = useState<string>('Solo');
+  const [manualType, setManualType] = useState<'enemy' | 'civilian' | 'pet'>('enemy');
+  const [manualName, setManualName] = useState<string>('Novo Inimigo Tático');
+  const [manualFaction, setManualFaction] = useState<string>('Maelstrom / Gangue Local');
+  const [manualRole, setManualRole] = useState<string>('Solo / Combatente');
   const [manualTier, setManualTier] = useState<NPCTier>('mook');
   const [manualHP, setManualHP] = useState<number>(35);
   const [manualSPHead, setManualSPHead] = useState<number>(11);
   const [manualSPBody, setManualSPBody] = useState<number>(11);
   const [manualCombatNumber, setManualCombatNumber] = useState<number>(12);
-  const [manualWeapons, setManualWeapons] = useState<string>('Pistola Pesada 3d6 (ROF 2), Faca de Combate 2d6');
-  const [manualCyberware, setManualCyberware] = useState<string>('Ciberolho com Visão Noturna, Interface Neural');
+  const [manualWeapons, setManualWeapons] = useState<string>('Pistola Pesada (3d6), Faca de Combate (1d6)');
+  const [manualCyberware, setManualCyberware] = useState<string>('Ciberolho com Mira Térmica, Placas Subcutâneas');
   const [manualTactics, setManualTactics] = useState<string>('Mantém cobertura média e atira com precisão.');
+  const [manualPetNature, setManualPetNature] = useState<string>('Drone K-9 Militar');
+  const [manualPetSize, setManualPetSize] = useState<'Pequeno' | 'Médio' | 'Grande / Pesado'>('Médio');
+  const [manualPetBiteDamage, setManualPetBiteDamage] = useState<string>('2d6');
+  const [manualPetMonthlyCostEb, setManualPetMonthlyCostEb] = useState<number>(50);
+  const [manualPetTraining, setManualPetTraining] = useState<string>('Ataque & Guarda de Perímetro');
+
+  // SQUAD MEMBER TO NPC SHEET CONVERTER
+  const squadMemberToNPCSheet = (member: SquadMember, squad: EnemySquad): NPCSheet => ({
+    id: member.id,
+    name: member.name,
+    faction: squad.factionName,
+    tier: member.tier,
+    system: 'RED',
+    role: `${member.roleTitle} [${member.callsign}]`,
+    description: member.tacticalOrder,
+    tactics: member.tacticalOrder,
+    reputation: member.isLeader ? 5 : 2,
+    statsRED: {
+      INT: 6, REF: member.ref, DEX: member.dex, TECH: 6, COOL: 6, WILL: 6, LUCK: 2, MOVE: 6, BODY: member.body, EMP: 5,
+      HP: member.hp,
+      seriouslyWounded: Math.ceil(member.hp / 2),
+      deathSave: member.body,
+      combatNumber: member.combatNumber,
+      headSP: member.headSP,
+      bodySP: member.bodySP,
+    },
+    skills: { 'Combate Tático': member.combatNumber },
+    weapons: member.weapons.map(w => ({ name: w.name, category: 'Arma', damage: w.damage, rof: w.rof, system: 'BOTH' })),
+    cyberware: member.cyberware,
+    gear: member.gear,
+  });
+
+  // OPEN EDIT MODAL
+  const handleOpenEdit = (
+    npc: NPCSheet,
+    source: 'enemy' | 'civilian' | 'pet' | 'library' | 'squad',
+    squadMemberId?: string
+  ) => {
+    setEditingNPC({
+      ...npc,
+      statsRED: npc.statsRED ? { ...npc.statsRED } : undefined,
+      weapons: [...npc.weapons],
+      cyberware: [...npc.cyberware],
+      gear: [...(npc.gear || [])],
+      pocketLoot: [...(npc.pocketLoot || [])],
+    });
+    setEditSource(source);
+    setEditingSquadMemberId(squadMemberId || null);
+    setEditTab(npc.isPet || npc.tier === 'pet' ? 'pet' : 'identity');
+    setEditWeaponsInput(npc.weapons.map(w => `${w.name} (${w.damage})`).join(', '));
+    setEditCyberwareInput(npc.cyberware.join(', '));
+    setEditPocketLootInput((npc.pocketLoot || []).join(', '));
+    setEditGearInput((npc.gear || []).join(', '));
+  };
+
+  // SAVE EDIT MODAL
+  const handleSaveEdit = () => {
+    if (!editingNPC || !editingNPC.name.trim()) return;
+
+    // Parse weapons
+    const parsedWeapons = editWeaponsInput
+      .split(',')
+      .map(item => {
+        const trimmed = item.trim();
+        const match = trimmed.match(/^(.+?)\s*\(([^)]+)\)$/);
+        if (match) {
+          return { name: match[1].trim(), damage: match[2].trim(), category: 'Arma', system: 'BOTH' as const };
+        }
+        return { name: trimmed, damage: '2d6', category: 'Arma', system: 'BOTH' as const };
+      })
+      .filter(w => w.name.length > 0);
+
+    const parsedCyberware = editCyberwareInput.split(',').map(s => s.trim()).filter(Boolean);
+    const parsedLoot = editPocketLootInput.split(',').map(s => s.trim()).filter(Boolean);
+    const parsedGear = editGearInput.split(',').map(s => s.trim()).filter(Boolean);
+
+    const updated: NPCSheet = {
+      ...editingNPC,
+      weapons: parsedWeapons.length > 0 ? parsedWeapons : editingNPC.weapons,
+      cyberware: parsedCyberware,
+      pocketLoot: parsedLoot,
+      gear: parsedGear,
+      statsRED: editingNPC.statsRED ? {
+        ...editingNPC.statsRED,
+        seriouslyWounded: Math.ceil(editingNPC.statsRED.HP / 2),
+      } : undefined,
+    };
+
+    if (editSource === 'enemy') {
+      setGeneratedNPC(updated);
+      setNpcToast(`Ficha de "${updated.name}" atualizada com sucesso!`);
+      setTimeout(() => setNpcToast(null), 3000);
+    } else if (editSource === 'civilian') {
+      setGeneratedCivilian(updated);
+      setCivilianToast(`Ficha de "${updated.name}" atualizada com sucesso!`);
+      setTimeout(() => setCivilianToast(null), 3000);
+    } else if (editSource === 'pet') {
+      setGeneratedPet(updated);
+      setPetToast(`Ficha de "${updated.name}" atualizada com sucesso!`);
+      setTimeout(() => setPetToast(null), 3000);
+    } else if (editSource === 'squad' && editingSquadMemberId) {
+      setGeneratedSquad(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          members: prev.members.map(m => {
+            if (m.id === editingSquadMemberId) {
+              return {
+                ...m,
+                name: updated.name,
+                hp: updated.statsRED?.HP ?? m.hp,
+                maxHP: updated.statsRED?.HP ?? m.maxHP,
+                headSP: updated.statsRED?.headSP ?? m.headSP,
+                bodySP: updated.statsRED?.bodySP ?? m.bodySP,
+                combatNumber: updated.statsRED?.combatNumber ?? m.combatNumber,
+                weapons: updated.weapons.map(w => ({ name: w.name, damage: w.damage, rof: w.rof || 1 })),
+                cyberware: updated.cyberware,
+                gear: updated.gear || [],
+                tacticalOrder: updated.tactics || m.tacticalOrder,
+              };
+            }
+            return m;
+          }),
+        };
+      });
+      setSquadToast(`Membro "${updated.name}" atualizado na tropa!`);
+      setTimeout(() => setSquadToast(null), 3000);
+    }
+
+    if (savedNPCs.some(x => x.id === updated.id)) {
+      saveNPC(updated);
+    }
+
+    setEditingNPC(null);
+  };
+
+  // MANUAL CREATION HANDLERS
+  const handleCreateManualEnemy = () => {
+    const newEnemy: NPCSheet = {
+      id: 'enemy-manual-' + Date.now(),
+      name: 'Novo Combatente Hostil',
+      faction: selectedSubfaction || 'Maelstrom',
+      tier: selectedTier || 'mook',
+      system,
+      role: 'Ganger de Ataque',
+      archetype: 'Combatente Urbano',
+      description: 'Inimigo criado e customizado manualmente pelo Mestre.',
+      appearance: 'Couro reforçado, implantes cromados e olhar impiedoso.',
+      quirks: 'Fuma nervosamente e verifica o carregador da arma a cada minuto.',
+      tactics: 'Avança com disparos de supressão buscando cobertura rápida em flanco.',
+      surrenderTrigger: 'Foge ou se rende se o líder tombar ou se o HP cair abaixo de 50%.',
+      dialogueHook: '"Você entrou no beco errado, choom. Larga a pasta e talvez você viva!"',
+      reputation: 2,
+      statsRED: {
+        INT: 6, REF: 7, DEX: 7, TECH: 6, COOL: 6, WILL: 6, LUCK: 2, MOVE: 6, BODY: 7, EMP: 4,
+        HP: 35,
+        seriouslyWounded: 18,
+        deathSave: 7,
+        combatNumber: 12,
+        headSP: 7,
+        bodySP: 7,
+      },
+      skills: { 'Combate Geral': 12, 'Percepção': 10, 'Furtividade': 9 },
+      weapons: [
+        { name: 'Pistola Pesada', category: 'Pistola', damage: '3d6', rof: 2, system: 'BOTH' },
+        { name: 'Faca de Combate', category: 'Lâmina', damage: '1d6', rof: 2, system: 'BOTH' },
+      ],
+      cyberware: ['Ciberolho com Mira Térmica', 'Interface Neural'],
+      gear: ['Agente Descartável', '3x Bandagens Rápidas'],
+      pocketLoot: ['40 eb em cédulas', 'Cartela de Estimulante Sintético'],
+    };
+    handleOpenEdit(newEnemy, 'enemy');
+  };
+
+  const handleCreateManualCivilian = () => {
+    const newCiv: NPCSheet = {
+      id: 'civ-manual-' + Date.now(),
+      name: 'Cidadão de Night City',
+      faction: civilianDistrictId || 'watson',
+      tier: 'civilian',
+      system,
+      role: 'Comerciante de Rua / Ambulante',
+      archetype: 'Trabalhador Informal',
+      description: 'Cidadão comum tentando sobreviver ao dia a dia da cidade.',
+      appearance: 'Roupas surradas, olhar desconfiado e mãos calejadas.',
+      quirks: 'Fala rápido oferecendo produtos enquanto olha ao redor atento à polícia.',
+      motivation: 'Pagar a taxa de proteção da gangue local e alimentar a família.',
+      weaknessOrSecret: 'Guarda armas e chips ilegais debaixo do balcão de comida sintética.',
+      surrenderTrigger: 'Se joga no chão de joelhos suplicando por sua vida ao primeiro tiro.',
+      dialogueHook: '"Ei choombatta! Não quero problema com ninguém, só tô ganhando meu pão!"',
+      reputation: 1,
+      statsRED: {
+        INT: 6, REF: 5, DEX: 5, TECH: 6, COOL: 5, WILL: 5, LUCK: 2, MOVE: 5, BODY: 5, EMP: 6,
+        HP: 25,
+        seriouslyWounded: 13,
+        deathSave: 5,
+        combatNumber: 8,
+        headSP: 0,
+        bodySP: 4,
+      },
+      skills: { 'Negociação': 11, 'Manha': 10, 'Percepção': 8 },
+      weapons: [
+        { name: 'Canivete Oculto', category: 'Lâmina Leve', damage: '1d6', rof: 2, system: 'BOTH' },
+      ],
+      cyberware: [],
+      gear: ['Agente Pessoal Barato', 'Chaves do quiosque'],
+      pocketLoot: ['55 eb em notas velhas', 'Isqueiro holográfico', 'Comida sintética embalada'],
+    };
+    handleOpenEdit(newCiv, 'civilian');
+  };
+
+  const handleCreateManualPet = () => {
+    const newPet: NPCSheet = {
+      id: 'pet-manual-' + Date.now(),
+      name: 'Bolt (Drone K-9)',
+      faction: petOwnerFaction || 'NCPD // Unidade K-9',
+      tier: 'pet',
+      system,
+      role: 'Cão Rastreador & Defesa Cibernética',
+      isPet: true,
+      petNature: 'Drone Quadrúpede / Cão Biocibernético',
+      petSize: 'Médio',
+      petTraining: 'Guarda Tática & Faro de Narcóticos / Explosivos',
+      petInstinct: 'Defende o parceiro com ferocidade mecânica e alerta contra emboscadas.',
+      petBiteDamage: '2d6',
+      petMonthlyCostEb: 50,
+      description: 'Companheiro canino blindado com subchassi de titânio e sensores acústicos.',
+      appearance: 'Pelagem sintética preta sobre chassi metálico fosco com ópticos azuis pulsantes.',
+      quirks: 'Late com frequência modulada e inclina a cabeça quando detecta Wi-Fi não seguro.',
+      reputation: 1,
+      statsRED: {
+        INT: 3, REF: 7, DEX: 7, TECH: 2, COOL: 6, WILL: 7, LUCK: 0, MOVE: 8, BODY: 6, EMP: 3,
+        HP: 30,
+        seriouslyWounded: 15,
+        deathSave: 6,
+        combatNumber: 13,
+        headSP: 7,
+        bodySP: 7,
+      },
+      skills: { 'Faro / Percepção': 14, 'Mordida / Combate': 13, 'Atletismo': 14 },
+      weapons: [
+        { name: 'Mandíbula de Titânio Reforçada', category: 'Ataque Natural', damage: '2d6', rof: 2, system: 'BOTH' },
+      ],
+      cyberware: ['Olhos Biônicos com Visão Térmica', 'Placas Blindadas Subcutâneas'],
+      gear: ['Coleira Tática com Rádio Integrado'],
+      pocketLoot: ['Tag de identificação RFID'],
+    };
+    handleOpenEdit(newPet, 'pet');
+  };
 
   // 1. Generate Narrative NPC Offline
   const handleGenerateNarrativeOffline = () => {
@@ -2139,6 +2400,16 @@ Táticas: ${generatedNPC.tactics}`;
                     )}
                   </button>
                 </div>
+
+                {/* Option to Create Manually from Scratch */}
+                <button
+                  type="button"
+                  onClick={handleCreateManualEnemy}
+                  className="w-full py-2.5 rounded-xl bg-[#14141d] hover:bg-[#191924] text-zinc-300 hover:text-white border border-zinc-700/80 hover:border-red-500 text-xs font-mono font-semibold flex items-center justify-center gap-2 transition shadow-sm"
+                >
+                  <Plus className="w-4 h-4 text-red-400" />
+                  <span>+ Criar Novo Inimigo Manualmente</span>
+                </button>
               </div>
             </div>
 
@@ -2168,8 +2439,16 @@ Táticas: ${generatedNPC.tactics}`;
                       <p className="text-xs text-zinc-400">{generatedNPC.role} &bull; Reputação {generatedNPC.reputation ?? 2}</p>
                     </div>
 
-                    {/* Actions: Save, Send to Combat, Copy */}
+                    {/* Actions: Edit, Save, Send to Combat, Copy */}
                     <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleOpenEdit(generatedNPC, 'enemy')}
+                        className="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-amber-300 hover:text-amber-200 border border-amber-600/50 text-xs font-medium flex items-center gap-1.5 transition shadow"
+                        title="Editar Estatísticas, Armas e Ficha Completa"
+                      >
+                        <Edit3 className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Editar</span>
+                      </button>
                       <button
                         onClick={() => handleSendToCombat(generatedNPC)}
                         className="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 text-xs font-medium flex items-center gap-1.5 transition"
@@ -2575,6 +2854,16 @@ Táticas: ${generatedNPC.tactics}`;
                     )}
                   </button>
                 </div>
+
+                {/* Option to Create Civilian Manually */}
+                <button
+                  type="button"
+                  onClick={handleCreateManualCivilian}
+                  className="w-full py-2.5 rounded-xl bg-[#14141d] hover:bg-[#191924] text-zinc-300 hover:text-white border border-zinc-700/80 hover:border-cyan-500 text-xs font-mono font-semibold flex items-center justify-center gap-2 transition shadow-sm"
+                >
+                  <Plus className="w-4 h-4 text-cyan-400" />
+                  <span>+ Criar Cidadão Civil Manualmente</span>
+                </button>
               </div>
             </div>
 
@@ -2602,8 +2891,16 @@ Táticas: ${generatedNPC.tactics}`;
                       <p className="text-xs text-zinc-400">{generatedCivilian.role} &bull; Não-Combatente</p>
                     </div>
 
-                    {/* Actions: Save, Copy */}
+                    {/* Actions: Edit, Save, Copy */}
                     <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleOpenEdit(generatedCivilian, 'civilian')}
+                        className="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-amber-300 hover:text-amber-200 border border-amber-600/50 text-xs font-medium flex items-center gap-1.5 transition shadow"
+                        title="Editar Dados e Ficha Civil"
+                      >
+                        <Edit3 className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Editar</span>
+                      </button>
                       <button
                         onClick={() => {
                           saveNPC(generatedCivilian);
@@ -3172,6 +3469,14 @@ Táticas: ${generatedNPC.tactics}`;
                               <div className="flex items-center gap-1">
                                 <button
                                   type="button"
+                                  onClick={() => handleOpenEdit(squadMemberToNPCSheet(member, generatedSquad), 'squad', member.id)}
+                                  className="p-1 rounded text-zinc-400 hover:text-amber-400 transition"
+                                  title="Editar estatísticas deste membro da tropa"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
                                   onClick={() => handleRemoveSquadMember(member.id)}
                                   className="p-1 rounded text-zinc-600 hover:text-red-400 transition"
                                   title="Remover este membro da formação"
@@ -3526,6 +3831,16 @@ Táticas: ${generatedNPC.tactics}`;
                     )}
                   </button>
                 </div>
+
+                {/* Option to Create Pet Manually */}
+                <button
+                  type="button"
+                  onClick={handleCreateManualPet}
+                  className="w-full py-2.5 rounded-xl bg-[#14141d] hover:bg-[#191924] text-zinc-300 hover:text-white border border-zinc-700/80 hover:border-emerald-500 text-xs font-mono font-semibold flex items-center justify-center gap-2 transition shadow-sm"
+                >
+                  <Plus className="w-4 h-4 text-emerald-400" />
+                  <span>+ Criar Pet / Biopet Manualmente</span>
+                </button>
               </div>
             </div>
 
@@ -3553,8 +3868,16 @@ Táticas: ${generatedNPC.tactics}`;
                       <p className="text-xs text-zinc-400">{generatedPet.role}</p>
                     </div>
 
-                    {/* Actions */}
+                    {/* Actions: Edit, Combat, Save, Copy */}
                     <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleOpenEdit(generatedPet, 'pet')}
+                        className="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-amber-300 hover:text-amber-200 border border-amber-600/50 text-xs font-medium flex items-center gap-1.5 transition shadow"
+                        title="Editar Estatísticas e Ficha do Pet"
+                      >
+                        <Edit3 className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Editar</span>
+                      </button>
                       <button
                         onClick={() => handleSendPetToCombat(generatedPet)}
                         className="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 text-xs font-medium flex items-center gap-1.5 transition"
@@ -3724,99 +4047,307 @@ Táticas: ${generatedNPC.tactics}`;
       {/* TAB 2: MANUAL BUILDER */}
       {activeTab === 'builder' && (
         <div className="p-6 rounded-2xl bg-[#121217] border border-[#27272a] max-w-3xl mx-auto space-y-6 max-h-[92vh] overflow-y-auto">
-          <div className="border-b border-[#27272a] pb-3">
-            <h2 className="text-base font-bold text-zinc-100">Construtor Manual de Ficha</h2>
-            <p className="text-xs text-zinc-400">Crie ou customize um NPC com atributos e equipamentos livres.</p>
+          <div className="border-b border-[#27272a] pb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div>
+              <h2 className="text-base font-bold text-zinc-100 flex items-center gap-2">
+                <Plus className="w-5 h-5 text-red-500" />
+                Construtor Manual de Ficha
+              </h2>
+              <p className="text-xs text-zinc-400">Crie ou personalize Inimigos, Civis ou Pets com controle total de atributos.</p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                const isPet = manualType === 'pet';
+                const draft: NPCSheet = {
+                  id: (isPet ? 'pet-manual-' : manualType === 'civilian' ? 'civ-manual-' : 'enemy-manual-') + Date.now(),
+                  name: manualName.trim() || 'Novo Personagem Manual',
+                  faction: manualFaction.trim() || 'Independente',
+                  tier: isPet ? 'pet' : manualTier,
+                  system: 'RED',
+                  role: manualRole || 'Solo',
+                  description: isPet ? `Pet (${manualPetNature}) criado manualmente.` : 'Criado no construtor manual.',
+                  tactics: manualTactics,
+                  reputation: manualType === 'enemy' ? 2 : 1,
+                  isPet,
+                  petNature: isPet ? manualPetNature : undefined,
+                  petSize: isPet ? manualPetSize : undefined,
+                  petBiteDamage: isPet ? manualPetBiteDamage : undefined,
+                  petMonthlyCostEb: isPet ? manualPetMonthlyCostEb : undefined,
+                  petTraining: isPet ? manualPetTraining : undefined,
+                  statsRED: {
+                    INT: 6, REF: 7, DEX: 7, TECH: 6, COOL: 6, WILL: 6, LUCK: 2, MOVE: 6, BODY: 7, EMP: 5,
+                    HP: manualHP,
+                    seriouslyWounded: Math.ceil(manualHP / 2),
+                    deathSave: 7,
+                    combatNumber: manualCombatNumber,
+                    headSP: manualSPHead,
+                    bodySP: manualSPBody,
+                  },
+                  skills: { 'Combate Geral': manualCombatNumber },
+                  weapons: manualWeapons.split(',').map(w => ({ name: w.trim(), category: 'Arma', damage: '3d6', system: 'BOTH' })),
+                  cyberware: manualCyberware.split(',').map(c => c.trim()).filter(Boolean),
+                  gear: ['Agente pessoal', '50eb'],
+                };
+                handleOpenEdit(draft, manualType === 'pet' ? 'pet' : manualType === 'civilian' ? 'civilian' : 'enemy');
+              }}
+              className="px-3.5 py-2 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/40 text-xs font-mono font-medium flex items-center gap-2 transition"
+            >
+              <Edit3 className="w-4 h-4" />
+              <span>Abrir no Editor Completo (6 Abas)</span>
+            </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-            <div>
-              <label className="block text-zinc-400 mb-1">Nome do Personagem</label>
-              <input
-                type="text"
-                placeholder="Ex: Marcus 'Ghost' Santos"
-                value={manualName}
-                onChange={e => setManualName(e.target.value)}
-                className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-lg p-2.5 text-zinc-200 focus:outline-none focus:border-red-500 font-medium"
-              />
+          {/* Seletor de Categoria / Molde */}
+          <div className="space-y-2">
+            <div className="text-[11px] font-mono text-zinc-400 font-semibold uppercase tracking-wider flex items-center gap-1.5">
+              <Sliders className="w-3.5 h-3.5 text-red-400" />
+              <span>1. Escolha a Categoria ou Carregue um Molde Base:</span>
             </div>
-            <div>
-              <label className="block text-zinc-400 mb-1">Facção / Afiliação</label>
-              <input
-                type="text"
-                placeholder="Ex: Aldecaldos / Militech / Independente"
-                value={manualFaction}
-                onChange={e => setManualFaction(e.target.value)}
-                className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-lg p-2.5 text-zinc-200 focus:outline-none focus:border-red-500"
-              />
-            </div>
-            <div>
-              <label className="block text-zinc-400 mb-1">Papel (Role)</label>
-              <input
-                type="text"
-                placeholder="Ex: Solo / Netrunner / Fixer"
-                value={manualRole}
-                onChange={e => setManualRole(e.target.value)}
-                className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-lg p-2.5 text-zinc-200 focus:outline-none focus:border-red-500"
-              />
-            </div>
-            <div>
-              <label className="block text-zinc-400 mb-1">Escalão (Tier)</label>
-              <select
-                value={manualTier}
-                onChange={e => setManualTier(e.target.value as NPCTier)}
-                className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-lg p-2.5 text-zinc-200 focus:outline-none focus:border-red-500"
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setManualType('enemy');
+                  setManualName('Novo Inimigo Tático');
+                  setManualFaction('Maelstrom / Gangue Local');
+                  setManualRole('Solo / Combatente');
+                  setManualTier('mook');
+                  setManualHP(35);
+                  setManualSPHead(11);
+                  setManualSPBody(11);
+                  setManualCombatNumber(12);
+                  setManualWeapons('Pistola Pesada (3d6), Faca de Combate (1d6)');
+                  setManualCyberware('Ciberolho com Mira Térmica, Placas Subcutâneas');
+                  setManualTactics('Mantém cobertura média e atira com precisão.');
+                }}
+                className={`p-3 rounded-xl border text-left transition text-xs ${
+                  manualType === 'enemy'
+                    ? 'bg-red-950/40 border-red-500 shadow-md shadow-red-950/50 ring-1 ring-red-500/50'
+                    : 'bg-red-950/10 border-zinc-800 hover:border-red-900/60'
+                }`}
               >
-                <option value="mook">Capanga (Mook)</option>
-                <option value="lieutenant">Tenente (Lieutenant)</option>
-                <option value="miniboss">Mini-Chefe</option>
-                <option value="boss">Chefe / Ciberpsicopata</option>
-              </select>
+                <div className="font-bold text-red-400 flex items-center gap-1.5">
+                  <ShieldAlert className="w-4 h-4" />
+                  Inimigo de Combate
+                </div>
+                <div className="text-[10px] text-zinc-400 mt-1">Armado, blindagem SP 11, Combat 12</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setManualType('civilian');
+                  setManualName('Novo Contato Civil');
+                  setManualFaction('Habitantes de Night City');
+                  setManualRole('Comerciante / Técnico');
+                  setManualTier('mook');
+                  setManualHP(25);
+                  setManualSPHead(4);
+                  setManualSPBody(4);
+                  setManualCombatNumber(8);
+                  setManualWeapons('Pistola Leve Oculta (2d6), Canivete (1d6)');
+                  setManualCyberware('Chip de Interface, Agente Interno');
+                  setManualTactics('Evita tiroteios. Procura se abrigar ou negociar.');
+                }}
+                className={`p-3 rounded-xl border text-left transition text-xs ${
+                  manualType === 'civilian'
+                    ? 'bg-cyan-950/40 border-cyan-500 shadow-md shadow-cyan-950/50 ring-1 ring-cyan-500/50'
+                    : 'bg-cyan-950/10 border-zinc-800 hover:border-cyan-900/60'
+                }`}
+              >
+                <div className="font-bold text-cyan-400 flex items-center gap-1.5">
+                  <UserCheck className="w-4 h-4" />
+                  Cidadão / Contato Civil
+                </div>
+                <div className="text-[10px] text-zinc-400 mt-1">Perfis sociais, conexões, baixa blindagem</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setManualType('pet');
+                  setManualName('Drone K-9 / Cão Biológico');
+                  setManualFaction('Guarda Particular / Pet');
+                  setManualRole('Pet / Rastreador');
+                  setManualTier('pet');
+                  setManualHP(20);
+                  setManualSPHead(7);
+                  setManualSPBody(7);
+                  setManualCombatNumber(11);
+                  setManualWeapons('Mordida Reforçada (2d6), Garras de Titânio (2d6)');
+                  setManualCyberware('Sensor Olfativo Cibernético, Audição Amplificada');
+                  setManualTactics('Ataca ao comando do dono ou derruba oponentes.');
+                  setManualPetNature('Drone K-9 Militar');
+                  setManualPetSize('Médio');
+                  setManualPetBiteDamage('2d6');
+                  setManualPetMonthlyCostEb(50);
+                  setManualPetTraining('Ataque & Guarda de Perímetro');
+                }}
+                className={`p-3 rounded-xl border text-left transition text-xs ${
+                  manualType === 'pet'
+                    ? 'bg-emerald-950/40 border-emerald-500 shadow-md shadow-emerald-950/50 ring-1 ring-emerald-500/50'
+                    : 'bg-emerald-950/10 border-zinc-800 hover:border-emerald-900/60'
+                }`}
+              >
+                <div className="font-bold text-emerald-400 flex items-center gap-1.5">
+                  <PawPrint className="w-4 h-4" />
+                  Pet / Drone Animal
+                </div>
+                <div className="text-[10px] text-zinc-400 mt-1">Ataque de mordida, faro e adestramento</div>
+              </button>
             </div>
           </div>
 
-          <div className="grid grid-cols-4 gap-3 text-xs font-mono">
-            <div>
-              <label className="block text-zinc-400 mb-1 text-[11px]">HP Total</label>
-              <input
-                type="number"
-                value={manualHP}
-                onChange={e => setManualHP(parseInt(e.target.value) || 10)}
-                className="w-full bg-[#0a0a0d] border border-[#27272a] rounded p-2 text-zinc-200"
-              />
+          {/* Dados Principais */}
+          <div className="space-y-4">
+            <div className="text-[11px] font-mono text-zinc-400 font-semibold uppercase tracking-wider flex items-center gap-1.5">
+              <Sliders className="w-3.5 h-3.5 text-red-400" />
+              <span>2. Identidade & Afiliação:</span>
             </div>
-            <div>
-              <label className="block text-zinc-400 mb-1 text-[11px]">SP Cabeça</label>
-              <input
-                type="number"
-                value={manualSPHead}
-                onChange={e => setManualSPHead(parseInt(e.target.value) || 0)}
-                className="w-full bg-[#0a0a0d] border border-[#27272a] rounded p-2 text-zinc-200"
-              />
-            </div>
-            <div>
-              <label className="block text-zinc-400 mb-1 text-[11px]">SP Corpo</label>
-              <input
-                type="number"
-                value={manualSPBody}
-                onChange={e => setManualSPBody(parseInt(e.target.value) || 0)}
-                className="w-full bg-[#0a0a0d] border border-[#27272a] rounded p-2 text-zinc-200"
-              />
-            </div>
-            <div>
-              <label className="block text-zinc-400 mb-1 text-[11px]">Combat Number</label>
-              <input
-                type="number"
-                value={manualCombatNumber}
-                onChange={e => setManualCombatNumber(parseInt(e.target.value) || 10)}
-                className="w-full bg-[#0a0a0d] border border-[#27272a] rounded p-2 text-zinc-200 font-bold text-red-400"
-              />
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              <div>
+                <label className="block text-zinc-400 mb-1">Nome do {manualType === 'pet' ? 'Animal / Drone' : 'Personagem'}</label>
+                <input
+                  type="text"
+                  placeholder="Ex: Marcus 'Ghost' Santos"
+                  value={manualName}
+                  onChange={e => setManualName(e.target.value)}
+                  className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-lg p-2.5 text-zinc-200 focus:outline-none focus:border-red-500 font-medium"
+                />
+              </div>
+              <div>
+                <label className="block text-zinc-400 mb-1">Facção / Dono / Afiliação</label>
+                <input
+                  type="text"
+                  placeholder="Ex: Aldecaldos / Militech / Independente"
+                  value={manualFaction}
+                  onChange={e => setManualFaction(e.target.value)}
+                  className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-lg p-2.5 text-zinc-200 focus:outline-none focus:border-red-500"
+                />
+              </div>
+              <div>
+                <label className="block text-zinc-400 mb-1">Papel / Função</label>
+                <input
+                  type="text"
+                  placeholder="Ex: Solo / Netrunner / Guarda"
+                  value={manualRole}
+                  onChange={e => setManualRole(e.target.value)}
+                  className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-lg p-2.5 text-zinc-200 focus:outline-none focus:border-red-500"
+                />
+              </div>
+              <div>
+                <label className="block text-zinc-400 mb-1">Escalão (Tier)</label>
+                <select
+                  value={manualTier}
+                  onChange={e => setManualTier(e.target.value as NPCTier)}
+                  className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-lg p-2.5 text-zinc-200 focus:outline-none focus:border-red-500 font-mono"
+                >
+                  <option value="mook">Capanga (Mook)</option>
+                  <option value="lieutenant">Tenente (Lieutenant)</option>
+                  <option value="miniboss">Mini-Chefe</option>
+                  <option value="boss">Chefe / Ciberpsicopata</option>
+                  <option value="pet">Pet / Guarda</option>
+                </select>
+              </div>
             </div>
           </div>
 
+          {/* Dados Específicos se for Pet */}
+          {manualType === 'pet' && (
+            <div className="p-4 rounded-xl bg-emerald-950/20 border border-emerald-900/40 space-y-3">
+              <div className="text-[11px] font-mono text-emerald-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                <PawPrint className="w-4 h-4" />
+                <span>Atributos de Pet & Custo de Manutenção:</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                <div>
+                  <label className="block text-zinc-400 mb-1 font-mono">Espécie / Natureza</label>
+                  <input
+                    type="text"
+                    value={manualPetNature}
+                    onChange={e => setManualPetNature(e.target.value)}
+                    placeholder="Ex: Drone K-9 / Cão Biológico"
+                    className="w-full bg-[#0a0a0d] border border-zinc-800 rounded-lg p-2 text-zinc-200 focus:border-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-zinc-400 mb-1 font-mono">Porte</label>
+                  <select
+                    value={manualPetSize}
+                    onChange={e => setManualPetSize(e.target.value as any)}
+                    className="w-full bg-[#0a0a0d] border border-zinc-800 rounded-lg p-2 text-zinc-200 focus:border-emerald-500 font-mono"
+                  >
+                    <option value="Pequeno">Pequeno</option>
+                    <option value="Médio">Médio</option>
+                    <option value="Grande / Pesado">Grande / Pesado</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-zinc-400 mb-1 font-mono">Custo Mensal (eb)</label>
+                  <input
+                    type="number"
+                    value={manualPetMonthlyCostEb}
+                    onChange={e => setManualPetMonthlyCostEb(parseInt(e.target.value) || 0)}
+                    className="w-full bg-[#0a0a0d] border border-zinc-800 rounded-lg p-2 text-amber-400 font-bold font-mono focus:border-emerald-500"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Atributos de Combate */}
+          <div className="space-y-2">
+            <div className="text-[11px] font-mono text-zinc-400 font-semibold uppercase tracking-wider flex items-center gap-1.5">
+              <Shield className="w-3.5 h-3.5 text-red-400" />
+              <span>3. Atributos de Combate & Proteção:</span>
+            </div>
+            <div className="grid grid-cols-4 gap-3 text-xs font-mono">
+              <div>
+                <label className="block text-zinc-400 mb-1 text-[11px]">HP Total</label>
+                <input
+                  type="number"
+                  value={manualHP}
+                  onChange={e => setManualHP(parseInt(e.target.value) || 10)}
+                  className="w-full bg-[#0a0a0d] border border-[#27272a] rounded p-2 text-zinc-200"
+                />
+              </div>
+              <div>
+                <label className="block text-zinc-400 mb-1 text-[11px]">SP Cabeça</label>
+                <input
+                  type="number"
+                  value={manualSPHead}
+                  onChange={e => setManualSPHead(parseInt(e.target.value) || 0)}
+                  className="w-full bg-[#0a0a0d] border border-[#27272a] rounded p-2 text-zinc-200"
+                />
+              </div>
+              <div>
+                <label className="block text-zinc-400 mb-1 text-[11px]">SP Corpo</label>
+                <input
+                  type="number"
+                  value={manualSPBody}
+                  onChange={e => setManualSPBody(parseInt(e.target.value) || 0)}
+                  className="w-full bg-[#0a0a0d] border border-[#27272a] rounded p-2 text-zinc-200"
+                />
+              </div>
+              <div>
+                <label className="block text-zinc-400 mb-1 text-[11px]">Combat Number</label>
+                <input
+                  type="number"
+                  value={manualCombatNumber}
+                  onChange={e => setManualCombatNumber(parseInt(e.target.value) || 10)}
+                  className="w-full bg-[#0a0a0d] border border-[#27272a] rounded p-2 text-zinc-200 font-bold text-red-400"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Equipamento & Táticas */}
           <div className="space-y-3 text-xs">
             <div>
-              <label className="block text-zinc-400 mb-1">Armas (separadas por vírgula)</label>
+              <label className="block text-zinc-400 mb-1 font-mono">{manualType === 'pet' ? 'Ataques Naturais / Garras / Mordida' : 'Armas (separadas por vírgula)'}</label>
               <input
                 type="text"
                 value={manualWeapons}
@@ -3825,7 +4356,7 @@ Táticas: ${generatedNPC.tactics}`;
               />
             </div>
             <div>
-              <label className="block text-zinc-400 mb-1">Ciberware & Implantes (separados por vírgula)</label>
+              <label className="block text-zinc-400 mb-1 font-mono">{manualType === 'pet' ? 'Aprimoramentos Biônicos / Módulos' : 'Ciberware & Implantes (separados por vírgula)'}</label>
               <input
                 type="text"
                 value={manualCyberware}
@@ -3834,7 +4365,7 @@ Táticas: ${generatedNPC.tactics}`;
               />
             </div>
             <div>
-              <label className="block text-zinc-400 mb-1">Táticas & Comportamento</label>
+              <label className="block text-zinc-400 mb-1 font-mono">{manualType === 'pet' ? 'Instinto / Reação sob Ameaça' : 'Táticas & Comportamento'}</label>
               <textarea
                 rows={2}
                 value={manualTactics}
@@ -3844,41 +4375,52 @@ Táticas: ${generatedNPC.tactics}`;
             </div>
           </div>
 
-          <button
-            onClick={() => {
-              if (!manualName.trim()) return;
-              const npc: NPCSheet = {
-                id: 'manual-' + Date.now(),
-                name: manualName.trim(),
-                faction: manualFaction.trim(),
-                tier: manualTier,
-                system,
-                role: manualRole,
-                description: 'NPC criado manualmente no formulário.',
-                tactics: manualTactics,
-                reputation: 2,
-                statsRED: {
-                  INT: 6, REF: 7, DEX: 7, TECH: 6, COOL: 6, WILL: 6, LUCK: 2, MOVE: 6, BODY: 7, EMP: 5,
-                  HP: manualHP,
-                  seriouslyWounded: Math.ceil(manualHP / 2),
-                  deathSave: 7,
-                  combatNumber: manualCombatNumber,
-                  headSP: manualSPHead,
-                  bodySP: manualSPBody,
-                },
-                skills: { 'Combate Geral': manualCombatNumber },
-                weapons: manualWeapons.split(',').map(w => ({ name: w.trim(), category: 'Arma', damage: '3d6', system: 'BOTH' })),
-                cyberware: manualCyberware.split(',').map(c => c.trim()),
-                gear: ['Agente pessoal', '50eb'],
-              };
-              saveNPC(npc);
-              setManualName('');
-              setActiveTab('library');
-            }}
-            className="w-full py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-medium text-xs transition"
-          >
-            Salvar NPC na Biblioteca da Campanha
-          </button>
+          {/* Salvar na Campanha */}
+          <div className="flex flex-col sm:flex-row gap-3 pt-2">
+            <button
+              onClick={() => {
+                if (!manualName.trim()) return;
+                const isPet = manualType === 'pet';
+                const npc: NPCSheet = {
+                  id: (isPet ? 'pet-manual-' : manualType === 'civilian' ? 'civ-manual-' : 'enemy-manual-') + Date.now(),
+                  name: manualName.trim(),
+                  faction: manualFaction.trim(),
+                  tier: isPet ? 'pet' : manualTier,
+                  system,
+                  role: manualRole,
+                  description: isPet ? `Pet (${manualPetNature}) criado manualmente.` : 'NPC criado manualmente no formulário.',
+                  tactics: manualTactics,
+                  reputation: manualType === 'enemy' ? 2 : 1,
+                  isPet,
+                  petNature: isPet ? manualPetNature : undefined,
+                  petSize: isPet ? manualPetSize : undefined,
+                  petBiteDamage: isPet ? manualPetBiteDamage : undefined,
+                  petMonthlyCostEb: isPet ? manualPetMonthlyCostEb : undefined,
+                  petTraining: isPet ? manualPetTraining : undefined,
+                  statsRED: {
+                    INT: 6, REF: 7, DEX: 7, TECH: 6, COOL: 6, WILL: 6, LUCK: 2, MOVE: 6, BODY: 7, EMP: 5,
+                    HP: manualHP,
+                    seriouslyWounded: Math.ceil(manualHP / 2),
+                    deathSave: 7,
+                    combatNumber: manualCombatNumber,
+                    headSP: manualSPHead,
+                    bodySP: manualSPBody,
+                  },
+                  skills: { 'Combate Geral': manualCombatNumber },
+                  weapons: manualWeapons.split(',').map(w => ({ name: w.trim(), category: 'Arma', damage: '3d6', system: 'BOTH' })),
+                  cyberware: manualCyberware.split(',').map(c => c.trim()).filter(Boolean),
+                  gear: isPet ? ['Coleira GPS', 'Ração Sintética'] : ['Agente pessoal', '50eb'],
+                };
+                saveNPC(npc);
+                setManualName('');
+                setActiveTab('library');
+              }}
+              className="flex-1 py-3 rounded-xl bg-red-600 hover:bg-red-500 active:scale-95 text-white font-bold text-xs transition flex items-center justify-center gap-2 shadow-lg shadow-red-950/40"
+            >
+              <Check className="w-4 h-4" />
+              <span>Salvar Ficha na Biblioteca da Campanha</span>
+            </button>
+          </div>
         </div>
       )}
 
@@ -3946,13 +4488,23 @@ Táticas: ${generatedNPC.tactics}`;
                   </div>
 
                   <div className="flex items-center justify-between pt-3 border-t border-[#1f1f26]">
-                    <button
-                      onClick={() => handleSendToCombat(npc)}
-                      className="px-2.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium flex items-center gap-1.5"
-                    >
-                      <ShieldAlert className="w-3.5 h-3.5 text-red-400" />
-                      <span>Para Combate</span>
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => handleSendToCombat(npc)}
+                        className="px-2.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium flex items-center gap-1.5"
+                      >
+                        <ShieldAlert className="w-3.5 h-3.5 text-red-400" />
+                        <span>Para Combate</span>
+                      </button>
+                      <button
+                        onClick={() => handleOpenEdit(npc, 'library')}
+                        className="px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-amber-300 hover:text-amber-200 text-xs font-medium flex items-center gap-1 border border-amber-600/40"
+                        title="Editar e modificar dados salvos deste NPC"
+                      >
+                        <Edit3 className="w-3 h-3 text-amber-400" />
+                        <span>Editar</span>
+                      </button>
+                    </div>
                     <button
                       onClick={() => deleteNPC(npc.id)}
                       className="p-1.5 text-zinc-500 hover:text-red-400 transition"
@@ -3965,6 +4517,527 @@ Táticas: ${generatedNPC.tactics}`;
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* UNIFIED NPC / CIVILIAN / PET / SQUAD EDIT MODAL */}
+      {editingNPC && (
+        <div
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200"
+          onClick={() => setEditingNPC(null)}
+        >
+          <div
+            className="relative max-w-3xl w-full bg-[#121218] border-2 border-purple-500/80 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh]"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-zinc-800 bg-[#161622]">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-purple-950/80 border border-purple-700/60 text-purple-300">
+                  <Edit3 className="w-5 h-5 text-purple-400" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-purple-900/60 text-purple-300 font-bold border border-purple-700/50">
+                      {editSource === 'enemy' ? 'Inimigo Hostil' : editSource === 'civilian' ? 'Cidadão Civil' : editSource === 'pet' ? 'Pet / Biopet' : editSource === 'squad' ? 'Membro de Tropa' : 'Biblioteca da Campanha'}
+                    </span>
+                    <span className="text-[10px] font-mono text-zinc-400 font-bold uppercase">
+                      {editingNPC.tier}
+                    </span>
+                  </div>
+                  <h3 className="text-base sm:text-lg font-bold text-zinc-100 font-mono mt-0.5">
+                    Editar Ficha: <span className="text-purple-300">{editingNPC.name}</span>
+                  </h3>
+                </div>
+              </div>
+              <button
+                onClick={() => setEditingNPC(null)}
+                className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition"
+                aria-label="Fechar editor"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Editor Subtab Switcher */}
+            <div className="flex flex-wrap items-center gap-1.5 px-4 sm:px-5 py-2.5 bg-[#0e0e14] border-b border-zinc-800 text-xs font-mono">
+              <button
+                onClick={() => setEditTab('identity')}
+                className={`px-3 py-1.5 rounded-lg transition ${editTab === 'identity' ? 'bg-purple-900/60 text-purple-200 border border-purple-600 font-bold' : 'text-zinc-400 hover:text-zinc-200'}`}
+              >
+                1. Identidade & Papel
+              </button>
+              <button
+                onClick={() => setEditTab('stats')}
+                className={`px-3 py-1.5 rounded-lg transition ${editTab === 'stats' ? 'bg-purple-900/60 text-purple-200 border border-purple-600 font-bold' : 'text-zinc-400 hover:text-zinc-200'}`}
+              >
+                2. HP & Blindagem
+              </button>
+              <button
+                onClick={() => setEditTab('weapons')}
+                className={`px-3 py-1.5 rounded-lg transition ${editTab === 'weapons' ? 'bg-purple-900/60 text-purple-200 border border-purple-600 font-bold' : 'text-zinc-400 hover:text-zinc-200'}`}
+              >
+                3. Armas & Ataques
+              </button>
+              <button
+                onClick={() => setEditTab('cyberware')}
+                className={`px-3 py-1.5 rounded-lg transition ${editTab === 'cyberware' ? 'bg-purple-900/60 text-purple-200 border border-purple-600 font-bold' : 'text-zinc-400 hover:text-zinc-200'}`}
+              >
+                4. Ciberware & Implantes
+              </button>
+              <button
+                onClick={() => setEditTab('narrative')}
+                className={`px-3 py-1.5 rounded-lg transition ${editTab === 'narrative' ? 'bg-purple-900/60 text-purple-200 border border-purple-600 font-bold' : 'text-zinc-400 hover:text-zinc-200'}`}
+              >
+                5. Narrativa & Táticas
+              </button>
+              {(editingNPC.isPet || editingNPC.tier === 'pet') && (
+                <button
+                  onClick={() => setEditTab('pet')}
+                  className={`px-3 py-1.5 rounded-lg transition ${editTab === 'pet' ? 'bg-emerald-900/60 text-emerald-200 border border-emerald-600 font-bold' : 'text-emerald-400 hover:text-emerald-200'}`}
+                >
+                  🐾 6. Dados do Pet
+                </button>
+              )}
+            </div>
+
+            {/* Editor Body */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 text-xs font-sans">
+              {/* TAB 1: IDENTIDADE */}
+              {editTab === 'identity' && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-zinc-400 mb-1 font-mono">Nome Completo / Vulgo</label>
+                      <input
+                        type="text"
+                        value={editingNPC.name}
+                        onChange={e => setEditingNPC({ ...editingNPC, name: e.target.value })}
+                        className="w-full bg-[#0a0a0d] border border-zinc-800 rounded-xl p-2.5 text-zinc-100 font-bold focus:outline-none focus:border-purple-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-zinc-400 mb-1 font-mono">Facção / Gangue / Corporação</label>
+                      <input
+                        type="text"
+                        value={editingNPC.faction}
+                        onChange={e => setEditingNPC({ ...editingNPC, faction: e.target.value })}
+                        className="w-full bg-[#0a0a0d] border border-zinc-800 rounded-xl p-2.5 text-zinc-100 focus:outline-none focus:border-purple-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-zinc-400 mb-1 font-mono">Papel / Função (Role)</label>
+                      <input
+                        type="text"
+                        value={editingNPC.role}
+                        onChange={e => setEditingNPC({ ...editingNPC, role: e.target.value })}
+                        className="w-full bg-[#0a0a0d] border border-zinc-800 rounded-xl p-2.5 text-zinc-100 focus:outline-none focus:border-purple-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-zinc-400 mb-1 font-mono">Escalão de Ameaça (Tier)</label>
+                      <select
+                        value={editingNPC.tier}
+                        onChange={e => setEditingNPC({ ...editingNPC, tier: e.target.value as NPCTier })}
+                        className="w-full bg-[#0a0a0d] border border-zinc-800 rounded-xl p-2.5 text-zinc-100 focus:outline-none focus:border-purple-500 font-mono"
+                      >
+                        <option value="mook">Capanga (Mook)</option>
+                        <option value="lieutenant">Tenente (Lieutenant)</option>
+                        <option value="miniboss">Mini-Chefe</option>
+                        <option value="boss">Chefe / Ciberpsicopata</option>
+                        <option value="civilian">Civil / Cotidiano</option>
+                        <option value="pet">Pet / Biopet / Drone K-9</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-zinc-400 mb-1 font-mono">Arquétipo Narrativo</label>
+                      <input
+                        type="text"
+                        value={editingNPC.archetype || ''}
+                        onChange={e => setEditingNPC({ ...editingNPC, archetype: e.target.value })}
+                        placeholder="Ex: Soldado Veterano / Ambulante"
+                        className="w-full bg-[#0a0a0d] border border-zinc-800 rounded-xl p-2.5 text-zinc-100 focus:outline-none focus:border-purple-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-zinc-400 mb-1 font-mono">Descrição Geral / Histórico Breve</label>
+                    <textarea
+                      rows={2}
+                      value={editingNPC.description || ''}
+                      onChange={e => setEditingNPC({ ...editingNPC, description: e.target.value })}
+                      className="w-full bg-[#0a0a0d] border border-zinc-800 rounded-xl p-2.5 text-zinc-100 focus:outline-none focus:border-purple-500"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: HP, SP & STATS */}
+              {editTab === 'stats' && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono">
+                    <div className="p-3 rounded-xl bg-[#0a0a0d] border border-zinc-800">
+                      <label className="block text-zinc-500 text-[10px] uppercase mb-1">HP Máximo</label>
+                      <input
+                        type="number"
+                        value={editingNPC.statsRED?.HP ?? 30}
+                        onChange={e => {
+                          const hp = parseInt(e.target.value) || 10;
+                          setEditingNPC({
+                            ...editingNPC,
+                            statsRED: {
+                              ...editingNPC.statsRED!,
+                              HP: hp,
+                              seriouslyWounded: Math.ceil(hp / 2),
+                            },
+                          });
+                        }}
+                        className="w-full bg-zinc-900 border border-zinc-700 rounded-lg p-2 text-emerald-400 font-bold text-sm"
+                      />
+                      <span className="text-[9px] text-zinc-500 mt-0.5 block">
+                        Ferido: {Math.ceil((editingNPC.statsRED?.HP ?? 30) / 2)}
+                      </span>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-[#0a0a0d] border border-zinc-800">
+                      <label className="block text-zinc-500 text-[10px] uppercase mb-1">Blindagem Cabeça (SP)</label>
+                      <input
+                        type="number"
+                        value={editingNPC.statsRED?.headSP ?? 7}
+                        onChange={e => setEditingNPC({
+                          ...editingNPC,
+                          statsRED: { ...editingNPC.statsRED!, headSP: parseInt(e.target.value) || 0 },
+                        })}
+                        className="w-full bg-zinc-900 border border-zinc-700 rounded-lg p-2 text-cyan-400 font-bold text-sm"
+                      />
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-[#0a0a0d] border border-zinc-800">
+                      <label className="block text-zinc-500 text-[10px] uppercase mb-1">Blindagem Corpo (SP)</label>
+                      <input
+                        type="number"
+                        value={editingNPC.statsRED?.bodySP ?? 7}
+                        onChange={e => setEditingNPC({
+                          ...editingNPC,
+                          statsRED: { ...editingNPC.statsRED!, bodySP: parseInt(e.target.value) || 0 },
+                        })}
+                        className="w-full bg-zinc-900 border border-zinc-700 rounded-lg p-2 text-cyan-400 font-bold text-sm"
+                      />
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-[#0a0a0d] border border-zinc-800">
+                      <label className="block text-zinc-500 text-[10px] uppercase mb-1">Combat Number (Base)</label>
+                      <input
+                        type="number"
+                        value={editingNPC.statsRED?.combatNumber ?? 12}
+                        onChange={e => setEditingNPC({
+                          ...editingNPC,
+                          statsRED: { ...editingNPC.statsRED!, combatNumber: parseInt(e.target.value) || 8 },
+                        })}
+                        className="w-full bg-zinc-900 border border-zinc-700 rounded-lg p-2 text-amber-400 font-bold text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Core Stats Row */}
+                  {editingNPC.statsRED && (
+                    <div className="p-4 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-2">
+                      <span className="text-[10px] font-mono uppercase text-zinc-400 font-bold block">
+                        Atributos Primários (1 a 10)
+                      </span>
+                      <div className="grid grid-cols-5 sm:grid-cols-10 gap-2 font-mono text-center">
+                        {(['INT', 'REF', 'DEX', 'TECH', 'COOL', 'WILL', 'LUCK', 'MOVE', 'BODY', 'EMP'] as const).map(stat => (
+                          <div key={stat} className="space-y-1">
+                            <label className="text-[9px] text-zinc-500 block">{stat}</label>
+                            <input
+                              type="number"
+                              value={editingNPC.statsRED?.[stat] ?? 5}
+                              onChange={e => setEditingNPC({
+                                ...editingNPC,
+                                statsRED: { ...editingNPC.statsRED!, [stat]: parseInt(e.target.value) || 1 },
+                              })}
+                              className="w-full bg-zinc-900 border border-zinc-800 rounded p-1 text-center text-zinc-200 text-xs font-bold"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 3: ARMAS */}
+              {editTab === 'weapons' && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-zinc-400 mb-1 font-mono">
+                      Armas e Ataques (formato: <span className="text-amber-400">Nome (Dano)</span>, separados por vírgula)
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={editWeaponsInput}
+                      onChange={e => setEditWeaponsInput(e.target.value)}
+                      placeholder="Ex: Fuzil de Assalto (5d6), Pistola Pesada (3d6), Lâmina Oculta (2d6)"
+                      className="w-full bg-[#0a0a0d] border border-zinc-800 rounded-xl p-3 text-zinc-100 font-mono focus:outline-none focus:border-purple-500 leading-relaxed"
+                    />
+                    <span className="text-[10px] text-zinc-500 block mt-1">
+                      Dica: O dano entre parênteses é usado automaticamente nas rolagens rápidas de combate.
+                    </span>
+                  </div>
+
+                  {/* Quick Weapon Adder presets */}
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-mono uppercase text-zinc-500">Adicionar Arma Sugerida:</span>
+                    <div className="flex flex-wrap gap-1.5 text-[10px] font-mono">
+                      {[
+                        'Pistola Pesada (3d6)',
+                        'Fuzil de Assalto (5d6)',
+                        'Espingarda Calibre 12 (5d6)',
+                        'SMG / Submetralhadora (2d6)',
+                        'Faca de Combate (1d6)',
+                        'Espada Katana (3d6)',
+                        'Mandíbula Reforçada (2d6)',
+                        'Lança-Foguetes RPG (8d6)',
+                      ].map(weaponPreset => (
+                        <button
+                          key={weaponPreset}
+                          type="button"
+                          onClick={() => {
+                            const trimmed = editWeaponsInput.trim();
+                            setEditWeaponsInput(trimmed ? `${trimmed}, ${weaponPreset}` : weaponPreset);
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-amber-500 text-zinc-300 hover:text-amber-300 transition"
+                        >
+                          + {weaponPreset}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 4: CIBERWARE */}
+              {editTab === 'cyberware' && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-zinc-400 mb-1 font-mono">
+                      Ciberware e Implantes (separados por vírgula)
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={editCyberwareInput}
+                      onChange={e => setEditCyberwareInput(e.target.value)}
+                      placeholder="Ex: Interface Neural, Ciberolho com Mira Térmica, Lâminas Mantis, Placas Subcutâneas"
+                      className="w-full bg-[#0a0a0d] border border-zinc-800 rounded-xl p-3 text-zinc-100 font-mono focus:outline-none focus:border-purple-500 leading-relaxed"
+                    />
+                  </div>
+
+                  {/* Cyberware Presets */}
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-mono uppercase text-zinc-500">Adicionar Implante Sugerido:</span>
+                    <div className="flex flex-wrap gap-1.5 text-[10px] font-mono">
+                      {[
+                        'Interface Neural',
+                        'Sandevistan Booster',
+                        'Lâminas Mantis',
+                        'Braço Cibernético Reforçado',
+                        'Ciberolho com Visão Noturna',
+                        'Placas Subcutâneas (SP 7)',
+                        'Garras de Titânio',
+                        'Reflexos Acelerados Kerenzikov',
+                      ].map(cyberPreset => (
+                        <button
+                          key={cyberPreset}
+                          type="button"
+                          onClick={() => {
+                            const trimmed = editCyberwareInput.trim();
+                            setEditCyberwareInput(trimmed ? `${trimmed}, ${cyberPreset}` : cyberPreset);
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-cyan-500 text-zinc-300 hover:text-cyan-300 transition"
+                        >
+                          + {cyberPreset}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 5: NARRATIVA & INTERPRETAÇÃO */}
+              {editTab === 'narrative' && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-zinc-400 mb-1 font-mono">Aparência & Visual</label>
+                      <textarea
+                        rows={2}
+                        value={editingNPC.appearance || ''}
+                        onChange={e => setEditingNPC({ ...editingNPC, appearance: e.target.value })}
+                        className="w-full bg-[#0a0a0d] border border-zinc-800 rounded-xl p-2.5 text-zinc-100 focus:outline-none focus:border-purple-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-zinc-400 mb-1 font-mono">Maneirismos & Tiques</label>
+                      <textarea
+                        rows={2}
+                        value={editingNPC.quirks || ''}
+                        onChange={e => setEditingNPC({ ...editingNPC, quirks: e.target.value })}
+                        className="w-full bg-[#0a0a0d] border border-zinc-800 rounded-xl p-2.5 text-zinc-100 focus:outline-none focus:border-purple-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-zinc-400 mb-1 font-mono">Motivação / Drama Pessoal</label>
+                      <textarea
+                        rows={2}
+                        value={editingNPC.motivation || ''}
+                        onChange={e => setEditingNPC({ ...editingNPC, motivation: e.target.value })}
+                        className="w-full bg-[#0a0a0d] border border-zinc-800 rounded-xl p-2.5 text-zinc-100 focus:outline-none focus:border-purple-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-zinc-400 mb-1 font-mono">Fraqueza, Dívida ou Segredo</label>
+                      <textarea
+                        rows={2}
+                        value={editingNPC.weaknessOrSecret || ''}
+                        onChange={e => setEditingNPC({ ...editingNPC, weaknessOrSecret: e.target.value })}
+                        className="w-full bg-[#0a0a0d] border border-zinc-800 rounded-xl p-2.5 text-zinc-100 focus:outline-none focus:border-purple-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-zinc-400 mb-1 font-mono">Táticas de Combate / Instinto</label>
+                      <textarea
+                        rows={2}
+                        value={editingNPC.tactics || ''}
+                        onChange={e => setEditingNPC({ ...editingNPC, tactics: e.target.value })}
+                        className="w-full bg-[#0a0a0d] border border-zinc-800 rounded-xl p-2.5 text-zinc-100 focus:outline-none focus:border-purple-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-zinc-400 mb-1 font-mono">Gatilho de Rendição / Reação sob Fogo</label>
+                      <textarea
+                        rows={2}
+                        value={editingNPC.surrenderTrigger || ''}
+                        onChange={e => setEditingNPC({ ...editingNPC, surrenderTrigger: e.target.value })}
+                        className="w-full bg-[#0a0a0d] border border-zinc-800 rounded-xl p-2.5 text-zinc-100 focus:outline-none focus:border-purple-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-zinc-400 mb-1 font-mono">Pocket Loot (Itens nos bolsos, separados por vírgula)</label>
+                    <input
+                      type="text"
+                      value={editPocketLootInput}
+                      onChange={e => setEditPocketLootInput(e.target.value)}
+                      placeholder="Ex: 50 eb, Cartela de cigarros, Chave eletrônica, Chip de dados encriptado"
+                      className="w-full bg-[#0a0a0d] border border-zinc-800 rounded-xl p-2.5 text-zinc-100 font-mono focus:outline-none focus:border-purple-500"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 6: DADOS ESPECÍFICOS DE PET / BIOPET */}
+              {editTab === 'pet' && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-zinc-400 mb-1 font-mono">Natureza / Espécie do Pet</label>
+                      <input
+                        type="text"
+                        value={editingNPC.petNature || ''}
+                        onChange={e => setEditingNPC({ ...editingNPC, petNature: e.target.value, isPet: true })}
+                        placeholder="Ex: Drone K-9 Militar / Chinchila Cibernética / Cão Biológico"
+                        className="w-full bg-[#0a0a0d] border border-zinc-800 rounded-xl p-2.5 text-zinc-100 focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-zinc-400 mb-1 font-mono">Porte do Animal</label>
+                      <select
+                        value={editingNPC.petSize || 'Médio'}
+                        onChange={e => setEditingNPC({ ...editingNPC, petSize: e.target.value as any, isPet: true })}
+                        className="w-full bg-[#0a0a0d] border border-zinc-800 rounded-xl p-2.5 text-zinc-100 focus:outline-none focus:border-emerald-500 font-mono"
+                      >
+                        <option value="Pequeno">Pequeno (Gatos, Aves, Roedores)</option>
+                        <option value="Médio">Médio (Cães de Guarda, Drones K-9)</option>
+                        <option value="Grande / Pesado">Grande / Pesado (Mastins, Felinos Grandes)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-zinc-400 mb-1 font-mono">Treinamento / Adestramento</label>
+                      <input
+                        type="text"
+                        value={editingNPC.petTraining || ''}
+                        onChange={e => setEditingNPC({ ...editingNPC, petTraining: e.target.value })}
+                        placeholder="Ex: Ataque & Defesa / Faro"
+                        className="w-full bg-[#0a0a0d] border border-zinc-800 rounded-xl p-2.5 text-zinc-100 focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-zinc-400 mb-1 font-mono">Dano do Ataque / Mordida</label>
+                      <input
+                        type="text"
+                        value={editingNPC.petBiteDamage || '2d6'}
+                        onChange={e => setEditingNPC({ ...editingNPC, petBiteDamage: e.target.value })}
+                        className="w-full bg-[#0a0a0d] border border-zinc-800 rounded-xl p-2.5 text-zinc-100 font-mono text-emerald-400 font-bold focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-zinc-400 mb-1 font-mono">Custo Mensal (eb / mês)</label>
+                      <input
+                        type="number"
+                        value={editingNPC.petMonthlyCostEb ?? 50}
+                        onChange={e => setEditingNPC({ ...editingNPC, petMonthlyCostEb: parseInt(e.target.value) || 0 })}
+                        className="w-full bg-[#0a0a0d] border border-zinc-800 rounded-xl p-2.5 text-zinc-100 font-mono text-amber-400 font-bold focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-zinc-400 mb-1 font-mono">Instinto de Sobrevivência & Comportamento</label>
+                    <textarea
+                      rows={2}
+                      value={editingNPC.petInstinct || editingNPC.tactics || ''}
+                      onChange={e => setEditingNPC({ ...editingNPC, petInstinct: e.target.value, tactics: e.target.value })}
+                      className="w-full bg-[#0a0a0d] border border-zinc-800 rounded-xl p-2.5 text-zinc-100 focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer Actions */}
+            <div className="flex items-center justify-between p-4 sm:p-5 border-t border-zinc-800 bg-[#161622]">
+              <button
+                type="button"
+                onClick={() => setEditingNPC(null)}
+                className="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-mono text-xs font-medium transition"
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSaveEdit}
+                className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 active:scale-95 text-white font-mono text-xs font-bold transition flex items-center gap-2 shadow-lg shadow-purple-950/50"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Salvar Alterações</span>
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
