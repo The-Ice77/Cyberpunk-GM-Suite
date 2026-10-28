@@ -201,20 +201,112 @@ export function generateNarrativeNPCOffline(options: {
     factionWeapons = corp.unitTypes[0]?.weaponsRED || ['Fuzil de Assalto Militech 5d6'];
     factionGear = corp.unitTypes[0]?.equipment || ['Rádio Criptografado', 'Colete Kevlar'];
   } else if (options.factionCategory === 'police') {
-    factionName = 'Departamento de Polícia de Night City (NCPD)';
-    factionTactics = 'Avança em duplas usando escudos balísticos e fogo cruzado coordenado.';
-    factionWeapons = ['Pistola Pesada 3d6', 'Espingarda de Dispersão 5d6', 'Cassetete Elétrico Stun'];
-    factionGear = ['Colete Tático Reforçado', 'Algemas Magnéticas', 'Rádio de Patrulha'];
+    const sub = options.subfactionId || 'ncpd_patrol';
+    if (sub === 'maxtac') {
+      factionName = 'Max-Tac (Psycho Squad - Supressão Ciberpsicótica)';
+      factionTactics = 'Entrada letal e implacável sem negociação; neutralização imediata com armas pesadas e ciberware militar de elite.';
+      factionWeapons = ['Fuzil de Assalto Militech Dragon 5d6 (ROF 1)', 'Lâminas Mantis Embutidas 3d6 (Ignora Armadura)'];
+      factionGear = ['Armadura Cerâmica Militar SP 15', 'Acelerador Kerenzikov / Sandevistan', 'Injetor de Trauma Black Lace'];
+    } else if (sub === 'ncpd_swat') {
+      factionName = 'NCPD - Tropa de Choque (SWAT Operações Táticas)';
+      factionTactics = 'Avança com escudo balístico pesado, granadas de concussão e fogo de supressão coordenado.';
+      factionWeapons = ['Espingarda Tática de Choque Arasaka Rapid 5d6', 'Pistola Pesada 3d6', 'Escudo Balístico SP 10'];
+      factionGear = ['Capacete Tático SP 13', 'Colete Tático Reforçado SP 13', 'Granadas Lacrimogêneas'];
+    } else if (sub === 'ncpd_detective') {
+      factionName = 'NCPD - Divisão de Homicídios & Investigação';
+      factionTactics = 'Combate evasivo de média distância usando o ambiente; prefere cercar ou capturar suspeitos vivos.';
+      factionWeapons = ['Revólver Pesado 4d6', 'Taser Disparador de Dardos Stun'];
+      factionGear = ['Sobretudo Blindado Kevlar SP 11', 'Crachá de Investigador do NCPD', 'Deck de Análise Forense'];
+    } else if (sub === 'k9_division') {
+      factionName = 'NCPD - Divisão Tática K-9 & Adestrador';
+      factionTactics = 'Envia o cão cibernético para imobilizar e flanquear enquanto cobre com disparos de carabina.';
+      factionWeapons = ['Carabina Tática Militech 4d6', 'Cão Cibernético de Ataque (Mandíbula de Titânio)'];
+      factionGear = ['Colete Balístico Kevlar SP 11', 'Comando Neural de Adestramento', 'Kit de Primeiros Socorros Canino'];
+    } else {
+      factionName = 'NCPD - Patrulha de Bairro (Viatura Metropolitana)';
+      factionTactics = 'Mantém cobertura da viatura e avança em duplas chamando reforço no rádio central.';
+      factionWeapons = ['Pistola Pesada Sternmeyer 3d6 (ROF 2)', 'Cassetete Elétrico Stun 2d6'];
+      factionGear = ['Colete Balístico Kevlar SP 11', 'Algemas Magnéticas', 'Rádio de Patrulha Criptografado'];
+    }
   } else if (options.factionCategory === 'trauma') {
-    factionName = 'Trauma Team Internacional';
-    factionTactics = 'Foco absoluto em estabilizar o paciente contratado e eliminar ameaças no perímetro de evacuação.';
-    factionWeapons = ['Submetralhadora Pesada 3d6 (ROF 2)', 'Pistola de Dardos Médicos'];
-    factionGear = ['Maleta de Trauma Nível 1', 'Desfibrilador Cardíaco', 'Injetor de Coagulante'];
+    const sub = options.subfactionId || 'trauma_standard';
+    if (sub === 'trauma_platinum') {
+      factionName = 'Trauma Team - Platinum Executive VIP Unit';
+      factionTactics = 'Defesa impenetrável ao redor do cliente Platinum; prioriza evacuação com fogo fulminante letal.';
+      factionWeapons = ['Fuzil de Assalto Smart 5d6', 'Espingarda Tática Automática 5d6'];
+      factionGear = ['Armadura de Combate Trauma SP 15', 'Scanner Biométrico Neural', 'Injetor de Estimulante Speedbrind'];
+    } else if (sub === 'trauma_tactical') {
+      factionName = 'Trauma Team - Unidade Tática de Zona Quente';
+      factionTactics = 'Limpeza violenta de setor hostil com fogo automático e supressão pesada para pouso seguro do AV-4.';
+      factionWeapons = ['Metralhadora Leve Tática 5d6 (Supressão)', 'Escudo Balístico Pesado SP 10'];
+      factionGear = ['Armadura Anti-Explosão SP 14', 'Granadas de Fumaça Espessa', 'Cabo de Rapel Rápido'];
+    } else if (sub === 'trauma_medevac') {
+      factionName = 'Trauma Team - Piloto & Médico de Voo AV-4';
+      factionTactics = 'Disparos cirúrgicos e apoio aéreo defensivo enquanto coordena manobras de decolagem imediata.';
+      factionWeapons = ['Pistola Pesada com Mira Laser 3d6', 'Injetores Hipodérmicos de Combate'];
+      factionGear = ['Macacão de Voo com Kevlar SP 11', 'Capacete de Piloto Militar', 'Desfibrilador Cardíaco Avançado'];
+    } else {
+      factionName = 'Trauma Team Internacional - Resgate Padrão';
+      factionTactics = 'Foco absoluto em estabilizar o paciente contratado e eliminar ameaças no perímetro de evacuação.';
+      factionWeapons = ['Submetralhadora Pesada Chadron 3d6 (ROF 2)', 'Pistola de Dardos Médicos'];
+      factionGear = ['Capacete com HUD Médico SP 13', 'Colete Trauma Team SP 13', 'Maleta de Reanimação Portátil'];
+    }
   } else if (options.factionCategory === 'nomads') {
-    factionName = 'Família Nômade Aldecaldos (Badlands)';
-    factionTactics = 'Combate motorizado, uso do terreno desértico e disparos de rifles de precisão apoiados.';
-    factionWeapons = ['Fuzil de Precisão Nomad 5d6', 'Revólver Pesado 3d6'];
-    factionGear = ['Filtro de Areia', 'Rádio CB Veicular', 'Kit de Solda Rápida'];
+    const sub = options.subfactionId || 'aldecaldos';
+    if (sub === 'wraiths') {
+      factionName = 'Wraiths (Raffen Shiv - Carniceiros dos Badlands)';
+      factionTactics = 'Emboscadas implacáveis nas rodovias interestaduais, crueldade tática e armas brutais de sucata.';
+      factionWeapons = ['Espingarda Cano Serrado 5d6', 'Machete de Aço Monomolecular 3d6'];
+      factionGear = ['Colete de Couro com Chapas de Carro SP 11', 'Tiras de Lâminas e Pregos', 'Dose de Drogas Black Lace'];
+    } else if (sub === 'jodes') {
+      factionName = 'Família Nômade Jodes (Mestres dos Comboios)';
+      factionTactics = 'Movimentação em comboio contínuo com fogo de cobertura coordenado por sinalizadores.';
+      factionWeapons = ['Fuzil de Caça Pesado 4d6', 'Pistola Automática 3d6'];
+      factionGear = ['Roupas Térmicas do Deserto', 'Bússola Giroscópica e Rastreador GPS', 'Bateria Solar Portátil'];
+    } else if (sub === 'snake_nation') {
+      factionName = 'Snake Nation (Grande Federação Nômade)';
+      factionTactics = 'Estratégia militar disciplinada de bloqueio de estradas e interdição com barricadas móveis.';
+      factionWeapons = ['Fuzil de Assalto Modificado 5d6', 'Escopeta de Repetição 5d6'];
+      factionGear = ['Colete Nômade Reforçado SP 12', 'Rádio de Longo Alcance', 'Kit de Primeiros Socorros'];
+    } else if (sub === 'bakers') {
+      factionName = 'Família Nômade The Bakers';
+      factionTactics = 'Defesa ferrenha de cargas de suprimentos e veículos familiares em rotas perigosas.';
+      factionWeapons = ['Carabina de Alavanca 4d6', 'Faca de Sobrevivência 2d6'];
+      factionGear = ['Jaqueta Nômade Impermeável SP 11', 'Ferramentas Mecânicas', 'Galão de CHOOH2 Puro'];
+    } else {
+      factionName = 'Família Nômade Aldecaldos (Badlands)';
+      factionTactics = 'Combate motorizado, camaradagem de estrada e disparos de rifles de precisão apoiados.';
+      factionWeapons = ['Fuzil de Precisão Nomad 5d6', 'Revólver Pesado 3d6'];
+      factionGear = ['Filtro de Areia & Óculos de Tempestade', 'Rádio CB Veicular', 'Kit de Solda Rápida'];
+    }
+  } else if (options.factionCategory === 'independent') {
+    const sub = options.subfactionId || 'solo_merc';
+    if (sub === 'fixer_contact') {
+      factionName = 'Fixer & Agiota de Beco (Submundo Livre)';
+      factionTactics = 'Tenta desescalar ou negociar; se forçado a lutar, usa capangas ou atira com arma velada para fugir.';
+      factionWeapons = ['Pistola Compacta Oculta 2d6', 'Soco-Inglês Monomolecular 2d6'];
+      factionGear = ['Sobretudo Elegante SP 8', 'Dois Agentes Descartáveis', 'Agenda Secreta de Clientes'];
+    } else if (sub === 'netrunner_freelance') {
+      factionName = 'Netrunner Freelancer Clandestino';
+      factionTactics = 'Fica escondido atrás de cobertura grossa enquanto queima implantes inimigos e aciona vírus.';
+      factionWeapons = ['Cyberdeck Neural Clandestino (Programas Anti-Pessoal)', 'Submetralhadora Compacta 2d6'];
+      factionGear = ['Plugues de Interface Neural', 'Cabo de Rede Blindado', 'Injetor de Crio-Resfriamento'];
+    } else if (sub === 'ripperdoc') {
+      factionName = 'Ripperdoc de Clínica Clandestina';
+      factionTactics = 'Evita combate direto; se encurralado, usa bisturis monomoleculares ou injetores de anestésico neurotóxico.';
+      factionWeapons = ['Bisturi Monomolecular 2d6 (Ignora SP)', 'Pistola Hipodérmica Anestésica'];
+      factionGear = ['Luvas Cirúrgicas Estéreis', 'Maleta de Microcirurgia Cibernética', 'Analgésicos Imediatos'];
+    } else if (sub === 'techie_mechanic') {
+      factionName = 'Techie & Armeiro Autônomo';
+      factionTactics = 'Improvisa explosivos, controla pequenos drones ou usa torretas automatizadas para manter distância segura.';
+      factionWeapons = ['Chave Inglesa de Titânio 2d6', 'Pistola Pesada Modificada 3d6 (Mira Holográfica)'];
+      factionGear = ['Cinto de Ferramentas Tech', 'Scanner de Circuitos', 'Maçarico Portátil CHOOH2'];
+    } else {
+      factionName = 'Solo Mercenário Autônomo (Afterlife)';
+      factionTactics = 'Profissionalismo cirúrgico; mantém cobertura alta, avalia linhas de tiro e nunca luta de graça.';
+      factionWeapons = ['Fuzil de Precisão Pesado 5d6', 'Pistola Pesada Customizada 3d6'];
+      factionGear = ['Colete Executivo Kevlar SP 11', 'Ciberolho com Smartlink', 'Credstick Criptografado'];
+    }
   }
 
   // Estatísticas oficiais por Tier (Cyberpunk RED Core Rulebook)

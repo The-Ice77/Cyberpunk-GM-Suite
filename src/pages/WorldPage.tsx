@@ -267,13 +267,13 @@ export const WorldPage: React.FC = () => {
     targetPin?: CustomDistrictLocation | null;
   } | null>(null);
 
-  // Close context menu on outside click
+  // Close context menu safely on escape
   useEffect(() => {
-    const handleCloseCtx = () => {
-      setContextMenu(null);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setContextMenu(null);
     };
-    window.addEventListener('click', handleCloseCtx);
-    return () => window.removeEventListener('click', handleCloseCtx);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   // Map Right-Click Context Menu Handler
@@ -1529,131 +1529,141 @@ export const WorldPage: React.FC = () => {
                     </div>
                   )}
 
-                  {/* 5. FLOATING RIGHT-CLICK CONTEXT MENU (PODER DE EDITAR DO LUGAR) */}
-                  {contextMenu && contextMenu.visible && (
-                    <div
-                      className="fixed z-50 w-64 p-3 rounded-2xl bg-[#0e0e14]/98 border-2 border-red-500/80 shadow-2xl backdrop-blur-md text-xs font-sans space-y-2 animate-in fade-in zoom-in-95 duration-100"
-                      style={{
-                        left: `${contextMenu.screenX}px`,
-                        top: `${contextMenu.screenY}px`,
-                      }}
-                      onClick={e => e.stopPropagation()}
-                    >
-                      <div className="border-b border-zinc-800 pb-2 space-y-0.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-mono uppercase tracking-wider text-red-400 font-bold flex items-center gap-1">
-                            <Radio className="w-3 h-3 text-red-500 animate-pulse" />
-                            <span>Radar Tático</span>
-                          </span>
-                          <span className="text-[10px] font-mono text-zinc-500">
-                            {contextMenu.xPct}%, {contextMenu.yPct}%
-                          </span>
-                        </div>
-                        <h4 className="text-xs font-bold text-zinc-200">
-                          {contextMenu.targetPin ? contextMenu.targetPin.name : contextMenu.district.name}
-                        </h4>
-                      </div>
-
-                      {/* Context actions */}
-                      <div className="space-y-1">
-                        {!contextMenu.targetPin ? (
-                          <>
-                            <button
-                              onClick={() => {
-                                handleOpenCreatePin({ xPct: contextMenu.xPct, yPct: contextMenu.yPct }, contextMenu.district.id);
-                              }}
-                              className="w-full text-left px-2.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white flex items-center gap-2 transition"
-                            >
-                              <Plus className="w-3.5 h-3.5 text-amber-400" />
-                              <span>Adicionar Marcador Aqui</span>
-                            </button>
-
-                            <button
-                              onClick={() => {
-                                handleCreatePointWithAI(contextMenu.xPct, contextMenu.yPct, contextMenu.district);
-                              }}
-                              disabled={isAiGeneratingPin}
-                              className="w-full text-left px-2.5 py-2 rounded-xl bg-gradient-to-r from-red-950/60 to-purple-950/60 hover:from-red-900/60 hover:to-purple-900/60 text-amber-300 flex items-center gap-2 border border-red-800/40 transition"
-                            >
-                              <Wand2 className={`w-3.5 h-3.5 text-amber-400 ${isAiGeneratingPin ? 'animate-spin' : ''}`} />
-                              <span>{isAiGeneratingPin ? 'Gerando com IA...' : '⚡ Criar Ponto com IA Gemini'}</span>
-                            </button>
-
-                            <button
-                              onClick={() => {
-                                setNewBarDistrict(contextMenu.district.id);
-                                setShowAddBarModal(true);
-                                setContextMenu(null);
-                              }}
-                              className="w-full text-left px-2.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white flex items-center gap-2 transition"
-                            >
-                              <Wine className="w-3.5 h-3.5 text-rose-400" />
-                              <span>Criar Bar / Safehouse Aqui</span>
-                            </button>
-
-                            <button
-                              onClick={() => {
-                                setActiveTab('encounters');
-                                handleRollEncounter();
-                                setContextMenu(null);
-                              }}
-                              className="w-full text-left px-2.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white flex items-center gap-2 transition"
-                            >
-                              <Compass className="w-3.5 h-3.5 text-cyan-400" />
-                              <span>Rolar Encontro Neste Local</span>
-                            </button>
-
-                            <button
-                              onClick={() => {
-                                navigator.clipboard.writeText(`X: ${contextMenu.xPct}%, Y: ${contextMenu.yPct}% (${contextMenu.district.name})`);
-                                setContextMenu(null);
-                              }}
-                              className="w-full text-left px-2.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 flex items-center gap-2 transition text-[11px] font-mono"
-                            >
-                              <MapPin className="w-3.5 h-3.5 text-zinc-500" />
-                              <span>Copiar Coordenadas</span>
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <button
-                              onClick={() => {
-                                handleOpenEditPin(contextMenu.targetPin!);
-                              }}
-                              className="w-full text-left px-2.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white flex items-center gap-2 transition"
-                            >
-                              <Edit3 className="w-3.5 h-3.5 text-amber-400" />
-                              <span>Editar Informações do Ponto</span>
-                            </button>
-
-                            <button
-                              onClick={() => {
-                                setDraggedPinId(contextMenu.targetPin!.id);
-                                setContextMenu(null);
-                              }}
-                              className="w-full text-left px-2.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white flex items-center gap-2 transition"
-                            >
-                              <Target className="w-3.5 h-3.5 text-cyan-400" />
-                              <span>Arrastar para Mover</span>
-                            </button>
-
-                            <button
-                              onClick={() => {
-                                deleteCustomLocation(contextMenu.targetPin!.id);
-                                setContextMenu(null);
-                              }}
-                              className="w-full text-left px-2.5 py-2 rounded-xl bg-red-950/50 hover:bg-red-900/60 text-red-300 flex items-center gap-2 border border-red-800/40 transition"
-                            >
-                              <Trash2 className="w-3.5 h-3.5 text-red-400" />
-                              <span>Excluir Marcador do Mapa</span>
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  )}
-</div>
+                  </div>
               </div>
+
+              {/* 5. FLOATING RIGHT-CLICK CONTEXT MENU (OUTSIDE VIEWPORT, TOP-LEVEL BACKDROP) */}
+              {contextMenu && contextMenu.visible && (
+                <div
+                  className="fixed inset-0 z-[100] cursor-default bg-black/20 select-none"
+                  onClick={() => setContextMenu(null)}
+                  onContextMenu={e => {
+                    e.preventDefault();
+                    setContextMenu(null);
+                  }}
+                >
+                  <div
+                    className="fixed z-[101] w-64 p-3 rounded-2xl bg-[#0e0e14]/98 border-2 border-red-500/80 shadow-2xl backdrop-blur-md text-xs font-sans space-y-2 animate-in fade-in zoom-in-95 duration-100 text-zinc-200"
+                    style={{
+                      left: `${Math.min(window.innerWidth - 275, Math.max(10, contextMenu.screenX))}px`,
+                      top: `${Math.min(window.innerHeight - 390, Math.max(10, contextMenu.screenY))}px`,
+                    }}
+                    onClick={e => e.stopPropagation()}
+                  >
+                    <div className="border-b border-zinc-800 pb-2 space-y-0.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-mono uppercase tracking-wider text-red-400 font-bold flex items-center gap-1">
+                          <Radio className="w-3 h-3 text-red-500 animate-pulse" />
+                          <span>Radar Tático</span>
+                        </span>
+                        <span className="text-[10px] font-mono text-zinc-500">
+                          {contextMenu.xPct}%, {contextMenu.yPct}%
+                        </span>
+                      </div>
+                      <h4 className="text-xs font-bold text-zinc-200">
+                        {contextMenu.targetPin ? contextMenu.targetPin.name : contextMenu.district.name}
+                      </h4>
+                    </div>
+
+                    {/* Context actions */}
+                    <div className="space-y-1">
+                      {!contextMenu.targetPin ? (
+                        <>
+                          <button
+                            onClick={() => {
+                              handleOpenCreatePin({ xPct: contextMenu.xPct, yPct: contextMenu.yPct }, contextMenu.district.id);
+                            }}
+                            className="w-full text-left px-2.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white flex items-center gap-2 transition"
+                          >
+                            <Plus className="w-3.5 h-3.5 text-amber-400" />
+                            <span>Adicionar Marcador Aqui</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              handleCreatePointWithAI(contextMenu.xPct, contextMenu.yPct, contextMenu.district);
+                            }}
+                            disabled={isAiGeneratingPin}
+                            className="w-full text-left px-2.5 py-2 rounded-xl bg-gradient-to-r from-red-950/60 to-purple-950/60 hover:from-red-900/60 hover:to-purple-900/60 text-amber-300 flex items-center gap-2 border border-red-800/40 transition"
+                          >
+                            <Wand2 className={`w-3.5 h-3.5 text-amber-400 ${isAiGeneratingPin ? 'animate-spin' : ''}`} />
+                            <span>{isAiGeneratingPin ? 'Gerando com IA...' : '⚡ Criar Ponto com IA Gemini'}</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setNewBarDistrict(contextMenu.district.id);
+                              setShowAddBarModal(true);
+                              setContextMenu(null);
+                            }}
+                            className="w-full text-left px-2.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white flex items-center gap-2 transition"
+                          >
+                            <Wine className="w-3.5 h-3.5 text-rose-400" />
+                            <span>Criar Bar / Safehouse Aqui</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setActiveTab('encounters');
+                              handleRollEncounter();
+                              setContextMenu(null);
+                            }}
+                            className="w-full text-left px-2.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white flex items-center gap-2 transition"
+                          >
+                            <Compass className="w-3.5 h-3.5 text-cyan-400" />
+                            <span>Rolar Encontro Neste Local</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(`X: ${contextMenu.xPct}%, Y: ${contextMenu.yPct}% (${contextMenu.district.name})`);
+                              setContextMenu(null);
+                            }}
+                            className="w-full text-left px-2.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 flex items-center gap-2 transition text-[11px] font-mono"
+                          >
+                            <MapPin className="w-3.5 h-3.5 text-zinc-500" />
+                            <span>Copiar Coordenadas</span>
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => {
+                              handleOpenEditPin(contextMenu.targetPin!);
+                            }}
+                            className="w-full text-left px-2.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white flex items-center gap-2 transition"
+                          >
+                            <Edit3 className="w-3.5 h-3.5 text-amber-400" />
+                            <span>Editar Informações do Ponto</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setDraggedPinId(contextMenu.targetPin!.id);
+                              setContextMenu(null);
+                            }}
+                            className="w-full text-left px-2.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white flex items-center gap-2 transition"
+                          >
+                            <Target className="w-3.5 h-3.5 text-cyan-400" />
+                            <span>Arrastar para Mover</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              deleteCustomLocation(contextMenu.targetPin!.id);
+                              setContextMenu(null);
+                            }}
+                            className="w-full text-left px-2.5 py-2 rounded-xl bg-red-950/50 hover:bg-red-900/60 text-red-300 flex items-center gap-2 border border-red-800/40 transition"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                            <span>Excluir Marcador do Mapa</span>
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Quick District Selector & 43 Gangs Directory Toggle */}
               <div className="space-y-2 pt-1">

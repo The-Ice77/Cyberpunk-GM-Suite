@@ -1767,7 +1767,7 @@ Táticas: ${generatedNPC.tactics}`;
                 <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 block font-mono">
                   2. Arquétipo & Propósito Narrativo
                 </span>
-                <div className="space-y-2">
+                <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1 no-scrollbar">
                   {NARRATIVE_ARCHETYPES.map(arch => {
                     const isSelected = narrativeArchetype === arch.id;
                     return (
@@ -1802,7 +1802,7 @@ Táticas: ${generatedNPC.tactics}`;
                 <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 block font-mono">
                   3. Facção & Afiliação
                 </span>
-                <div className="grid grid-cols-3 gap-2 text-xs">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
                   {[
                     { id: 'gangs', label: 'Gangues de Rua' },
                     { id: 'corps', label: 'Corporações' },
@@ -1817,11 +1817,15 @@ Táticas: ${generatedNPC.tactics}`;
                       onClick={() => {
                         setSelectedCategory(cat.id as any);
                         if (cat.id === 'corps') setSelectedSubfaction('arasaka');
-                        if (cat.id === 'gangs') setSelectedSubfaction('maelstrom');
+                        else if (cat.id === 'gangs') setSelectedSubfaction('maelstrom');
+                        else if (cat.id === 'police') setSelectedSubfaction('ncpd_patrol');
+                        else if (cat.id === 'trauma') setSelectedSubfaction('trauma_standard');
+                        else if (cat.id === 'nomads') setSelectedSubfaction('aldecaldos');
+                        else if (cat.id === 'independent') setSelectedSubfaction('solo_merc');
                       }}
                       className={`p-2 rounded-lg border text-center transition ${
                         selectedCategory === cat.id
-                          ? 'bg-zinc-800 border-cyan-500 text-zinc-100 font-medium'
+                          ? 'bg-zinc-800 border-cyan-500 text-zinc-100 font-medium shadow-sm'
                           : 'bg-[#0a0a0d] border-[#27272a] text-zinc-400 hover:bg-zinc-800'
                       }`}
                     >
@@ -1864,6 +1868,81 @@ Táticas: ${generatedNPC.tactics}`;
                       <option value="biotechnica">Biotechnica (Genética & Contenção Biológica)</option>
                       <option value="kang-tao">Kang Tao (Smartguns & Especialistas Chineses)</option>
                       <option value="petrochem">Petrochem (Segurança Industrial de CHOOH2)</option>
+                    </select>
+                  </div>
+                )}
+
+                {selectedCategory === 'police' && (
+                  <div className="pt-2">
+                    <label className="block text-[11px] text-zinc-400 mb-1.5 font-mono">
+                      Escolha o Destacamento Policial:
+                    </label>
+                    <select
+                      value={selectedSubfaction}
+                      onChange={e => setSelectedSubfaction(e.target.value)}
+                      className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-cyan-500"
+                    >
+                      <option value="ncpd_patrol">NCPD - Patrulha de Bairro (Viatura Metropolitana)</option>
+                      <option value="ncpd_swat">NCPD - Tropa de Choque (SWAT Operações Táticas)</option>
+                      <option value="maxtac">Max-Tac (Psycho Squad - Supressão Ciberpsicótica)</option>
+                      <option value="ncpd_detective">NCPD - Divisão de Homicídios & Investigação</option>
+                      <option value="k9_division">NCPD - Divisão Tática K-9 & Adestrador Canino</option>
+                    </select>
+                  </div>
+                )}
+
+                {selectedCategory === 'trauma' && (
+                  <div className="pt-2">
+                    <label className="block text-[11px] text-zinc-400 mb-1.5 font-mono">
+                      Escolha o Nível de Resgate Trauma Team:
+                    </label>
+                    <select
+                      value={selectedSubfaction}
+                      onChange={e => setSelectedSubfaction(e.target.value)}
+                      className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-cyan-500"
+                    >
+                      <option value="trauma_standard">Trauma Team Internacional - Resgate Padrão</option>
+                      <option value="trauma_platinum">Trauma Team - Platinum Executive VIP Unit</option>
+                      <option value="trauma_tactical">Trauma Team - Unidade Tática de Zona Quente</option>
+                      <option value="trauma_medevac">Trauma Team - Piloto & Médico de Voo AV-4</option>
+                    </select>
+                  </div>
+                )}
+
+                {selectedCategory === 'nomads' && (
+                  <div className="pt-2">
+                    <label className="block text-[11px] text-zinc-400 mb-1.5 font-mono">
+                      Escolha o Clã / Família Nômade:
+                    </label>
+                    <select
+                      value={selectedSubfaction}
+                      onChange={e => setSelectedSubfaction(e.target.value)}
+                      className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-cyan-500"
+                    >
+                      <option value="aldecaldos">Família Nômade Aldecaldos (Badlands & Tradição)</option>
+                      <option value="wraiths">Wraiths (Raffen Shiv - Carniceiros das Rodovias)</option>
+                      <option value="jodes">Família Nômade Jodes (Mestres dos Comboios)</option>
+                      <option value="snake_nation">Snake Nation (Grande Federação do Deserto)</option>
+                      <option value="bakers">Família Nômade The Bakers (Cargas e Oficinas)</option>
+                    </select>
+                  </div>
+                )}
+
+                {selectedCategory === 'independent' && (
+                  <div className="pt-2">
+                    <label className="block text-[11px] text-zinc-400 mb-1.5 font-mono">
+                      Escolha o Papel no Submundo Livre:
+                    </label>
+                    <select
+                      value={selectedSubfaction}
+                      onChange={e => setSelectedSubfaction(e.target.value)}
+                      className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-cyan-500"
+                    >
+                      <option value="solo_merc">Solo Mercenário Autônomo (Afterlife)</option>
+                      <option value="fixer_contact">Fixer & Agiota de Beco (Submundo Livre)</option>
+                      <option value="netrunner_freelance">Netrunner Freelancer Clandestino</option>
+                      <option value="ripperdoc">Ripperdoc de Clínica Clandestina</option>
+                      <option value="techie_mechanic">Techie & Armeiro Autônomo</option>
                     </select>
                   </div>
                 )}
@@ -2052,7 +2131,7 @@ Táticas: ${generatedNPC.tactics}`;
                   {isRed ? (
                     <div className="space-y-4">
                       {/* Key Combat Numbers */}
-                      <div className="grid grid-cols-4 gap-2 text-center font-mono">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center font-mono">
                         <div className="p-2.5 rounded-lg bg-[#0a0a0d] border border-[#27272a]">
                           <span className="text-[10px] text-zinc-500 uppercase block">Combat Number</span>
                           <span className="text-lg font-bold text-red-400">{generatedNPC.statsRED?.combatNumber}</span>
@@ -2115,14 +2194,14 @@ Táticas: ${generatedNPC.tactics}`;
                       </span>
                       <ul className="space-y-1.5 text-zinc-300">
                         {generatedNPC.weapons.map((w, idx) => (
-                          <li key={idx} className="flex justify-between items-center bg-zinc-900/80 px-2.5 py-1.5 rounded border border-zinc-800">
-                            <div className="flex items-center gap-2">
-                              <span className="text-zinc-200 font-medium">{w.name}</span>
-                              <span className="font-mono text-amber-400 font-bold text-[11px]">({w.damage})</span>
+                          <li key={idx} className="flex flex-wrap sm:flex-nowrap justify-between items-center gap-2 bg-zinc-900/80 px-2.5 py-1.5 rounded border border-zinc-800">
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
+                              <span className="text-zinc-200 font-medium truncate">{w.name}</span>
+                              <span className="font-mono text-amber-400 font-bold text-[11px] shrink-0">({w.damage})</span>
                             </div>
                             <button
                               onClick={() => handleOpenNpcAttack(generatedNPC, w)}
-                              className="flex items-center gap-1 px-2 py-1 rounded bg-red-950/80 hover:bg-red-900 border border-red-800 text-red-300 font-mono text-[10px] font-bold transition shadow-sm"
+                              className="flex items-center gap-1 px-2.5 py-1 rounded bg-red-950/80 hover:bg-red-900 border border-red-800 text-red-300 font-mono text-[10px] font-bold transition shadow-sm shrink-0"
                               title="Rolar teste de ataque e dano com esta arma"
                             >
                               <Crosshair className="w-3 h-3 text-red-400" />
