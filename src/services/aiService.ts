@@ -2,6 +2,15 @@ import { RULES_CODEX_DATABASE } from '../data/rulesCodexData';
 import { GANGS_LIST } from '../data/gangsData';
 import { strangeWeatherTable } from '../data/weatherData';
 import { NightMarket } from '../data/nightMarketData';
+import {
+  SessionRewardResult,
+  SessionDifficultyId,
+  MissionOutcomeId,
+  calculateSessionRewardsOffline,
+  SESSION_DIFFICULTY_TIERS,
+  MISSION_OUTCOMES,
+  SPECIAL_SALVAGE_POOL,
+} from '../data/rewardsData';
 
 export const DEFAULT_USER_API_KEY = '';
 
@@ -1050,4 +1059,162 @@ Retorne exclusivamente o texto da biografia formatado em Markdown com parágrafo
 
   // Fallback se sem chave ou erro
   return `Nasci sob o céu tóxico de ${lifepath.culturalOrigin || 'Night City'}. Cresci aprendendo que ${lifepath.feelingsAboutPeople || 'ninguém é confiável nas ruas'}. Meu bem mais precioso sempre foi ${lifepath.valuedPossession || 'minha arma'}, e nunca esqueci a lição de ${lifepath.familyCrisis || 'quando tudo desmoronou'}. Meu objetivo supremo é ${lifepath.lifeGoals || 'fazer meu nome nas ruas e virar uma lenda'}. Com ${lifepath.nemesis || 'meus inimigos'} caçando meus passos, cada trabalho na Zona de Combate é uma questão de vida ou morte.`;
+}
+
+// 7. END-OF-SESSION REWARD GENERATOR & DEBRIEF (CYBERPUNK RED IP & PROGRESSION)
+export async function generateAISessionRewards(options: {
+  sessionTitle: string;
+  difficultyId: SessionDifficultyId;
+  outcomeId: MissionOutcomeId;
+  selectedTagIds: string[];
+  sessionDescription: string;
+  partyMembers: { name: string; role: string }[];
+  fixerName?: string;
+  apiKey?: string;
+}): Promise<SessionRewardResult> {
+  const activeKey = getEffectiveApiKey(options.apiKey);
+  const difficulty = SESSION_DIFFICULTY_TIERS[options.difficultyId] || SESSION_DIFFICULTY_TIERS.standard;
+  const outcome = MISSION_OUTCOMES[options.outcomeId] || MISSION_OUTCOMES.standard_success;
+
+  // Se não houver chave válida, usa o motor offline inteligente baseado nas regras oficiais
+  if (!activeKey) {
+    return calculateSessionRewardsOffline({
+      sessionTitle: options.sessionTitle,
+      difficultyId: options.difficultyId,
+      outcomeId: options.outcomeId,
+      selectedTagIds: options.selectedTagIds,
+      partyMemberCount: options.partyMembers.length || 4,
+      fixerName: options.fixerName,
+    });
+  }
+
+  const prompt = `Você é o "Cyberpunk Neural Co-GM", árbitro e co-mestre oficial do sistema de RPG Cyberpunk RED (R. Talsorian Games).
+Você foi chamado para conduzir o DEBRIEFING E AVALIAÇÃO DE RECOMPENSAS DE FIM DE SESSÃO da mesa.
+
+DIRETRIZES OFICIAIS DE REGRAS (CYBERPUNK RED CORE RULEBOOK págs. 410-412):
+1. Pontos de Investimento (IP / Improvement Points) são concedidos por sessão aos jogadores para progressão de fichas.
+   - Escala típica por sessão:
+     * Rutineira: 10 - 20 IP
+     * Padrão (Típica de Edgerunners): 30 - 50 IP
+     * Perigosa (Alto Risco Corporativo/Combate Letal): 50 - 75 IP
+     * Clímax de Arco / Vida ou Morte Lendária: 75 - 100+ IP
+   - Ajustes:
+     * Sucesso Total: mantém ou ganha bônus (+10 a +20 IP)
+     * Sucesso Parcial: 70-80% do valor
+     * Fracasso Heroico: ~50% do valor (pelo aprendizado)
+     * Desastre: 30% do valor
+     * Bônus adicionais: Atitude/Estilo (+5 a +10 IP), Trabalho em Equipe/Hacking (+5 a +10 IP), Superar Perigo Extremo (+10 a +15 IP).
+2. Pagamento do Contrato em Eurodólares (eb / Eddies) por jogador:
+     * Bico sem risco: 200 - 500 eb
+     * Missão Padrão: 800 - 1.500 eb
+     * Alto Risco Corporativo: 1.500 - 3.000 eb
+     * Clímax Lendário: 3.500 - 10.000+ eb
+3. Reputação (Rep): 0 (discreto), +1 (notícia nas ruas/Data Pool), ou +2 (feito lendário no Afterlife).
+
+DADOS DA SESSÃO FORNECIDOS PELO MESTRE:
+- Título: "${options.sessionTitle || 'Operação nas Ruas'}"
+- Escopo / Dificuldade Declarada: ${difficulty.name} (${difficulty.baseIP} IP base sugerido)
+- Desfecho dos Objetivos: ${outcome.name}
+- Contratante / Fixer: ${options.fixerName || 'Fixer local'}
+- Personagens Presentes: ${options.partyMembers.map(p => `${p.name} (${p.role})`).join(', ') || 'Equipe de Edgerunners'}
+- Tags Marcadas pelo Mestre: ${options.selectedTagIds.join(', ') || 'Nenhuma tag'}
+- Relato Detalhado do Mestre: "${options.sessionDescription || 'A equipe enfrentou oposição armada, cumpriu os objetivos e garantiu a extração.'}"
+
+Responda ESTRITAMENTE em formato JSON puro (sem marcações extras fora do JSON):
+{
+  "totalIP": 55,
+  "ipBreakdown": {
+    "base": 40,
+    "outcomeMultiplier": 1.0,
+    "objectivesBonus": 10,
+    "threatBonus": 5,
+    "roleplayBonus": 0,
+    "tacticsBonus": 0
+  },
+  "cashEbPerPlayer": 1200,
+  "reputationChange": 1,
+  "screamsheetHeadline": "MANCHETE EM CAIXA ALTA ESTILO SCREAMSHEET DE NIGHT CITY",
+  "screamsheetArticle": "Parágrafo curto de 3 a 5 linhas como notícia pública publicada no CitiNet/Data Pool descrevendo os acontecimentos sob a ótica dos repórteres de rua.",
+  "specialLoot": [
+    {
+      "id": "loot-ai-1",
+      "name": "Nome do item ou shard ou favor conquistado",
+      "category": "Cromo/Cyberware",
+      "valueEb": 750,
+      "description": "Breve descrição lore do item resgatado.",
+      "mechanicalEffect": "Efeito mecânico claro para jogo."
+    }
+  ],
+  "mvpHighlights": [
+    "Destaque tático ou interpretativo 1",
+    "Destaque tático ou interpretativo 2"
+  ],
+  "nextSessionHooks": [
+    "Gancho dramático 1 para a próxima sessão",
+    "Gancho dramático 2 para a próxima sessão",
+    "Gancho dramático 3 para a próxima sessão"
+  ],
+  "coGMVerdict": "Análise analítica e motivacional do Co-GM para o Mestre e jogadores justificando o IP e orientando a evolução das fichas."
+}`;
+
+  try {
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeKey}`;
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: { responseMimeType: 'application/json' },
+      }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (text) {
+        const parsed = JSON.parse(text);
+        const partyCount = Math.max(1, options.partyMembers.length || 4);
+        return {
+          sessionTitle: options.sessionTitle,
+          difficulty,
+          outcome,
+          totalIP: Number(parsed.totalIP) || 45,
+          ipBreakdown: parsed.ipBreakdown || {
+            base: difficulty.baseIP,
+            outcomeMultiplier: outcome.multiplierIP,
+            objectivesBonus: 10,
+            threatBonus: 5,
+            roleplayBonus: 5,
+            tacticsBonus: 5,
+          },
+          cashEbPerPlayer: Number(parsed.cashEbPerPlayer) || difficulty.baseEb,
+          totalGroupCashEb: (Number(parsed.cashEbPerPlayer) || difficulty.baseEb) * partyCount,
+          reputationChange: Number(parsed.reputationChange) || 0,
+          screamsheetHeadline: parsed.screamsheetHeadline || 'NOTÍCIA LOCAL: TIROTEIO EM NIGHT CITY',
+          screamsheetArticle: parsed.screamsheetArticle || 'Operação relatada no Data Pool.',
+          specialLoot: parsed.specialLoot?.length ? parsed.specialLoot : [SPECIAL_SALVAGE_POOL[0]],
+          mvpHighlights: parsed.mvpHighlights || ['Atuação sólida em combate e cumprimento de contrato.'],
+          nextSessionHooks: parsed.nextSessionHooks || ['Contratante cobra explicações sobre os custos da operação.'],
+          coGMVerdict: parsed.coGMVerdict || 'Excelente progresso operacional nas ruas.',
+          isAiGenerated: true,
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('AI Session Rewards fallback to offline:', err);
+  }
+
+  // Fallback seguro usando motor offline
+  const fallback = calculateSessionRewardsOffline({
+    sessionTitle: options.sessionTitle,
+    difficultyId: options.difficultyId,
+    outcomeId: options.outcomeId,
+    selectedTagIds: options.selectedTagIds,
+    partyMemberCount: options.partyMembers.length || 4,
+    fixerName: options.fixerName,
+  });
+  return {
+    ...fallback,
+    isAiGenerated: false,
+  };
 }

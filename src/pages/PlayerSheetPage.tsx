@@ -1145,11 +1145,19 @@ export const PlayerSheetPage: React.FC = () => {
                 )}
               </div>
               <h1 className="text-2xl font-bold text-zinc-100">{char.name}</h1>
-              <div className="flex items-center gap-3 text-xs font-mono text-cyan-400">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs font-mono text-cyan-400">
                 <span>Alcunha: "{char.handle}"</span>
                 <span>&bull;</span>
-                <span className="text-amber-400 flex items-center gap-1">
+                <span className="text-amber-400 flex items-center gap-1 font-semibold">
                   <DollarSign className="w-3.5 h-3.5" /> {char.cashEb ?? 0} eb
+                </span>
+                <span>&bull;</span>
+                <span className="text-emerald-400 flex items-center gap-1 font-bold">
+                  <Award className="w-3.5 h-3.5" /> {char.improvementPoints ?? 0} IP
+                </span>
+                <span>&bull;</span>
+                <span className="text-purple-400 flex items-center gap-1 font-bold">
+                  <Sparkles className="w-3.5 h-3.5" /> Rep {char.reputation ?? 0}
                 </span>
               </div>
             </div>
@@ -1758,6 +1766,61 @@ export const PlayerSheetPage: React.FC = () => {
           {/* ======================================================== */}
           {activeSheetTab === 'skills' && (
             <div className="p-6 rounded-2xl bg-[#121217] border border-[#27272a] space-y-4">
+              {/* Barra de Pontos de Investimento (IP) & Progressão */}
+              <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-950/30 via-zinc-900 to-zinc-900 border border-emerald-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+                    <Award className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono uppercase text-emerald-400 font-bold">Pontos de Investimento (IP)</span>
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400">Progresso</span>
+                    </div>
+                    <p className="text-[11px] text-zinc-400">
+                      Gaste IP para evoluir perícias (Novo Nível x 10) ou sua Habilidade de Papel (Novo Nível x 60).
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 font-mono">
+                  <div className="text-right mr-1">
+                    <span className="text-xl font-bold text-emerald-400">{char.improvementPoints ?? 0}</span>
+                    <span className="text-[10px] text-zinc-500 block">IP Disponível</span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const newIP = Math.max(0, (char.improvementPoints ?? 0) - 10);
+                      savePlayerCharacter({ ...char, improvementPoints: newIP });
+                    }}
+                    className="px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-red-400 text-xs font-bold"
+                    title="Gastar -10 IP"
+                  >
+                    -10
+                  </button>
+                  <button
+                    onClick={() => {
+                      const newIP = (char.improvementPoints ?? 0) + 10;
+                      savePlayerCharacter({ ...char, improvementPoints: newIP });
+                    }}
+                    className="px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-emerald-400 text-xs font-bold"
+                    title="Adicionar +10 IP"
+                  >
+                    +10
+                  </button>
+                  <button
+                    onClick={() => {
+                      const newIP = (char.improvementPoints ?? 0) + 50;
+                      savePlayerCharacter({ ...char, improvementPoints: newIP });
+                    }}
+                    className="px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-emerald-400 text-xs font-bold"
+                    title="Adicionar +50 IP"
+                  >
+                    +50
+                  </button>
+                </div>
+              </div>
+
               <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
                 <span className="text-xs font-mono uppercase text-zinc-400 font-semibold">
                   Perícias do Personagem (Clique para Rolar 1d10 + Stat + Nível)
@@ -3001,6 +3064,24 @@ export const PlayerSheetPage: React.FC = () => {
                     value={editFormData.cashEb ?? 0}
                     onChange={e => setEditFormData({ ...editFormData, cashEb: Number(e.target.value) })}
                     className="w-full bg-zinc-900 border border-zinc-700 rounded p-1 text-center font-bold text-amber-400"
+                  />
+                </div>
+                <div>
+                  <span className="text-[9px] text-zinc-500 uppercase block">Pontos IP</span>
+                  <input
+                    type="number"
+                    value={editFormData.improvementPoints ?? 0}
+                    onChange={e => setEditFormData({ ...editFormData, improvementPoints: Number(e.target.value) })}
+                    className="w-full bg-zinc-900 border border-zinc-700 rounded p-1 text-center font-bold text-emerald-400"
+                  />
+                </div>
+                <div>
+                  <span className="text-[9px] text-zinc-500 uppercase block">Reputação</span>
+                  <input
+                    type="number"
+                    value={editFormData.reputation ?? 0}
+                    onChange={e => setEditFormData({ ...editFormData, reputation: Number(e.target.value) })}
+                    className="w-full bg-zinc-900 border border-zinc-700 rounded p-1 text-center font-bold text-purple-400"
                   />
                 </div>
               </div>

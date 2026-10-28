@@ -41,6 +41,8 @@ export interface PlayerCharacter {
   cyberware: { name: string; type: string; humanityCost: number; description: string }[];
   gear: string[];
   cashEb: number;
+  improvementPoints?: number;
+  reputation?: number;
   lifepath: {
     culturalOrigin: string;
     personality: string;
@@ -102,6 +104,8 @@ export const PREMADE_ARCHETYPES: PlayerCharacter[] = [
     ],
     gear: ['Agente Pessoal', '50 balas de Fuzil', '30 balas Pesadas', 'Bolsa de Primeiros Socorros', 'Óculos escuros espelhados'],
     cashEb: 350,
+    improvementPoints: 80,
+    reputation: 2,
     lifepath: {
       culturalOrigin: 'Norte-Americano (Costa Oeste)',
       personality: 'Estóico, quieto, focado na missão e frio sob fogo cerrado.',
@@ -157,6 +161,8 @@ export const PREMADE_ARCHETYPES: PlayerCharacter[] = [
     ],
     gear: ['Cyberdeck Cybermatrix com 7 Slots', 'Programas: Sword, Armor, Eraser, Worm', 'Cabos de fibra ótica de reserva', 'Agente com criptografia Ziggurat'],
     cashEb: 600,
+    improvementPoints: 60,
+    reputation: 1,
     lifepath: {
       culturalOrigin: 'Ásia Oriental (Little China)',
       personality: 'Curiosa, hiperativa, viciada em cafeína e informações proibidas.',
@@ -210,6 +216,8 @@ export const PREMADE_ARCHETYPES: PlayerCharacter[] = [
     ],
     gear: ['Maleta de ferramentas pesadas', 'Peças sobressalentes', '20 cartuchos de calibre 12'],
     cashEb: 450,
+    improvementPoints: 50,
+    reputation: 1,
     lifepath: {
       culturalOrigin: 'Latino-Americano (Heywood)',
       personality: 'Pragmático, engenhoso, sempre com as mãos sujas de graxa.',
