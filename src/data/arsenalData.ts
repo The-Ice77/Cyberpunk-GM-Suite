@@ -1,0 +1,615 @@
+import { WeaponItem, CyberwareItem, ArmorItem, AttachmentItem, AmmunitionItem, GearItem, StreetDrugItem } from '../types/system';
+
+// ========================================================
+// 1. ARMAS OFICIAIS EXPANDIDAS (60+ MODELOS RED E 2020)
+// ========================================================
+export const WEAPONS_DATABASE: WeaponItem[] = [
+  // --- PISTOLAS LEVES (LIGHT PISTOLS) ---
+  { name: 'Colt Officer’s 9mm', category: 'Pistola Leve', damage: '1d6+1', rof: 2, cost: '50eb (Costly)', system: 'BOTH', wa: 0, concealment: 'B', availability: 'E', shots: 8, reliability: 'MB', notes: 'Pistola compacta de bolso para autodefesa civil.' },
+  { name: 'BudgetArms C-13', category: 'Pistola Leve', damage: '1d6', rof: 2, cost: '50eb (Costly)', system: 'BOTH', wa: -1, concealment: 'B', availability: 'E', shots: 8, reliability: 'P', notes: 'Pistola de plástico barata, vendida em máquinas de conveniência.' },
+  { name: 'Federated Arms X-9m', category: 'Pistola Leve', damage: '1d6+2', rof: 2, cost: '100eb (Premium)', system: 'BOTH', wa: 0, concealment: 'B', availability: 'C', shots: 10, reliability: 'ST', notes: 'Arma leve de precisão favorita de corporativos discretos.' },
+
+  // --- PISTOLAS MÉDIAS (MEDIUM PISTOLS) ---
+  { name: 'Pistola Média Padrão (Medium Pistol)', category: 'Pistola Média', damage: '2d6', rof: 2, cost: '50eb (Costly)', system: 'RED', notes: 'Ocultável em bolsos ou jaquetas. 12 tiros por pente.' },
+  { name: 'Dai Lung Streetmaster', category: 'Pistola Média', damage: '2d6', rof: 2, cost: '50eb (Costly)', system: 'BOTH', wa: 0, concealment: 'J', availability: 'E', shots: 12, reliability: 'ST', notes: 'A arma de rua mais comum de Night City; peças fáceis de achar.' },
+  { name: 'Militech Arms Avenger 9mm', category: 'Pistola Média', damage: '2d6+1', rof: 2, cost: '100eb (Premium)', system: 'BOTH', wa: +1, concealment: 'J', availability: 'E', shots: 10, reliability: 'MB', notes: 'Pistola de serviço da Militech para seguranças particulares.' },
+  { name: 'Towa Type-13', category: 'Pistola Média', damage: '2d6', rof: 2, cost: '100eb (Premium)', system: 'BOTH', wa: 0, concealment: 'J', availability: 'C', shots: 15, reliability: 'MB', notes: 'Design japonês elegante com cano compensado e carregador estendido.' },
+
+  // --- PISTOLAS PESADAS (HEAVY PISTOLS) ---
+  { name: 'Pistola Pesada Padrão (Heavy Pistol)', category: 'Pistola Pesada', damage: '3d6', rof: 2, cost: '100eb (Premium)', system: 'RED', notes: 'A arma mais popular dos mercenários. 8 tiros por pente.' },
+  { name: 'Sternmeyer P-35 11mm', category: 'Pistola Pesada', damage: '3d6', rof: 2, cost: '100eb (Premium)', system: 'BOTH', wa: 0, concealment: 'J', availability: 'C', shots: 8, reliability: 'MB', notes: 'Arma de serviço padrão da polícia europeia e seguranças da Trauma Team.' },
+  { name: 'BudgetArms Auto 3', category: 'Pistola Pesada', damage: '3d6', rof: 2, cost: '100eb (Premium)', system: 'BOTH', wa: -1, concealment: 'J', availability: 'E', shots: 8, reliability: 'ST', notes: 'Pistola pesada robusta com coronha texturizada para mãos enluvadas.' },
+  { name: 'Nova 338 Cityhunter', category: 'Pistola Pesada', damage: '3d6+1', rof: 2, cost: '500eb (Expensive)', system: 'BOTH', wa: +1, concealment: 'J', availability: 'C', shots: 10, reliability: 'EX', notes: 'Revólver pesado de 6 tiros com acabamento cromado fosco e cano ventilado.' },
+  { name: 'Constitutional Arms Hurricane', category: 'Pistola Pesada', damage: '3d6', rof: 2, cost: '100eb (Premium)', system: 'BOTH', wa: 0, concealment: 'J', availability: 'C', shots: 12, reliability: 'MB', notes: 'Pistola tática com trilho inferior para lanterna e laser integrado.' },
+
+  // --- PISTOLAS MUITO PESADAS (VERY HEAVY PISTOLS) ---
+  { name: 'Pistola Muito Pesada (Very Heavy Pistol)', category: 'Pistola Muito Pesada', damage: '4d6', rof: 1, cost: '100eb (Premium)', system: 'RED', notes: 'Poder de parada colossal. Derruba a maioria dos alvos com um único disparo.' },
+  { name: 'Malorian Arms 3516 (Johnny Silverhand)', category: 'Pistola Muito Pesada', damage: '4d6+1', rof: 1, cost: '3.500eb (Super Luxury)', system: 'BOTH', wa: +1, concealment: 'L', availability: 'R', shots: 6, reliability: 'EX', notes: 'Arma personalizada de Johnny Silverhand. Exige braço cibernético ou BODY 10 para disparar sem deslocar o ombro.' },
+  { name: 'Nomad Heavy 454 Magnum', category: 'Pistola Muito Pesada', damage: '4d6', rof: 1, cost: '500eb (Expensive)', system: 'BOTH', wa: 0, concealment: 'L', availability: 'C', shots: 6, reliability: 'MB', notes: 'Revólver das Badlands capaz de perfurar blocos de motor de veículos leves.' },
+  { name: 'Nova Arms Megapower .50', category: 'Pistola Muito Pesada', damage: '4d6', rof: 1, cost: '500eb (Expensive)', system: 'BOTH', wa: 0, concealment: 'L', availability: 'C', shots: 7, reliability: 'ST', notes: 'Canhão de mão de calibre .50 com coice ensurdecedor.' },
+
+  // --- SUBMETRALHADORAS (SMG & HEAVY SMG) ---
+  { name: 'Submetralhadora Compacta (SMG)', category: 'Submetralhadora', damage: '2d6', rof: 1, cost: '100eb (Premium)', system: 'RED', notes: 'Capaz de Fogo Automático (Autofire 3) e Fogo Supressivo. 30 tiros.' },
+  { name: 'Uzi 3000 Compact SMG', category: 'Submetralhadora', damage: '2d6', rof: 1, cost: '400eb (Expensive)', system: 'BOTH', wa: 0, concealment: 'J', availability: 'E', shots: 30, reliability: 'MB', notes: 'Clássica das guerras de gangues com coronha retrátil e cadência de 30 tiros/rodada.' },
+  { name: 'H&K MP-2012 SMG', category: 'Submetralhadora', damage: '2d6+2', rof: 1, cost: '500eb (Expensive)', system: 'BOTH', wa: +1, concealment: 'J', availability: 'C', shots: 30, reliability: 'MB', notes: 'Submetralhadora alemã de alto refinamento, favorita de guarda-costas corporativos.' },
+  { name: 'Ingram MAC-14', category: 'Submetralhadora', damage: '2d6', rof: 1, cost: '100eb (Premium)', system: 'BOTH', wa: -1, concealment: 'B', availability: 'E', shots: 30, reliability: 'ST', notes: 'Ultra compacta, fácil de esconder sob o casaco ou na bota.' },
+  { name: 'Submetralhadora Pesada (Heavy SMG)', category: 'Submetralhadora Pesada', damage: '3d6', rof: 1, cost: '100eb (Premium)', system: 'RED', notes: 'Autofire 3, supressão de área brutal. 40 tiros por tambor.' },
+  { name: 'Sternmeyer SMG-21', category: 'Submetralhadora Pesada', damage: '3d6', rof: 1, cost: '500eb (Expensive)', system: 'BOTH', wa: 0, concealment: 'L', availability: 'C', shots: 30, reliability: 'MB', notes: 'Robusta e pesada, dispara munição de calibre pesado com excelente agrupamento.' },
+  { name: 'Arasaka WSSA Heavy SMG', category: 'Submetralhadora Pesada', damage: '3d6', rof: 1, cost: '500eb (Expensive)', system: 'BOTH', wa: +1, concealment: 'L', availability: 'C', shots: 35, reliability: 'MB', notes: 'Utilizada pelos comandos de infiltração da Arasaka; acabamento preto fosco antirreflexo.' },
+  { name: 'Techtronica BXP Tactical SMG', category: 'Submetralhadora Pesada', damage: '3d6', rof: 1, cost: '500eb (Expensive)', system: 'BOTH', wa: 0, concealment: 'L', availability: 'C', shots: 40, reliability: 'MB', notes: 'Design russo em polímero blindado, resistente à água e lama.' },
+
+  // --- ESPINGARDAS (SHOTGUNS) ---
+  { name: 'Espingarda Padrão (Shotgun)', category: 'Espingarda', damage: '5d6 (Slug) / 3d6 (Shell área 6x6m)', rof: 1, cost: '500eb (Expensive)', system: 'RED', notes: 'Alterna entre cartucho sólido perfurante (Slug 5d6) ou dispersão cônica ampla (Shell 3d6).' },
+  { name: 'Arasaka 20 WSA Shotgun', category: 'Espingarda', damage: '5d6', rof: 1, cost: '500eb (Expensive)', system: 'BOTH', wa: -1, concealment: 'N', availability: 'C', shots: 10, reliability: 'MB', notes: 'Calibre 12 militar de repetição automática usado pelos guardas de perímetro da Arasaka.' },
+  { name: 'Constitutional Arms Defender', category: 'Espingarda', damage: '5d6', rof: 1, cost: '500eb (Expensive)', system: 'BOTH', wa: 0, concealment: 'N', availability: 'C', shots: 12, reliability: 'MB', notes: 'Espingarda tática com tambor rotativo de alta capacidade para controle de multidões.' },
+  { name: 'Militech Crusher Hand-Shotgun', category: 'Espingarda', damage: '4d6', rof: 1, cost: '500eb (Expensive)', system: 'BOTH', wa: 0, concealment: 'J', availability: 'C', shots: 6, reliability: 'MB', notes: 'Escopeta de cano curto de empunhadura tipo pistola, ocultável sob sobretudo.' },
+  { name: 'Rostović DB-4 Palica', category: 'Espingarda', damage: '5d6', rof: 1, cost: '100eb (Premium)', system: 'BOTH', wa: -1, concealment: 'L', availability: 'E', shots: 2, reliability: 'ST', notes: 'Cano duplo basculante; pode disparar os dois canos ao mesmo tempo.' },
+  { name: 'Sternmeyer Stakeout 10', category: 'Espingarda', damage: '5d6', rof: 1, cost: '500eb (Expensive)', system: 'BOTH', wa: 0, concealment: 'N', availability: 'C', shots: 8, reliability: 'EX', notes: 'Espingarda de bomba (pump-action) de alta confiabilidade policial.' },
+
+  // --- FUZIS DE ASSALTO (ASSAULT RIFLES) ---
+  { name: 'Fuzil de Assalto Padrão (Assault Rifle)', category: 'Fuzil de Assalto', damage: '5d6', rof: 1, cost: '500eb (Expensive)', system: 'RED', notes: 'A espinha dorsal de qualquer tiroteio militar ou corporativo. Autofire 4. 25 tiros.' },
+  { name: 'Militech Ronin Light Assault', category: 'Fuzil de Assalto', damage: '5d6', rof: 1, cost: '450eb (Expensive)', system: 'BOTH', wa: +1, concealment: 'N', availability: 'E', shots: 30, reliability: 'MB', notes: 'O fuzil mais produzido do mundo. Fácil de customizar e com peças universais.' },
+  { name: 'Kalashnikov A-80 Heavy Assault', category: 'Fuzil de Assalto', damage: '5d6', rof: 1, cost: '500eb (Expensive)', system: 'BOTH', wa: 0, concealment: 'N', availability: 'E', shots: 35, reliability: 'EX', notes: 'Nunca engasga, mesmo enterrado na areia dos Badlands ou submerso em óleo.' },
+  { name: 'Arasaka WSSA Assault Rifle', category: 'Fuzil de Assalto', damage: '5d6', rof: 1, cost: '600eb (Expensive)', system: 'BOTH', wa: +1, concealment: 'N', availability: 'C', shots: 30, reliability: 'MB', notes: 'Equipado de fábrica com conectores Smartlink e balanceamento giroscópico.' },
+  { name: 'Federated Arms Assault II', category: 'Fuzil de Assalto', damage: '5d6', rof: 1, cost: '500eb (Expensive)', system: 'BOTH', wa: 0, concealment: 'N', availability: 'C', shots: 25, reliability: 'ST', notes: 'Fuzil bullpup compacto com coronha curta para manobras em corredores estreitos.' },
+  { name: 'FN-RAL Heavy Battle Rifle', category: 'Fuzil de Assalto', damage: '5d6+2', rof: 1, cost: '600eb (Expensive)', system: 'BOTH', wa: 0, concealment: 'N', availability: 'C', shots: 20, reliability: 'MB', notes: 'Fuzil de batalha 7.62mm OTAN com enorme alcance e penetração de cobertura dura.' },
+
+  // --- FUZIS DE PRECISÃO (SNIPER RIFLES) ---
+  { name: 'Fuzil de Precisão Padrão (Sniper Rifle)', category: 'Fuzil de Precisão', damage: '5d6', rof: 1, cost: '500eb (Expensive)', system: 'RED', notes: 'Mira telescópica de alto poder. DV 15 em alcances de 51-100m e DV 16 em 101-200m. 4 tiros.' },
+  { name: 'Nomad Longrifle 30-06', category: 'Fuzil de Precisão', damage: '5d6', rof: 1, cost: '400eb (Expensive)', system: 'BOTH', wa: +1, concealment: 'N', availability: 'C', shots: 5, reliability: 'MB', notes: 'Fuzil de ferrolho manual de altíssima precisão montado artesanalmente por clãs nômades.' },
+  { name: 'Barrett-Arasaka 20mm AMR', category: 'Fuzil de Precisão', damage: '6d6', rof: 1, cost: '2.000eb (Luxury)', system: 'BOTH', wa: 0, concealment: 'N', availability: 'R', shots: 10, reliability: 'MB', notes: 'Fuzil antimaterial que ignora armaduras leves e destrói motores de veículos leves.' },
+  { name: 'Technica Valkyrie Sniper System', category: 'Fuzil de Precisão', damage: '5d6+2', rof: 1, cost: '1.200eb (Very Expensive)', system: 'BOTH', wa: +2, concealment: 'N', availability: 'R', shots: 6, reliability: 'MB', notes: 'Sistema de precisão com cano flutuante de fibra de carbono e supressor de calor integrado.' },
+  { name: 'Militech Ghost Eye DMR', category: 'Fuzil de Precisão', damage: '5d6', rof: 1, cost: '1.000eb (Very Expensive)', system: 'BOTH', wa: +1, concealment: 'N', availability: 'C', shots: 10, reliability: 'MB', notes: 'Fuzil de atirador designado semiautomático para apoio tático a esquadrões.' },
+
+  // --- ARMAS PESADAS (HEAVY WEAPONS) ---
+  { name: 'Lança-Granadas Tático (Grenade Launcher)', category: 'Arma Pesada', damage: '6d6', rof: 1, cost: '500eb (Expensive)', system: 'RED', notes: 'Explosão em raio de 10m. Pode disparar granadas de fragmentação, EMP, fumaça ou flash. 2 tiros.' },
+  { name: 'Lança-Foguetes Militar (Rocket Launcher)', category: 'Arma Pesada', damage: '8d6', rof: 1, cost: '500eb (Expensive)', system: 'RED', notes: 'Dano de destruição maciça contra estruturas, AV-4s e blindados. 1 tiro por tubo descartável.' },
+  { name: 'Militech Urban Missile Launcher', category: 'Arma Pesada', damage: '8d6', rof: 1, cost: '1.500eb (Very Expensive)', system: 'BOTH', wa: +1, concealment: 'N', availability: 'R', shots: 4, reliability: 'MB', notes: 'Lança-mísseis com sistema de mira guiada a laser inteligente.' },
+  { name: 'Arasaka Heavy Grenade Drum', category: 'Arma Pesada', damage: '6d6', rof: 1, cost: '1.200eb (Very Expensive)', system: 'BOTH', wa: 0, concealment: 'N', availability: 'R', shots: 6, reliability: 'MB', notes: 'Tambor rotativo de granadas de 40mm para bombardeio rápido de área.' },
+  { name: 'Tsunami Arms Helix Micro-Missile Gun', category: 'Arma Pesada', damage: '6d6', rof: 1, cost: '2.500eb (Luxury)', system: 'BOTH', wa: +2, concealment: 'N', availability: 'R', shots: 12, reliability: 'MB', notes: 'Dispara micro-mísseis autodirecionados com giroscópios embutidos.' },
+  { name: 'Lança-Chamas de Combate (Flamethrower)', category: 'Arma Pesada', damage: '4d6 (Cone)', rof: 1, cost: '500eb (Expensive)', system: 'BOTH', notes: 'Cone de fogo de 6m de alcance. Alvos pegam fogo sofrendo 2 HP de dano por turno até apagarem.' },
+  { name: 'Militech Cowl Vulcan Gatling', category: 'Arma Pesada', damage: '5d6 (Autofire 5)', rof: 1, cost: '3.000eb (Luxury)', system: 'BOTH', wa: -1, concealment: 'N', availability: 'R', shots: 100, reliability: 'MB', notes: 'Metralhadora rotativa de 6 canos. Exige exoesqueleto ou montagem em veículo.' },
+
+  // --- ARMAS BRANCAS (MELEE WEAPONS) ---
+  { name: 'Faca de Combate / Punhal', category: 'Arma Branca Média', damage: '2d6', rof: 2, cost: '50eb (Costly)', system: 'BOTH', notes: 'Arma Branca Média. Ignora metade do valor de SP da armadura.' },
+  { name: 'Cassetete Tático / Bastão Retrátil', category: 'Arma Branca Média', damage: '2d6', rof: 2, cost: '50eb (Costly)', system: 'BOTH', notes: 'Causa dano de contusão atordoante. Ocultável em manga de jaqueta.' },
+  { name: 'Machete / Facão de Selva', category: 'Arma Branca Pesada', damage: '3d6', rof: 2, cost: '100eb (Premium)', system: 'BOTH', notes: 'Lâmina de aço temperado de 50cm. Ignora metade do SP.' },
+  { name: 'Machado de Incêndio Tático', category: 'Arma Branca Pesada', damage: '3d6', rof: 2, cost: '100eb (Premium)', system: 'BOTH', notes: 'Corta cabos e quebra portas com facilidade. Ignora metade do SP.' },
+  { name: 'Martelo de Guerra Hidráulico', category: 'Arma Branca Muito Pesada', damage: '4d6', rof: 1, cost: '500eb (Expensive)', system: 'BOTH', notes: 'Pistão hidráulico na cabeça do martelo amplifica o impacto. Ignora metade do SP.' },
+  { name: 'Kendachi Monokatana Clássica', category: 'Arma Branca Muito Pesada', damage: '4d6', rof: 1, cost: '1.000eb (Very Expensive)', system: 'BOTH', wa: +2, concealment: 'L', availability: 'P', reliability: 'MB', notes: 'Fio monomolecular com espessura de um átomo. Ignora metade do SP e fatia membros com facilidade.' },
+  { name: 'Cyber-Naginata Kendachi', category: 'Arma Branca Muito Pesada', damage: '4d6', rof: 1, cost: '1.000eb (Very Expensive)', system: 'BOTH', notes: 'Lança de duas mãos com lâmina mono. Alcance corpo a corpo de 2 metros.' },
+  { name: 'Motosserra de Combate Stihl', category: 'Arma Branca Muito Pesada', damage: '4d6', rof: 1, cost: '500eb (Expensive)', system: 'BOTH', notes: 'Alimentada por bateria de lítio recarregável. Causa ablação de 2 SP na armadura atingida.' },
+  { name: 'Garrote Monofilamentar', category: 'Arma Branca Silenciosa', damage: '3d6 (HP direto)', rof: 1, cost: '100eb (Premium)', system: 'BOTH', notes: 'Fio invisível de estrangulamento usado por assassinos em emboscadas pelas costas.' },
+
+  // --- ARMAS EXÓTICAS & ARCOS (EXOTICS & BOWS) ---
+  { name: 'Arco Composto Smartbow', category: 'Arma Exótica', damage: '4d6', rof: 1, cost: '500eb (Expensive)', system: 'BOTH', notes: 'Disparo 100% silencioso com flechas que podem ser explosivas, EMP ou térmicas.' },
+  { name: 'Besta Tática Nomad Crossbow', category: 'Arma Exótica', damage: '3d6', rof: 1, cost: '100eb (Premium)', system: 'BOTH', notes: 'Besta de polímero com mira red-dot para caça silenciosa no deserto.' },
+  { name: 'Needler / Lança-Dardos Agulheiro', category: 'Arma Exótica', damage: '1d6 + Veneno/Sedativo', rof: 2, cost: '100eb (Premium)', system: 'BOTH', notes: 'Dispara agulhas plásticas que não apitam em detectores de metal corporativos.' },
+  { name: 'SlamDance Inc. Microwaver', category: 'Arma Exótica', damage: 'Pulso Microondas', rof: 1, cost: '500eb (Expensive)', system: 'BOTH', notes: 'Dispara feixe de radiação microondas que frita cyberdecks e ciberware sem ferir a carne.' },
+  { name: 'Tsunami Arms Airpistol', category: 'Arma Exótica', damage: '1d6 (Silencioso)', rof: 2, cost: '100eb (Premium)', system: 'BOTH', notes: 'Opera com ar comprimido descartável para assassinatos sem registro balístico.' },
+  { name: 'Kendachi Dragon Flamethrower Portátil', category: 'Arma Exótica', damage: '3d6 (Fogo)', rof: 1, cost: '500eb (Expensive)', system: 'BOTH', notes: 'Versão curta com cartuchos descartáveis de gel napalm.' },
+];
+
+// ========================================================
+// 2. CIBERWARE EXPANDIDO (45+ IMPLANTES POR TODAS AS 7 CATEGORIAS)
+// ========================================================
+export const CYBERWARE_DATABASE: CyberwareItem[] = [
+  // --- NEURALWARE ---
+  { name: 'Neural Link (Conexão Neural Básica)', type: 'Neural', humanityLoss: '2d6 (7)', cost: '500eb (Expensive)', install: 'Clínica', description: 'Sistema operacional nervoso central para instalação de soquetes, interfaces e cyberdecks.', system: 'BOTH' },
+  { name: 'Interface Plugs (Plugues de Interface)', type: 'Neural', humanityLoss: '2d6 (7)', cost: '200eb (Premium)', install: 'Clínica', description: 'Conectores nos pulsos ou na nuca para conexão direta a veículos, armas inteligentes (Smartlink) e cyberdecks.', system: 'BOTH' },
+  { name: 'Chipware Socket', type: 'Neural', humanityLoss: '2d6 (7)', cost: '200eb (Premium)', install: 'Clínica', description: 'Entrada na base do crânio para inserção de chips de perícia (Skillchips) e línguas estrangeiras instantâneas.', system: 'BOTH' },
+  { name: 'Sandevistan Boost', type: 'Neural', humanityLoss: '2d6 (7)', cost: '500eb (Expensive)', install: 'Clínica', description: 'Acelerador ativável por 1 minuto que concede +3 em testes de Iniciativa e reflexos de combate.', system: 'BOTH' },
+  { name: 'Kerenzikov', type: 'Neural', humanityLoss: '4d6 (14)', cost: '500eb (Expensive)', install: 'Clínica', description: 'Acelerador permanente de reflexos que adiciona +2 constante em Iniciativa e esquiva reflexa.', system: 'BOTH' },
+  { name: 'Braindance Recorder (Gravador BD)', type: 'Neural', humanityLoss: '2d6 (7)', cost: '500eb (Expensive)', install: 'Clínica', description: 'Grava todas as sensações táteis, visuais e emocionais do usuário para produção de BDs.', system: 'BOTH' },
+  { name: 'Pain Editor (Editor de Dor)', type: 'Neural', humanityLoss: '4d6 (14)', cost: '1.000eb (Very Expensive)', install: 'Hospital', description: 'Bloqueia totalmente os receptores de dor; imune a penalidades de Gravemente Ferido (-2).', system: 'BOTH' },
+  { name: 'Olfactory Boost (Olfato Aprimorado)', type: 'Neural', humanityLoss: '1d6 (3)', cost: '100eb (Premium)', install: 'Clínica', description: 'Permite rastrear pessoas pelo cheiro e identificar compostos químicos e drogas no ar.', system: 'BOTH' },
+  { name: 'Tactical Sub-Processor', type: 'Neural', humanityLoss: '2d6 (7)', cost: '1.000eb (Very Expensive)', install: 'Hospital', description: 'Calcula trajetórias balísticas e contagem de alvos em tempo real (+1 em Percepção tática).', system: 'BOTH' },
+
+  // --- CIBERÓPTICA (CYBEREYES & UPGRADES) ---
+  { name: 'Cybereye (Ciberolho Básico)', type: 'Óptico', humanityLoss: '2d6 (7)', cost: '100eb (Premium)', install: 'Clínica', description: 'Olho artificial que substitui o globo ocular biológico com 3 slots livres para upgrades visuais.', system: 'BOTH' },
+  { name: 'Visão Noturna (Low Light / IR)', type: 'Óptico', humanityLoss: '1d6 (3)', cost: '500eb (Expensive)', install: 'Clínica', description: 'Permite enxergar claramente na escuridão sem emitir luz visível.', system: 'BOTH' },
+  { name: 'Visão Térmica (Thermográphica)', type: 'Óptico', humanityLoss: '1d6 (3)', cost: '500eb (Expensive)', install: 'Clínica', description: 'Detecta assinaturas de calor corporal através de fumaça, névoa e paredes finas.', system: 'BOTH' },
+  { name: 'Miras Telecópica & Smartlink HUD', type: 'Óptico', humanityLoss: '1d6 (3)', cost: '500eb (Expensive)', install: 'Clínica', description: 'Projeta retículo de mira inteligente, contagem de munição e trajetórias na retina (+1 no Ataque).', system: 'BOTH' },
+  { name: 'Filtro Anti-Ofuscamento (Anti-Dazzle)', type: 'Óptico', humanityLoss: '1d6/2 (2)', cost: '100eb (Premium)', install: 'Clínica', description: 'Imunidade total a efeitos de cegueira por granadas Flashbang e luzes estroboscópicas.', system: 'BOTH' },
+  { name: 'Micro-Vídeo Recorder Óptico', type: 'Óptico', humanityLoss: '1d6/2 (2)', cost: '100eb (Premium)', install: 'Clínica', description: 'Grava até 24 horas de vídeo e áudio contínuo diretamente na memória neural.', system: 'BOTH' },
+  { name: 'Dardos Oculares Laser (Micro-Optic Dart)', type: 'Óptico', humanityLoss: '1d6 (3)', cost: '500eb (Expensive)', install: 'Clínica', description: 'Pequeno dardo com neurotoxina disparado piscando com força os olhos (alcance 3m).', system: 'BOTH' },
+
+  // --- CIBERAUDIO (CYBERAUDIO SUITE & UPGRADES) ---
+  { name: 'Cyberaudio Suite Básico', type: 'Auditivo', humanityLoss: '2d6 (7)', cost: '500eb (Expensive)', install: 'Clínica', description: 'Receptor auditivo coclear cibernético com 3 slots livres para modificações sonoras.', system: 'BOTH' },
+  { name: 'Escuta Amplificada (Amplified Hearing)', type: 'Auditivo', humanityLoss: '1d6 (3)', cost: '500eb (Expensive)', install: 'Clínica', description: 'Concede +2 em testes de Percepção auditiva para escutar conversas sussurradas.', system: 'BOTH' },
+  { name: 'Filtro de Ruído Nivelador de Som', type: 'Auditivo', humanityLoss: '1d6/2 (2)', cost: '100eb (Premium)', install: 'Clínica', description: 'Amortece sons ensurdecedores de tiros e explosões, prevenindo perda de audição.', system: 'BOTH' },
+  { name: 'Detector de Mentiras por Tom de Voz', type: 'Auditivo', humanityLoss: '1d6 (3)', cost: '1.000eb (Very Expensive)', install: 'Clínica', description: 'Analisa micro-oscilações vocais para indicar se o alvo está mentindo (+2 em Human Perception).', system: 'BOTH' },
+  { name: 'Radar / Sonar Detector de Presença', type: 'Auditivo', humanityLoss: '2d6 (7)', cost: '1.000eb (Very Expensive)', install: 'Clínica', description: 'Emite pulsos inaudíveis para mapear a posição de pessoas vivas num raio de 15m.', system: 'BOTH' },
+  { name: 'Detector de Grampos & Escutas', type: 'Auditivo', humanityLoss: '1d6/2 (2)', cost: '100eb (Premium)', install: 'Clínica', description: 'Apita sutilmente na orelha ao detectar micro-transmissores e frequências de rádio espiãs.', system: 'BOTH' },
+
+  // --- CIBERMEMBROS (CYBERARMS & CYBERLEGS & WEAPONS) ---
+  { name: 'Cyberarm Padrão (Braço Cibernético)', type: 'Membros', humanityLoss: '2d6 (7)', cost: '500eb (Expensive)', install: 'Hospital', description: 'Braço mecânico com HP próprio (20 HP) e 4 slots livres para armas ocultas ou blindagem.', system: 'BOTH' },
+  { name: 'Cyberleg Padrão (Perna Cibernética)', type: 'Membros', humanityLoss: '2d6 (7)', cost: '500eb (Expensive)', install: 'Hospital', description: 'Perna mecânica reforçada com HP próprio (20 HP) e 3 slots para upgrades hidráulicos.', system: 'BOTH' },
+  { name: 'Hidráulicos de Salto (Jump Boosters)', type: 'Membros', humanityLoss: '1d6 (3)', cost: '500eb (Expensive)', install: 'Clínica', description: 'Pistões instalados nas pernas que permitem saltar até 6 metros de altura sem impulso.', system: 'BOTH' },
+  { name: 'Wolvers (Lâminas Retráteis)', type: 'Membros', humanityLoss: '2d6 (7)', cost: '500eb (Expensive)', install: 'Clínica', description: 'Três garras de titânio retráteis sobre os nós dos dedos (Arma Branca Pesada 3d6, ignora 1/2 SP).', system: 'BOTH' },
+  { name: 'Big Knucks (Nós de Ferro Blindados)', type: 'Membros', humanityLoss: '1d6 (3)', cost: '100eb (Premium)', install: 'Clínica', description: 'Nós dos dedos revestidos de liga pesada transformando socos em dano de Arma Branca Média (2d6).', system: 'BOTH' },
+  { name: 'Slice ’N Dice (Fio Monomolecular)', type: 'Membros', humanityLoss: '1d6 (3)', cost: '500eb (Expensive)', install: 'Clínica', description: 'Carretel de microfibra monofilamentar oculto na ponta do polegar para decapitações discretas.', system: 'BOTH' },
+  { name: 'Lâminas Mantis Retráteis', type: 'Membros', humanityLoss: '3d6 (10)', cost: '1.000eb (Very Expensive)', install: 'Clínica', description: 'Lâminas duplas que se desdobram dos antebraços (Arma Branca Muito Pesada 4d6).', system: 'BOTH' },
+  { name: 'Escudo Balístico Subdérmico de Braço', type: 'Membros', humanityLoss: '2d6 (7)', cost: '500eb (Expensive)', install: 'Clínica', description: 'Placa de policarbonato que se expande do antebraço concedendo cobertura móvel de 10 HP.', system: 'BOTH' },
+  { name: 'Compartimento Oculto Blindado', type: 'Membros', humanityLoss: '1d6/2 (2)', cost: '100eb (Premium)', install: 'Clínica', description: 'Espaço secreto no antebraço ou coxa para esconder dinheiro, chips de dados ou pistolas leves.', system: 'BOTH' },
+  { name: 'Lança-Granadas de Antebraço', type: 'Membros', humanityLoss: '2d6 (7)', cost: '500eb (Expensive)', install: 'Clínica', description: 'Lança-granadas de 1 tiro acoplado diretamente dentro da estrutura do braço cibernético.', system: 'BOTH' },
+  { name: 'Pistola Oculta de Pulso', type: 'Membros', humanityLoss: '2d6 (7)', cost: '500eb (Expensive)', install: 'Clínica', description: 'Pistola pesada (3d6) integrada no punho que dispara estalando os dedos para cima.', system: 'BOTH' },
+  { name: 'Patins Embutidos (Skate Feet)', type: 'Membros', humanityLoss: '1d6/2 (2)', cost: '100eb (Premium)', install: 'Clínica', description: 'Rodas retráteis nas solas dos pés cibernéticos para deslizar rapidamente pelo asfalto (+2m MOVE).', system: 'BOTH' },
+
+  // --- CIBERWARE CORPORAL (BODYWARE) ---
+  { name: 'Subdermal Armor (Blindagem Subdérmica)', type: 'Corporal', humanityLoss: '4d6 (14)', cost: '1.000eb (Very Expensive)', install: 'Hospital', description: 'Malha balística de Kevlar sob a pele conferindo SP 11 permanente na cabeça e tronco sem penalidade.', system: 'BOTH' },
+  { name: 'Enxerto de Pele Kevlar (Skinweave)', type: 'Corporal', humanityLoss: '2d6 (7)', cost: '500eb (Expensive)', install: 'Hospital', description: 'Nanofibras tecidas nas camadas inferiores da pele que concedem SP 7 permanente.', system: 'BOTH' },
+  { name: 'Placas Ósseas de Titânio', type: 'Corporal', humanityLoss: '2d6 (7)', cost: '1.000eb (Very Expensive)', install: 'Hospital', description: 'Revestimento de titânio nos ossos que aumenta o HP máximo em +5 e previne fraturas ósseas.', system: 'BOTH' },
+  { name: 'Pulmões Sintéticos Tóxico-Resistentes', type: 'Corporal', humanityLoss: '1d6 (3)', cost: '500eb (Expensive)', install: 'Hospital', description: 'Filtros com carvão ativado que conferem imunidade a gases, fumaça tóxica e afogamento por 30min.', system: 'BOTH' },
+  { name: 'Bomba de Adrenalina Cardíaca', type: 'Corporal', humanityLoss: '2d6 (7)', cost: '500eb (Expensive)', install: 'Hospital', description: 'Injeta adrenalina automática quando o usuário entra em estado Gravemente Ferido (+1 REF e MOVE).', system: 'BOTH' },
+  { name: 'Biomonitor Digital de Sinais Vitais', type: 'Corporal', humanityLoss: '1d6/2 (2)', cost: '100eb (Premium)', install: 'Clínica', description: 'Monitora pulso, oxigênio e toxicidade no sangue, avisando a Trauma Team se os sinais caírem.', system: 'BOTH' },
+  { name: 'Bolsas de Sangue Sintético Nanotecnológico', type: 'Corporal', humanityLoss: '1d6 (3)', cost: '500eb (Expensive)', install: 'Hospital', description: 'Retarda sangramentos e previne a morte por hemorragia em Salvaguardas da Morte.', system: 'BOTH' },
+
+  // --- FASHIONWARE & ESTILO ---
+  { name: 'Tatuagens Luminescentes Digitais (Light Tattoo)', type: 'Fashionware', humanityLoss: '1d6/2 (2)', cost: '100eb (Premium)', install: 'Mall', description: 'Tatuagens que mudam de cor, pulsam com música e exibem logos ou animações na pele.', system: 'BOTH' },
+  { name: 'TechHair (Cabelo Cibernético com LED)', type: 'Fashionware', humanityLoss: '1d6/2 (2)', cost: '100eb (Premium)', install: 'Mall', description: 'Fibras capilares de fibra óptica que alteram de cor através de um app no Agente pessoal.', system: 'BOTH' },
+  { name: 'Presas Cibernéticas de Titânio', type: 'Fashionware', humanityLoss: '1d6/2 (2)', cost: '100eb (Premium)', install: 'Mall', description: 'Dentes afiados estilizados para visual vampiresco ou predador urbano.', system: 'BOTH' },
+
+  // --- BORGWARE & EXOESQUELETOS MILITARES ---
+  { name: 'Linear Frame Sigma (Exoesqueleto Sigma)', type: 'Borgware', humanityLoss: '4d6 (14)', cost: '1.000eb (Very Expensive)', install: 'Hospital', description: 'Estrutura óssea de titânio acoplada à coluna vertebral que eleva o atributo BODY para 12.', system: 'BOTH' },
+  { name: 'Linear Frame Beta (Exoesqueleto Beta)', type: 'Borgware', humanityLoss: '4d6 (14)', cost: '5.000eb (Luxury)', install: 'Hospital', description: 'Exoesqueleto militar para demolições pesadas que eleva o atributo BODY permanentemente para 14.', system: 'BOTH' },
+  { name: 'Corpo Biocibernético Completo (Full Body Conversion)', type: 'Borgware', humanityLoss: '8d6 (28)', cost: '25.000eb (Super Luxury)', install: 'Hospital', description: 'O cérebro é transferido para um chassi robótico de combate militar com blindagem SP 18 e BODY 15.', system: 'BOTH' },
+];
+
+// ========================================================
+// 3. ARMADURAS OFICIAIS (COLETES, JAQUETAS E METALGEAR)
+// ========================================================
+export const ARMOR_DATABASE: ArmorItem[] = [
+  {
+    id: 'arm-01',
+    name: 'Roupas com Kevlar Leve Estilizadas',
+    sp: 4,
+    penalty: 0,
+    cost: '50eb (Costly)',
+    covers: 'Corpo Todo',
+    description: 'Camisas sociais, vestidos ou calças elegantes costuradas com fios de Kevlar fino. Proteção invisível para encontros corporativos ou festas de luxo.',
+    system: 'BOTH',
+    notes: 'Zero penalidade de mobilidade. Não chama a atenção de guardas nem seguranças.',
+  },
+  {
+    id: 'arm-02',
+    name: 'Couro Reforçado de Rua (Leathers)',
+    sp: 7,
+    penalty: 0,
+    cost: '50eb (Costly)',
+    covers: 'Corpo Todo',
+    description: 'Jaquetas de couro pesado com tachas metálicas e almofadas de absorção balística. A vestimenta clássica dos punks e motoqueiros de Night City.',
+    system: 'BOTH',
+    notes: 'Zero penalidade. Protege contra facadas e tiros leves de 9mm.',
+  },
+  {
+    id: 'arm-03',
+    name: 'Kevlar Vest Leve',
+    sp: 11,
+    penalty: 0,
+    cost: '100eb (Premium)',
+    covers: 'Corpo',
+    description: 'Colete de Kevlar leve que pode ser usado sob camisetas ou blusas com discrição.',
+    system: 'BOTH',
+    notes: 'Zero penalidade. Excelente relação custo-benefício para iniciantes.',
+  },
+  {
+    id: 'arm-04',
+    name: 'Light Armorjack (Jaqueta Blindada Leve)',
+    sp: 11,
+    penalty: 0,
+    cost: '100eb (Premium)',
+    covers: 'Cabeça e Corpo',
+    description: 'A armadura mais popular de Night City. Combina placas flexíveis de policarbonato e Kevlar com corte de streetwear moderno.',
+    system: 'BOTH',
+    notes: 'Zero penalidade de movimento. Utilizada pela maioria dos Solos freelancers.',
+  },
+  {
+    id: 'arm-05',
+    name: 'Bodyweight Suit (Traje Colado de Netrunner)',
+    sp: 11,
+    penalty: 0,
+    cost: '1.000eb (Very Expensive)',
+    covers: 'Corpo Todo',
+    description: 'Macacão hermético de nanofibras com tubos de resfriamento corporal líquido e slots embutidos para fiação de cyberdecks.',
+    system: 'RED',
+    notes: 'Zero penalidade. Fornece slots adicionais de hardware de cyberdeck.',
+  },
+  {
+    id: 'arm-06',
+    name: 'Medium Armorjack (Jaqueta Blindada Média)',
+    sp: 12,
+    penalty: -2,
+    cost: '100eb (Premium)',
+    covers: 'Cabeça e Corpo',
+    description: 'Jaqueta com placas balísticas rígidas adicionais no peito e ombros. Suporta fuzilamento leve.',
+    system: 'RED',
+    notes: 'Penalidade de -2 em testes de REF, DEX e MOVE enquanto estiver vestida.',
+  },
+  {
+    id: 'arm-07',
+    name: 'Heavy Armorjack (Jaqueta Blindada Pesada)',
+    sp: 13,
+    penalty: -2,
+    cost: '500eb (Expensive)',
+    covers: 'Cabeça e Corpo',
+    description: 'Armadura pesada de infantaria urbana usada pela SWAT do DPNC e esquadrões de elite corporativos.',
+    system: 'BOTH',
+    notes: 'Penalidade de -2 em testes de REF, DEX e MOVE.',
+  },
+  {
+    id: 'arm-08',
+    name: 'Flak Vest / Flak Armor',
+    sp: 15,
+    penalty: -4,
+    cost: '500eb (Expensive)',
+    covers: 'Cabeça e Corpo',
+    description: 'Colete com placas grossas de aço e cerâmica balística militar projetado para resistir a estilhaços de artilharia pesada e granadas.',
+    system: 'BOTH',
+    notes: 'Penalidade severa de -4 em REF, DEX e MOVE.',
+  },
+  {
+    id: 'arm-09',
+    name: 'Metalgear™ Corporal Completo',
+    sp: 18,
+    penalty: -4,
+    cost: '1.000eb (Very Expensive)',
+    covers: 'Corpo Todo',
+    description: 'Armadura corporal completa de infantaria pesada com capacete hermético pressurizado e placas angulares de titânio sobrepostas.',
+    system: 'BOTH',
+    notes: 'Penalidade de -4 em REF, DEX e MOVE. Torna o usuário praticamente imune a armas curtas e médias.',
+  },
+  {
+    id: 'arm-10',
+    name: 'Escudo Balístico Móvel (Bulletproof Shield)',
+    sp: 0,
+    penalty: 0,
+    cost: '100eb (Premium)',
+    covers: 'Escudo (30 HP)',
+    description: 'Escudo tático de policarbonato reforçado com visor transparente. Concede cobertura dura que absorve até 30 HP de dano antes de se quebrar.',
+    system: 'BOTH',
+    notes: 'Ocupa uma das mãos. Pode ser usado em conjunto com pistolas e submetralhadoras.',
+  },
+];
+
+// ========================================================
+// 4. ACESSÓRIOS DE ARMAS (WEAPON ATTACHMENTS & MODS)
+// ========================================================
+export const ATTACHMENTS_DATABASE: AttachmentItem[] = [
+  {
+    id: 'att-01',
+    name: 'Smartlink Reticular (Interface Inteligente)',
+    compatibleCategory: 'Todas as Armas de Fogo',
+    cost: '500eb (Expensive)',
+    effect: 'Conecta a arma aos plugues neurais ou ciberolho do atirador concedendo +1 em todos os testes de Ataque à Distância e rastreamento digital de balas restantes.',
+    slotsUsed: 1,
+    system: 'BOTH',
+    notes: 'Exige Interface Plugs ou Ciberolho com Smartlink instalado no usuário.',
+  },
+  {
+    id: 'att-02',
+    name: 'Silenciador Tático / Supressor de Som',
+    compatibleCategory: 'Pistolas e Submetralhadoras',
+    cost: '100eb (Premium)',
+    effect: 'Elimina o clarão do cano e abafa o estampido do disparo. Inimigos a mais de 5 metros de distância não conseguem ouvir nem identificar a origem do tiro.',
+    slotsUsed: 1,
+    system: 'BOTH',
+    notes: 'Não compatível com espingardas, revólveres ou armas muito pesadas.',
+  },
+  {
+    id: 'att-03',
+    name: 'Mira Holográfica CQB (Red Dot)',
+    compatibleCategory: 'Pistolas, SMGs, Espingardas e Fuzis',
+    cost: '100eb (Premium)',
+    effect: 'Projeta retículo luminoso vermelho sobre o alvo. Concede +1 no teste de Ataque em distâncias curtas de 0 a 12 metros.',
+    slotsUsed: 1,
+    system: 'BOTH',
+  },
+  {
+    id: 'att-04',
+    name: 'Luneta Sniper Amplificadora x8',
+    compatibleCategory: 'Fuzis de Assalto e Precisão',
+    cost: '500eb (Expensive)',
+    effect: 'Lentes multirrevestidas de alta magnificação com telêmetro embutido. Reduz em 2 pontos o DV de acerto em distâncias de 50 metros ou mais.',
+    slotsUsed: 1,
+    system: 'BOTH',
+  },
+  {
+    id: 'att-05',
+    name: 'Tambor Estendido (+50% Capacidade)',
+    compatibleCategory: 'Pistolas, SMGs e Fuzis',
+    cost: '100eb (Premium)',
+    effect: 'Aumenta a capacidade de munição da arma em +50% (ex: SMG de 30 tiros passa a comportar 45 tiros).',
+    slotsUsed: 1,
+    system: 'BOTH',
+    notes: 'Torna a arma mais volumosa, impedindo que seja ocultada em bolsos normais.',
+  },
+  {
+    id: 'att-06',
+    name: 'Mira Laser Infravermelha',
+    compatibleCategory: 'Todas as Armas de Fogo',
+    cost: '100eb (Premium)',
+    effect: 'Emite ponto de laser infravermelho invisível a olho nu (visível apenas com ciberóptica IR/Térmica). Concede +1 no Ataque em condições de escuridão.',
+    slotsUsed: 1,
+    system: 'BOTH',
+  },
+  {
+    id: 'att-07',
+    name: 'Bipé Tático Dobrável',
+    compatibleCategory: 'Fuzis de Assalto, Sniper e Armas Pesadas',
+    cost: '100eb (Premium)',
+    effect: 'Concede +1 no teste de Ataque caso o atirador esteja disparando deitado ou com a arma apoiada sobre uma cobertura estável.',
+    slotsUsed: 1,
+    system: 'BOTH',
+  },
+  {
+    id: 'att-08',
+    name: 'Baioneta Monomolecular de Cano',
+    compatibleCategory: 'Fuzis e Espingardas',
+    cost: '500eb (Expensive)',
+    effect: 'Lâmina mono presa à ponta do cano. Permite desferir ataques corpo a corpo com dano de Arma Branca Pesada (3d6, ignora metade do SP).',
+    slotsUsed: 1,
+    system: 'BOTH',
+  },
+  {
+    id: 'att-09',
+    name: 'Lança-Granadas Sub-Barril (Underbarrel)',
+    compatibleCategory: 'Fuzis de Assalto',
+    cost: '500eb (Expensive)',
+    effect: 'Acopla um tubo de lançamento de granada de 40mm sob o cano do fuzil. Permite disparar granadas sem precisar trocar de arma.',
+    slotsUsed: 2,
+    system: 'BOTH',
+  },
+];
+
+// ========================================================
+// 5. MUNIÇÕES ESPECIAIS & GRANADAS (AMMUNITION DATABASE)
+// ========================================================
+export const AMMUNITION_DATABASE: AmmunitionItem[] = [
+  {
+    id: 'ammo-01',
+    name: 'Munição Padrão (Standard Lead)',
+    type: 'Básica',
+    costPer10: '10eb (10 cartuchos)',
+    effect: 'Projétil balístico jaquetado comum de fábrica. Causa dano nominal da arma e ablação normal de 1 ponto de SP.',
+    system: 'BOTH',
+  },
+  {
+    id: 'ammo-02',
+    name: 'Munição Perfurante de Blindagem (Armor-Piercing / AP)',
+    type: 'Perfurante (AP)',
+    costPer10: '100eb (10 cartuchos)',
+    effect: 'Núcleo denso de tungstênio que perfura kevlar e cerâmica. Sempre que causar dano através da armadura, destrói 2 pontos de SP em vez de apenas 1.',
+    spAblationBonus: 2,
+    system: 'BOTH',
+  },
+  {
+    id: 'ammo-03',
+    name: 'Munição de Ponta Oca / Expansiva (Hollow Point)',
+    type: 'Ponta Oca',
+    costPer10: '100eb (10 cartuchos)',
+    effect: 'Projetada para se expandir dentro do tecido orgânico. Se penetrar a blindagem do alvo, causa +1d6 de dano bônus em ferimentos críticos.',
+    damageModifier: '+1d6 Crítico',
+    system: 'BOTH',
+  },
+  {
+    id: 'ammo-04',
+    name: 'Munição Incendiária (Incendiary)',
+    type: 'Incendiária',
+    costPer10: '100eb (10 cartuchos)',
+    effect: 'Ponta de fósforo branco que incendeia o alvo atingido caso o dano supere a armadura. O alvo sofre 2 HP de dano por fogo no início de cada um dos seus turnos até gastar uma Ação para apagar as chamas.',
+    system: 'BOTH',
+  },
+  {
+    id: 'ammo-05',
+    name: 'Munição de Pulso Elétrico / EMP',
+    type: 'EMP / Elétrica',
+    costPer10: '500eb (10 cartuchos)',
+    effect: 'Microcapacitores elétricos que descarregam no impacto. Exige que o alvo com ciberware atingido faça um teste de Resistência DV 15 ou tem 1 implante cibernético aleatório desativado por 1 minuto.',
+    system: 'BOTH',
+  },
+  {
+    id: 'ammo-06',
+    name: 'Projéteis de Borracha / Stun Não-Letais',
+    type: 'Borracha / Stun',
+    costPer10: '50eb (10 cartuchos)',
+    effect: 'Causa dano não-letal. Se o alvo for reduzido a 0 HP, ele cai inconsciente e atordoado em vez de entrar em Salvaguarda da Morte.',
+    system: 'BOTH',
+  },
+  {
+    id: 'ammo-07',
+    name: 'Cartucho Slug Sólido para Espingarda',
+    type: 'Slug de Precisão',
+    costPer10: '50eb (10 cartuchos)',
+    effect: 'Projétil único pesado de chumbo para espingarda. Causa 5d6 de dano focado com tabela de alcance de rifle em vez de dispersão.',
+    system: 'BOTH',
+  },
+  {
+    id: 'ammo-08',
+    name: 'Granada de Luz e Som (Flashbang)',
+    type: 'Granada',
+    costPer10: '100eb (1 unidade)',
+    effect: 'Explosão de 1 milhão de candelas e 170 decibéis num raio de 4m. Todos os alvos sem ciberóptica/auditivo protegido devem passar em DV 15 ou ficam cegos e atordoados por 1 rodada.',
+    system: 'BOTH',
+  },
+  {
+    id: 'ammo-09',
+    name: 'Granada de Fumaça Espessa (Smoke Grenade)',
+    type: 'Granada',
+    costPer10: '50eb (1 unidade)',
+    effect: 'Cria uma nuvem espessa de fumaça opaca em raio de 8 metros que bloqueia totalmente linha de visão e miras laser normais por 1 minuto.',
+    system: 'BOTH',
+  },
+  {
+    id: 'ammo-10',
+    name: 'Granada Termite / Demolição Incendiária',
+    type: 'Granada',
+    costPer10: '500eb (1 unidade)',
+    effect: 'Reação química a 2.500°C que derrete aço e fechaduras blindadas em segundos. Causa 6d6 de dano direto a objetos estruturais e armaduras.',
+    system: 'BOTH',
+  },
+];
+
+// ========================================================
+// 6. EQUIPAMENTOS DE RUA & FERRAMENTAS (STREET GEAR)
+// ========================================================
+export const STREET_GEAR_DATABASE: GearItem[] = [
+  {
+    id: 'gear-01',
+    name: 'Agente Pessoal Holográfico com IA',
+    category: 'Comunicação & IA',
+    cost: '100eb (Premium)',
+    description: 'Smartphone futurista dobrável com projeção de tela holográfica, assistente de IA pessoal, gravador de áudio, GPS de satélite e carteira criptográfica de eddies.',
+    system: 'BOTH',
+  },
+  {
+    id: 'gear-02',
+    name: 'Cyberdeck Raven Microcyber',
+    category: 'Comunicação & IA',
+    cost: '500eb (Expensive)',
+    description: 'Deck clássico para invasores de rede com 7 slots livres de programas e interface tátil reforçada para uso em campo de batalha.',
+    system: 'BOTH',
+  },
+  {
+    id: 'gear-03',
+    name: 'Kit de Arrombamento Eletrônico / Lockpick Digital',
+    category: 'Ferramentas & Invasão',
+    cost: '500eb (Expensive)',
+    description: 'Conjunto de decodificadores magnéticos e agulhas de alta frequência para arrombar fechaduras eletrônicas e cofres magnéticos (DV 15 ou superior).',
+    system: 'BOTH',
+  },
+  {
+    id: 'gear-04',
+    name: 'Óculos de Realidade Aumentada (AR Glasses)',
+    category: 'Comunicação & IA',
+    cost: '100eb (Premium)',
+    description: 'Óculos escuros com display HUD transparente. Permite acessar dados do Agente, mapa e chamadas sem precisar de ciberolhos instalados.',
+    system: 'BOTH',
+  },
+  {
+    id: 'gear-05',
+    name: 'Mala de Trauma Avançada (Medtech Kit)',
+    category: 'Medicina & Ripperdoc',
+    cost: '1.000eb (Very Expensive)',
+    description: 'Contém 4 doses de Speedheal, 2 bolsas de sangue sintético, desfibrilador de emergência, suturas a laser e ferramentas para tratar ferimentos críticos.',
+    system: 'BOTH',
+  },
+  {
+    id: 'gear-06',
+    name: 'Injetor Rápido Airhypo',
+    category: 'Medicina & Ripperdoc',
+    cost: '100eb (Premium)',
+    description: 'Dispositivo pressurizado que injeta drogas e medicamentos instantaneamente através da pele ou roupas leves sem agulhas.',
+    system: 'BOTH',
+  },
+  {
+    id: 'gear-07',
+    name: 'Micro-Bugs Rastreadores GPS Adesivos (Pack com 5)',
+    category: 'Ferramentas & Invasão',
+    cost: '100eb (Premium)',
+    description: 'Pastilhas magnéticas do tamanho de uma moeda com bateria para 72 horas. Transmitem localização em tempo real para o Agente do usuário num raio de 50km.',
+    system: 'BOTH',
+  },
+  {
+    id: 'gear-08',
+    name: 'Binóculos Eletrônicos com Telêmetro e Infravermelho',
+    category: 'Sobrevivência & Rua',
+    cost: '500eb (Expensive)',
+    description: 'Zoom óptico digital de até 20x com medidor de distância a laser, velocidade do vento e leitura de calor térmico.',
+    system: 'BOTH',
+  },
+  {
+    id: 'gear-09',
+    name: 'Corda de Kevlar de 30m com Gancho Magnético',
+    category: 'Sobrevivência & Rua',
+    cost: '100eb (Premium)',
+    description: 'Cabo ultraleve capaz de suportar até 400kg. O gancho com eletroímã fixa firmemente em vigas e lajes de concreto.',
+    system: 'BOTH',
+  },
+  {
+    id: 'gear-10',
+    name: 'Máscara Hermética com Filtro de Carvão Ativado',
+    category: 'Sobrevivência & Rua',
+    cost: '50eb (Costly)',
+    description: 'Protege contra chuva ácida, neblina tóxica e poeira densa dos Badlands por até 12 horas contínuas.',
+    system: 'BOTH',
+  },
+];
+
+// ========================================================
+// 7. DROGAS DE RUA & FARMACÊUTICOS (STREET DRUGS)
+// ========================================================
+export const STREET_DRUGS_DATABASE: StreetDrugItem[] = [
+  {
+    id: 'drug-01',
+    name: 'Black Lace',
+    slang: 'A Renda Negra / O Veneno do Maelstrom',
+    costPerDose: '50eb por dose',
+    deliveryMethod: 'Inalação ou Injeção (Airhypo)',
+    primaryEffect: 'Concede +2 em Frieza (COOL) e imunidade total a testes de pânico e dor. O usuário ignora todas as penalidades de ferimentos graves.',
+    secondaryOrCrashEffect: 'Ao passar o efeito, o usuário sofre -2 em todas as ações por tremores intensos e paranoia violenta.',
+    addictionDV: 17,
+    duration: '1 hora',
+    citation: 'CP:R p. 357 • Night City Gangs p. 14',
+  },
+  {
+    id: 'drug-02',
+    name: 'Blue Glass',
+    slang: 'Vidro Azul',
+    costPerDose: '20eb por dose',
+    deliveryMethod: 'Comprimido solúvel',
+    primaryEffect: 'Intensifica a percepção visual e cores (+2 em Percepção visual), criando sensações visuais estonteantes.',
+    secondaryOrCrashEffect: 'Pode causar flashes de cegueira momentânea e perda de foco (-2 em Reflexos).',
+    addictionDV: 13,
+    duration: '4 horas',
+    citation: 'CP:R p. 358',
+  },
+  {
+    id: 'drug-03',
+    name: 'Synthcoke',
+    slang: 'Cromo Branco / Poeira de Executivo',
+    costPerDose: '50eb por dose',
+    deliveryMethod: 'Inalação nasal',
+    primaryEffect: 'Estimulante do sistema nervoso central. Concede +1 em Reflexos (REF) e sensação imediata de euforia e invencibilidade.',
+    secondaryOrCrashEffect: 'Colapso de energia violento: fadiga extrema e depressão severa (-2 em COOL e WILL).',
+    addictionDV: 16,
+    duration: '1 hora',
+    citation: 'CP:R p. 358 • CP2020 p. 124',
+  },
+  {
+    id: 'drug-04',
+    name: 'Smash',
+    slang: 'O Esmagador',
+    costPerDose: '10eb por lata',
+    deliveryMethod: 'Bebida gaseificada',
+    primaryEffect: 'Bebida sintética alcoólica eufórica muito popular em clubes. Concede +1 em testes de carisma e socialização.',
+    secondaryOrCrashEffect: 'Ressaca pesada e perda de coordenação motora fina (-1 em DEX).',
+    addictionDV: 11,
+    duration: '2 horas',
+    citation: 'CP:R p. 358',
+  },
+  {
+    id: 'drug-05',
+    name: 'Speedheal (Cura Rápida Médica)',
+    slang: 'O Milagre do Ripperdoc',
+    costPerDose: '100eb por ampola',
+    deliveryMethod: 'Injeção (Airhypo)',
+    primaryEffect: 'Acelera a regeneração celular em 200%. Cura instantaneamente uma quantidade de HP igual ao atributo BODY do paciente x 2.',
+    secondaryOrCrashEffect: 'Não pode ser usado mais de uma vez a cada 24 horas (causa colapso celular se abusado).',
+    addictionDV: 0,
+    duration: 'Instantâneo',
+    citation: 'CP:R p. 359 • Trauma Team Guide p. 28',
+  },
+  {
+    id: 'drug-06',
+    name: 'Anti-Tox / Nanosteril',
+    slang: 'O Antídoto Universal',
+    costPerDose: '100eb por dose',
+    deliveryMethod: 'Injeção (Airhypo)',
+    primaryEffect: 'Anticorpos nanotecnológicos que neutralizam venenos biológicos, radiação e toxinas ativas no sangue.',
+    secondaryOrCrashEffect: 'Febre passageira de 10 minutos.',
+    addictionDV: 0,
+    duration: 'Instantâneo',
+    citation: 'CP:R p. 359',
+  },
+];
