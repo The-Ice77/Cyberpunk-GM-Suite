@@ -12,6 +12,8 @@ import {
   Activity,
   FileText,
   Sparkles,
+  User,
+  Library,
 } from 'lucide-react';
 import { useSystem } from '../context/SystemContext';
 import { useCampaign } from '../context/CampaignContext';
@@ -101,6 +103,26 @@ export const HubPage: React.FC<HubPageProps> = ({ onNavigate, onOpenTarot }) => 
       icon: <BookOpen className="w-5 h-5 text-rose-500" />,
       features: ['Bestiário com 1-Click Combate', 'Biblioteca do Mestre (Campanha)', 'Forja Homebrew (Armas, Cromo, Chefes)'],
       tag: 'Repositório',
+    },
+    {
+      id: 'player-sheet',
+      number: '07',
+      title: 'Fichas de Jogadores',
+      subtitle: 'Gerador Completo, Rolo de Dados & Perícias',
+      description: 'Ficha interativa completa com rolagem integrada de perícias, combate com cálculo de dano e ablação, inventário com peso e custo, ciberware e gerador de lifepath.',
+      icon: <User className="w-5 h-5 text-cyan-400" />,
+      features: ['Ficha Interativa RED & 2020', 'Rolo Rápido de Dano e Críticos', 'Inventário & Ciberware'],
+      tag: 'Personagens',
+    },
+    {
+      id: 'archive',
+      number: '08',
+      title: 'Biblioteca Digital',
+      subtitle: '82 Manuais Oficiais & DLCs Indexados',
+      description: 'Consulta abrangente de todos os livros básicos, suplementos de facções, aventuras, screamsheets e expansões de regras em PDF indexados para a campanha.',
+      icon: <Library className="w-5 h-5 text-amber-400" />,
+      features: ['82 Livros e Manuais Oficiais', 'Busca Instantânea por Categoria', 'DLCs e Complementos'],
+      tag: 'Arquivos',
     },
   ];
 

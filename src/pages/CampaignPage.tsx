@@ -561,7 +561,7 @@ ${rewardResult.nextSessionHooks.map(h => `• ${h}`).join('\n')}
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Top Header & Navigation */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-[#27272a] pb-4">
+      <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 border-b border-[#27272a] pb-4">
         <div>
           <h1 className="text-xl font-bold text-zinc-100 flex items-center gap-2">
             <Compass className="w-5 h-5 text-cyan-500" />
@@ -573,7 +573,7 @@ ${rewardResult.nextSessionHooks.map(h => `• ${h}`).join('\n')}
         </div>
 
         {/* Tab Pills */}
-        <div className="flex items-center gap-1 bg-[#14141a] border border-[#27272a] rounded-xl p-1 text-xs font-medium overflow-x-auto no-scrollbar max-w-full whitespace-nowrap">
+        <div className="flex flex-wrap items-center gap-1.5 bg-[#14141a] border border-[#27272a] rounded-xl p-1.5 text-xs font-medium">
           <button
             onClick={() => setActiveTab('beat-chart')}
             className={`px-3 py-1.5 rounded-lg transition ${
@@ -1234,7 +1234,7 @@ ${rewardResult.nextSessionHooks.map(h => `• ${h}`).join('\n')}
                 </div>
 
                 {/* Tag Category Filter */}
-                <div className="flex items-center gap-1 bg-[#0a0a0d] p-1 rounded-xl border border-zinc-800 text-[10px] font-mono overflow-x-auto no-scrollbar">
+                <div className="flex flex-wrap items-center gap-1 bg-[#0a0a0d] p-1 rounded-xl border border-zinc-800 text-[10px] font-mono">
                   {[
                     { id: 'all', label: 'Todas' },
                     { id: 'objective', label: 'Objetivos' },

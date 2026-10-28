@@ -57,11 +57,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ activePage, onSelectPage, isOp
   const PLAYER_NAV_ITEMS: { id: ActivePage; label: string; icon: React.ReactNode; categoryNumber: string; badge?: string }[] = [
     { id: 'player-sheet', label: 'Minha Ficha', icon: <User className="w-4 h-4" />, categoryNumber: '01', badge: 'Ativo' },
     { id: 'hub', label: 'Hub Principal', icon: <LayoutDashboard className="w-4 h-4" />, categoryNumber: '00' },
-    { id: 'codex', label: 'Biblioteca & Códice', icon: <BookOpen className="w-4 h-4" />, categoryNumber: '02' },
-    { id: 'arsenal', label: 'Arsenal & Cromo', icon: <Crosshair className="w-4 h-4" />, categoryNumber: '03' },
-    { id: 'netrunning', label: 'Netrunning & Cyberdeck', icon: <Network className="w-4 h-4" />, categoryNumber: '04' },
-    { id: 'world', label: 'Mapa & Distritos', icon: <MapPin className="w-4 h-4" />, categoryNumber: '05' },
-    { id: 'archive', label: 'Biblioteca Digital', icon: <Library className="w-4 h-4" />, categoryNumber: '06', badge: '82 PDFs' },
+    { id: 'people', label: 'Pessoas & Facções', icon: <Users className="w-4 h-4" />, categoryNumber: '02' },
+    { id: 'world', label: 'Mapa & Distritos', icon: <MapPin className="w-4 h-4" />, categoryNumber: '03' },
+    { id: 'arsenal', label: 'Arsenal & Cromo', icon: <Crosshair className="w-4 h-4" />, categoryNumber: '04' },
+    { id: 'netrunning', label: 'Netrunning & Cyberdeck', icon: <Network className="w-4 h-4" />, categoryNumber: '05', badge: isRed ? 'Elevador' : 'Fortaleza' },
+    { id: 'campaign', label: 'Diário & Missões', icon: <Compass className="w-4 h-4" />, categoryNumber: '06' },
+    { id: 'codex', label: 'Biblioteca & Códice', icon: <BookOpen className="w-4 h-4" />, categoryNumber: '07' },
+    { id: 'archive', label: 'Biblioteca Digital', icon: <Library className="w-4 h-4" />, categoryNumber: '08', badge: '82 PDFs' },
   ];
 
   const navItems = isPlayer ? PLAYER_NAV_ITEMS : GM_NAV_ITEMS;

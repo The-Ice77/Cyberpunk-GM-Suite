@@ -478,7 +478,7 @@ export const CodexPage: React.FC = () => {
       </div>
 
       {/* Main 3-Way Tab Selector */}
-      <div className="flex items-center gap-2 border-b border-[#27272a] pb-2 overflow-x-auto no-scrollbar whitespace-nowrap max-w-full">
+      <div className="flex flex-wrap items-center gap-2 border-b border-[#27272a] pb-2">
         <button
           onClick={() => setActiveTab('official')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition shrink-0 ${

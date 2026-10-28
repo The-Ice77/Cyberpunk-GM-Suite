@@ -1184,7 +1184,7 @@ export const PlayerSheetPage: React.FC = () => {
           </div>
 
           {/* Sheet Navigation Tabs */}
-          <div className="flex items-center gap-1.5 border-b border-[#27272a] pb-2 text-xs font-medium overflow-x-auto no-scrollbar whitespace-nowrap max-w-full">
+          <div className="flex flex-wrap items-center gap-1.5 border-b border-[#27272a] pb-2 text-xs font-medium">
             <button
               onClick={() => setActiveSheetTab('stats')}
               className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shrink-0 ${

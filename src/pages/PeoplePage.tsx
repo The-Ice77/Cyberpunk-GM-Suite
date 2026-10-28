@@ -1069,7 +1069,7 @@ Táticas: ${generatedNPC.tactics}`;
       )}
 
       {/* Header and Sub-tabs */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-[#27272a] pb-4">
+      <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 border-b border-[#27272a] pb-4">
         <div>
           <h1 className="text-xl font-bold text-zinc-100 flex items-center gap-2">
             <Users className="w-5 h-5 text-red-500" />
@@ -1081,7 +1081,7 @@ Táticas: ${generatedNPC.tactics}`;
         </div>
 
         {/* Sub-tabs pills */}
-        <div className="flex items-center gap-1 bg-[#14141a] border border-[#27272a] rounded-xl p-1 text-xs font-medium overflow-x-auto no-scrollbar max-w-full whitespace-nowrap">
+        <div className="flex flex-wrap items-center gap-1.5 bg-[#14141a] border border-[#27272a] rounded-xl p-1.5 text-xs font-medium">
           <button
             onClick={() => setActiveTab('enemies')}
             className={`px-3 py-1.5 rounded-md transition flex items-center gap-1.5 ${

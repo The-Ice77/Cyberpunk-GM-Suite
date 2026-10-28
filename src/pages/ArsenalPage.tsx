@@ -300,7 +300,7 @@ export const ArsenalPage: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Header and Sub-tabs */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-[#27272a] pb-4">
+      <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 border-b border-[#27272a] pb-4">
         <div>
           <h1 className="text-xl font-bold text-zinc-100 flex items-center gap-2">
             <Crosshair className="w-5 h-5 text-emerald-500" />
@@ -312,7 +312,7 @@ export const ArsenalPage: React.FC = () => {
         </div>
 
         {/* Sub-tabs pills */}
-        <div className="flex items-center gap-1 bg-[#14141a] border border-[#27272a] rounded-xl p-1 text-xs font-medium overflow-x-auto no-scrollbar max-w-full whitespace-nowrap">
+        <div className="flex flex-wrap items-center gap-1.5 bg-[#14141a] border border-[#27272a] rounded-xl p-1.5 text-xs font-medium">
           <button
             onClick={() => setActiveTab('catalog')}
             className={`px-3 py-1.5 rounded-lg transition ${

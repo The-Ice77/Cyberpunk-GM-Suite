@@ -211,10 +211,28 @@ const MAP_POI_MARKERS: MapPoiMarker[] = [
   { id: 'poi-aldecaldo', name: 'Acampamento Aldecaldo', districtId: 'badlands', type: 'Cidade de Trailers', xPct: 82, yPct: 77, danger: 'Baixo' },
 ];
 
+export type WorldTab =
+  | 'map'
+  | 'streetfood'
+  | 'market'
+  | 'safehouses'
+  | 'bars'
+  | 'weather'
+  | 'encounters'
+  | 'screamsheets'
+  | 'dating'
+  | 'venues';
+
 export const WorldPage: React.FC = () => {
   const { system } = useSystem();
   const { worldState, addCustomLocation, updateCustomLocation, deleteCustomLocation } = useUserRole();
-  const [activeTab, setActiveTab] = useState<'map' | 'weather' | 'encounters' | 'venues'>('map');
+  const [activeTab, setActiveTab] = useState<WorldTab>('map');
+
+  const isVenueSubActive = (sub: 'bars' | 'market' | 'safehouses' | 'streetfood' | 'dating' | 'screamsheets') => {
+    return activeTab === sub || (activeTab === 'venues' && venueSubTab === sub);
+  };
+
+  const isAnyVenueActive = ['venues', 'bars', 'market', 'safehouses', 'streetfood', 'dating', 'screamsheets'].includes(activeTab);
 
   // MAP ENHANCED STATE
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -957,36 +975,104 @@ export const WorldPage: React.FC = () => {
             <span>Mundo & Night City</span>
           </h1>
           <p className="text-xs text-zinc-400 mt-1">
-            Mapa tático de distritos, fortalezas de megacorporações, clima cáustico e geradores de rua.
+            Mapa tático interativo, comida de rua, mercado negro, esconderijos, bares lendários, clima cáustico e screamsheets.
           </p>
         </div>
 
         {/* Sub-tabs pills */}
-        <div className="flex items-center gap-1 bg-[#14141a] border border-[#27272a] rounded-xl p-1 text-xs font-medium overflow-x-auto no-scrollbar max-w-full whitespace-nowrap">
+        <div className="flex flex-wrap items-center gap-1.5 bg-[#14141a] border border-[#27272a] rounded-xl p-1.5 text-xs font-medium">
           <button
             onClick={() => setActiveTab('map')}
-            className={`px-3 py-1.5 rounded-md transition ${activeTab === 'map' ? 'bg-zinc-800 text-zinc-100 font-bold' : 'text-zinc-400 hover:text-zinc-200'}`}
+            className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
+              activeTab === 'map' ? 'bg-amber-600 text-white font-bold shadow-sm' : 'text-zinc-400 hover:text-zinc-200'
+            }`}
           >
-            Mapa Tático Interativo
+            <MapPin className="w-3.5 h-3.5" />
+            <span>Mapa Tático</span>
+          </button>
+          <button
+            onClick={() => { setActiveTab('streetfood'); setVenueSubTab('streetfood'); }}
+            className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
+              isVenueSubActive('streetfood')
+                ? 'bg-emerald-600 text-white font-bold shadow-sm'
+                : 'text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            <UtensilsCrossed className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Comida & Bebida</span>
+          </button>
+          <button
+            onClick={() => { setActiveTab('market'); setVenueSubTab('market'); }}
+            className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
+              isVenueSubActive('market')
+                ? 'bg-cyan-600 text-white font-bold shadow-sm'
+                : 'text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            <span className="text-xs">🛒</span>
+            <span>Mercado Negro</span>
+          </button>
+          <button
+            onClick={() => { setActiveTab('safehouses'); setVenueSubTab('safehouses'); }}
+            className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
+              isVenueSubActive('safehouses')
+                ? 'bg-amber-700 text-white font-bold shadow-sm'
+                : 'text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            <Home className="w-3.5 h-3.5 text-amber-300" />
+            <span>Esconderijos</span>
+          </button>
+          <button
+            onClick={() => { setActiveTab('bars'); setVenueSubTab('bars'); }}
+            className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
+              isVenueSubActive('bars')
+                ? 'bg-purple-600 text-white font-bold shadow-sm'
+                : 'text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            <Wine className="w-3.5 h-3.5 text-purple-300" />
+            <span>Bares & Boates</span>
           </button>
           <button
             onClick={() => setActiveTab('weather')}
-            className={`px-3 py-1.5 rounded-md transition ${activeTab === 'weather' ? 'bg-zinc-800 text-zinc-100 font-bold' : 'text-zinc-400 hover:text-zinc-200'}`}
+            className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
+              activeTab === 'weather' ? 'bg-blue-600 text-white font-bold shadow-sm' : 'text-zinc-400 hover:text-zinc-200'
+            }`}
           >
-            Clima & Eventos
+            <CloudRain className="w-3.5 h-3.5" />
+            <span>Clima & Atmosfera</span>
           </button>
           <button
             onClick={() => setActiveTab('encounters')}
-            className={`px-3 py-1.5 rounded-md transition flex items-center gap-1.5 ${activeTab === 'encounters' ? 'bg-zinc-800 text-zinc-100 font-bold' : 'text-zinc-400 hover:text-zinc-200'}`}
+            className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
+              activeTab === 'encounters' ? 'bg-zinc-800 text-zinc-100 font-bold shadow-sm' : 'text-zinc-400 hover:text-zinc-200'
+            }`}
           >
             <Compass className="w-3.5 h-3.5 text-amber-400" />
-            <span>Encontros de Rua</span>
+            <span>Encontros & Metrô</span>
           </button>
           <button
-            onClick={() => setActiveTab('venues')}
-            className={`px-3 py-1.5 rounded-md transition ${activeTab === 'venues' ? 'bg-zinc-800 text-zinc-100 font-bold' : 'text-zinc-400 hover:text-zinc-200'}`}
+            onClick={() => { setActiveTab('screamsheets'); setVenueSubTab('screamsheets'); }}
+            className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
+              isVenueSubActive('screamsheets')
+                ? 'bg-zinc-800 text-zinc-100 font-bold shadow-sm'
+                : 'text-zinc-400 hover:text-zinc-200'
+            }`}
           >
-            Bares, Mercado Negro, Dating & Notícias
+            <FileText className="w-3.5 h-3.5 text-amber-400" />
+            <span>Screamsheets</span>
+          </button>
+          <button
+            onClick={() => { setActiveTab('dating'); setVenueSubTab('dating'); }}
+            className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
+              isVenueSubActive('dating')
+                ? 'bg-pink-600 text-white font-bold shadow-sm'
+                : 'text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            <Heart className="w-3.5 h-3.5 text-pink-300" />
+            <span>Digital Dating</span>
           </button>
         </div>
       </div>
@@ -3055,51 +3141,55 @@ export const WorldPage: React.FC = () => {
       )}
 
       {/* SUB-TAB 4: VENUES, DATING & SCREAMSHEETS */}
-      {activeTab === 'venues' && (
+      {isAnyVenueActive && (
         <div className="space-y-6">
           <div className="flex flex-wrap items-center justify-center gap-2 border-b border-[#27272a] pb-3 text-xs font-medium">
             <button
-              onClick={() => setVenueSubTab('bars')}
-              className={`px-3 py-1.5 rounded-lg transition ${venueSubTab === 'bars' ? 'bg-zinc-800 text-zinc-100 font-bold' : 'text-zinc-400 hover:text-zinc-200'}`}
+              onClick={() => { setVenueSubTab('bars'); setActiveTab('bars'); }}
+              className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${isVenueSubActive('bars') ? 'bg-zinc-800 text-zinc-100 font-bold' : 'text-zinc-400 hover:text-zinc-200'}`}
             >
-              Bares & Boates Lendárias
+              <Wine className="w-3.5 h-3.5 text-purple-400" />
+              <span>Bares & Boates Lendárias</span>
             </button>
             <button
-              onClick={() => setVenueSubTab('market')}
-              className={`px-3 py-1.5 rounded-lg transition ${venueSubTab === 'market' ? 'bg-zinc-800 text-zinc-100 font-bold' : 'text-zinc-400 hover:text-zinc-200'}`}
+              onClick={() => { setVenueSubTab('market'); setActiveTab('market'); }}
+              className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${isVenueSubActive('market') ? 'bg-zinc-800 text-zinc-100 font-bold' : 'text-zinc-400 hover:text-zinc-200'}`}
             >
-              Mercado Negro (Night Market)
+              <span>🛒</span>
+              <span>Mercado Negro (Night Market)</span>
             </button>
             <button
-              onClick={() => setVenueSubTab('safehouses')}
-              className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${venueSubTab === 'safehouses' ? 'bg-zinc-800 text-amber-400 font-bold' : 'text-zinc-400 hover:text-zinc-200'}`}
+              onClick={() => { setVenueSubTab('safehouses'); setActiveTab('safehouses'); }}
+              className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${isVenueSubActive('safehouses') ? 'bg-zinc-800 text-amber-400 font-bold' : 'text-zinc-400 hover:text-zinc-200'}`}
             >
-              <Home className="w-3.5 h-3.5" />
+              <Home className="w-3.5 h-3.5 text-amber-400" />
               <span>Esconderijos & Safe Houses</span>
             </button>
             <button
-              onClick={() => setVenueSubTab('streetfood')}
-              className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${venueSubTab === 'streetfood' ? 'bg-zinc-800 text-emerald-400 font-bold' : 'text-zinc-400 hover:text-zinc-200'}`}
+              onClick={() => { setVenueSubTab('streetfood'); setActiveTab('streetfood'); }}
+              className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${isVenueSubActive('streetfood') ? 'bg-zinc-800 text-emerald-400 font-bold' : 'text-zinc-400 hover:text-zinc-200'}`}
             >
-              <UtensilsCrossed className="w-3.5 h-3.5" />
+              <UtensilsCrossed className="w-3.5 h-3.5 text-emerald-400" />
               <span>Comida & Bebida de Rua</span>
             </button>
             <button
-              onClick={() => setVenueSubTab('dating')}
-              className={`px-3 py-1.5 rounded-lg transition ${venueSubTab === 'dating' ? 'bg-zinc-800 text-zinc-100 font-bold' : 'text-zinc-400 hover:text-zinc-200'}`}
+              onClick={() => { setVenueSubTab('dating'); setActiveTab('dating'); }}
+              className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${isVenueSubActive('dating') ? 'bg-zinc-800 text-pink-400 font-bold' : 'text-zinc-400 hover:text-zinc-200'}`}
             >
-              Digital Dating (Datepath)
+              <Heart className="w-3.5 h-3.5 text-pink-400" />
+              <span>Digital Dating (Datepath)</span>
             </button>
             <button
-              onClick={() => setVenueSubTab('screamsheets')}
-              className={`px-3 py-1.5 rounded-lg transition ${venueSubTab === 'screamsheets' ? 'bg-zinc-800 text-zinc-100 font-bold' : 'text-zinc-400 hover:text-zinc-200'}`}
+              onClick={() => { setVenueSubTab('screamsheets'); setActiveTab('screamsheets'); }}
+              className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${isVenueSubActive('screamsheets') ? 'bg-zinc-800 text-zinc-100 font-bold' : 'text-zinc-400 hover:text-zinc-200'}`}
             >
-              Notícias Screamsheets
+              <FileText className="w-3.5 h-3.5 text-amber-400" />
+              <span>Notícias Screamsheets</span>
             </button>
           </div>
 
           {/* 1. BARS */}
-          {venueSubTab === 'bars' && (
+          {isVenueSubActive('bars') && (
             <div className="space-y-4">
               {/* Bars Toolbar: Add, Filter, and AI Generate */}
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-2xl bg-[#121217] border border-[#27272a] text-xs">
@@ -3665,22 +3755,22 @@ export const WorldPage: React.FC = () => {
           )}
 
           {/* 2. NIGHT MARKET / MERCADO NEGRO */}
-          {venueSubTab === 'market' && (
+          {isVenueSubActive('market') && (
             <NightMarketSection initialDistrict={selectedDistrict?.name} />
           )}
 
           {/* 3. SAFE HOUSES & ESCONDERIJOS */}
-          {venueSubTab === 'safehouses' && (
+          {isVenueSubActive('safehouses') && (
             <SafeHousesSection />
           )}
 
           {/* 4. STREET FOOD, DRINKS & VENDIT */}
-          {venueSubTab === 'streetfood' && (
+          {isVenueSubActive('streetfood') && (
             <StreetFoodDrinksSection />
           )}
 
           {/* 3. DATING */}
-          {venueSubTab === 'dating' && (
+          {isVenueSubActive('dating') && (
             <div className="p-6 rounded-2xl bg-[#121217] border border-[#27272a] max-w-2xl mx-auto space-y-5">
               <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
                 <div>
@@ -3866,7 +3956,7 @@ export const WorldPage: React.FC = () => {
           )}
 
           {/* 3. SCREAMSHEETS */}
-          {venueSubTab === 'screamsheets' && (
+          {isVenueSubActive('screamsheets') && (
             <div className="p-6 rounded-2xl bg-[#121217] border border-[#27272a] max-w-3xl mx-auto space-y-5">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-[#27272a] pb-3">
                 <div>
