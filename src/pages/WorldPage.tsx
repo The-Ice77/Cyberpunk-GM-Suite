@@ -32,6 +32,10 @@ import {
   ChevronDown,
   ChevronUp,
   Dices,
+  Home,
+  UtensilsCrossed,
+  Train,
+  Church,
 } from 'lucide-react';
 import { useSystem } from '../context/SystemContext';
 import { useUserRole } from '../context/UserRoleContext';
@@ -43,6 +47,16 @@ import { SCREAMSHEET_NETWORKS, SCREAMSHEET_TEMPLATES } from '../data/screamsheet
 import { GANGS_LIST, GangProfile } from '../data/gangsData';
 import { generateAIExtendedEncounter, generateAIScreamsheet, generateAICustomBar, generateAIDate, AIDateResult } from '../services/aiService';
 import { NightMarketSection } from '../components/world/NightMarketSection';
+import { SafeHousesSection } from '../components/world/SafeHousesSection';
+import { StreetFoodDrinksSection } from '../components/world/StreetFoodDrinksSection';
+import {
+  SUBWAY_ENCOUNTERS_TABLE,
+  HOUSES_OF_WORSHIP_TABLE,
+  SubwayStrangerItem,
+  HouseOfWorshipItem,
+  rollSubwayEncounter,
+  rollHouseOfWorship,
+} from '../data/chanceOfLifetimeData';
 
 // Gang Map Overlay Data
 interface MapGangSpot {
@@ -252,9 +266,11 @@ export const WorldPage: React.FC = () => {
   } | null>(null);
   const [aiEncounter, setAiEncounter] = useState<any | null>(null);
   const [isAiLoading, setIsAiLoading] = useState<boolean>(false);
+  const [rolledSubway, setRolledSubway] = useState<SubwayStrangerItem | null>(null);
+  const [rolledWorship, setRolledWorship] = useState<HouseOfWorshipItem | null>(null);
 
   // VENUES & SOCIAL STATE
-  const [venueSubTab, setVenueSubTab] = useState<'bars' | 'market' | 'dating' | 'screamsheets'>('bars');
+  const [venueSubTab, setVenueSubTab] = useState<'bars' | 'market' | 'safehouses' | 'streetfood' | 'dating' | 'screamsheets'>('bars');
   const [barFilterTab, setBarFilterTab] = useState<'all' | 'official' | 'custom'>('all');
   const [customBars, setCustomBars] = useState<BarVenue[]>(() => {
     try {
@@ -1937,34 +1953,155 @@ export const WorldPage: React.FC = () => {
               </div>
             </div>
           )}
+
+          {/* SPECIALIZED CHANCE OF A LIFETIME ENCOUNTERS */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-[#27272a]">
+            {/* SUBWAY STRANGERS */}
+            <div className="p-5 rounded-2xl bg-[#121217] border border-[#27272a] space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-cyan-950/40 border border-cyan-800/40 flex items-center justify-center">
+                    <Train className="w-4 h-4 text-cyan-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-zinc-100">Estranhos no Metrô (NCART)</h3>
+                    <p className="text-[11px] text-zinc-400">20 Encontros no Monotrilho & Vagões</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setRolledSubway(rollSubwayEncounter())}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-950/40 hover:bg-cyan-900/50 text-cyan-300 font-mono text-xs border border-cyan-800/50 transition shadow-sm"
+                >
+                  <Dices className="w-3.5 h-3.5" />
+                  <span>Rolar d20</span>
+                </button>
+              </div>
+
+              {rolledSubway ? (
+                <div className="p-4 rounded-xl bg-[#0a0a0d] border border-cyan-900/30 space-y-2.5 text-xs animate-in fade-in duration-150">
+                  <div className="flex items-center justify-between border-b border-zinc-800/60 pb-2">
+                    <span className="font-bold text-zinc-100 flex items-center gap-1.5">
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800/40">
+                        #{rolledSubway.roll}
+                      </span>
+                      {rolledSubway.title}
+                    </span>
+                    <span className="text-[10px] font-mono text-zinc-500">NCART Line</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-mono uppercase text-zinc-500 block">Aparência & Trejeitos</span>
+                    <p className="text-zinc-300 text-[11px] leading-relaxed">{rolledSubway.visual} (Quirks: {rolledSubway.quirkOrItem})</p>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-cyan-950/20 border border-cyan-800/30">
+                    <span className="text-[10px] font-mono uppercase text-cyan-400 font-bold block mb-0.5">Gancho de Mestre (GM Hook)</span>
+                    <p className="text-cyan-200 text-[11px] leading-relaxed">{rolledSubway.gmEncounterHook}</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-4 rounded-xl bg-[#0a0a0d] border border-dashed border-zinc-800 text-center py-6">
+                  <p className="text-xs text-zinc-500">Clique em "Rolar d20" para sortear um passageiro excêntrico ou suspeito no vagão.</p>
+                </div>
+              )}
+            </div>
+
+            {/* HOUSES OF WORSHIP */}
+            <div className="p-5 rounded-2xl bg-[#121217] border border-[#27272a] space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-amber-950/40 border border-amber-800/40 flex items-center justify-center">
+                    <Church className="w-4 h-4 text-amber-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-zinc-100">Templos & Cultos de Night City</h3>
+                    <p className="text-[11px] text-zinc-400">10 Locais Sagrados e Regras de Santuário</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setRolledWorship(rollHouseOfWorship())}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-950/40 hover:bg-amber-900/50 text-amber-300 font-mono text-xs border border-amber-800/50 transition shadow-sm"
+                >
+                  <Dices className="w-3.5 h-3.5" />
+                  <span>Rolar d10</span>
+                </button>
+              </div>
+
+              {rolledWorship ? (
+                <div className="p-4 rounded-xl bg-[#0a0a0d] border border-amber-900/30 space-y-2.5 text-xs animate-in fade-in duration-150">
+                  <div className="flex items-center justify-between border-b border-zinc-800/60 pb-2">
+                    <span className="font-bold text-zinc-100 flex items-center gap-1.5">
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-800/40">
+                        #{rolledWorship.id}
+                      </span>
+                      {rolledWorship.name}
+                    </span>
+                    <span className="text-[10px] font-mono text-amber-400/90">{rolledWorship.district}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-mono uppercase text-zinc-500 block">Crença / Fé</span>
+                    <span className="text-zinc-200 font-medium text-[11px]">{rolledWorship.deityOrCreed}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-mono uppercase text-zinc-500 block">Arquitetura & Espaço</span>
+                    <p className="text-zinc-300 text-[11px] leading-relaxed">{rolledWorship.architecture}</p>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-mono uppercase text-zinc-500 block">Comunidade & Fiéis</span>
+                    <p className="text-zinc-400 text-[11px] leading-relaxed">{rolledWorship.community}</p>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-amber-950/20 border border-amber-800/30">
+                    <span className="text-[10px] font-mono uppercase text-amber-400 font-bold block mb-0.5">Regra de Santuário (Sanctuary Rule)</span>
+                    <p className="text-amber-200 text-[11px] leading-relaxed font-mono">{rolledWorship.sanctuaryRule}</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-4 rounded-xl bg-[#0a0a0d] border border-dashed border-zinc-800 text-center py-6">
+                  <p className="text-xs text-zinc-500">Clique em "Rolar d10" para encontrar um templo, capela, mesquita, sinagoga ou terreiro com direito a refúgio.</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
       {/* SUB-TAB 4: VENUES, DATING & SCREAMSHEETS */}
       {activeTab === 'venues' && (
         <div className="space-y-6">
-          <div className="flex items-center justify-center gap-2 border-b border-[#27272a] pb-3 text-xs font-medium">
+          <div className="flex flex-wrap items-center justify-center gap-2 border-b border-[#27272a] pb-3 text-xs font-medium">
             <button
               onClick={() => setVenueSubTab('bars')}
-              className={`px-3 py-1.5 rounded-lg transition ${venueSubTab === 'bars' ? 'bg-zinc-800 text-zinc-100 font-bold' : 'text-zinc-400'}`}
+              className={`px-3 py-1.5 rounded-lg transition ${venueSubTab === 'bars' ? 'bg-zinc-800 text-zinc-100 font-bold' : 'text-zinc-400 hover:text-zinc-200'}`}
             >
               Bares & Boates Lendárias
             </button>
             <button
               onClick={() => setVenueSubTab('market')}
-              className={`px-3 py-1.5 rounded-lg transition ${venueSubTab === 'market' ? 'bg-zinc-800 text-zinc-100 font-bold' : 'text-zinc-400'}`}
+              className={`px-3 py-1.5 rounded-lg transition ${venueSubTab === 'market' ? 'bg-zinc-800 text-zinc-100 font-bold' : 'text-zinc-400 hover:text-zinc-200'}`}
             >
               Mercado Negro (Night Market)
             </button>
             <button
+              onClick={() => setVenueSubTab('safehouses')}
+              className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${venueSubTab === 'safehouses' ? 'bg-zinc-800 text-amber-400 font-bold' : 'text-zinc-400 hover:text-zinc-200'}`}
+            >
+              <Home className="w-3.5 h-3.5" />
+              <span>Esconderijos & Safe Houses</span>
+            </button>
+            <button
+              onClick={() => setVenueSubTab('streetfood')}
+              className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${venueSubTab === 'streetfood' ? 'bg-zinc-800 text-emerald-400 font-bold' : 'text-zinc-400 hover:text-zinc-200'}`}
+            >
+              <UtensilsCrossed className="w-3.5 h-3.5" />
+              <span>Comida & Bebida de Rua</span>
+            </button>
+            <button
               onClick={() => setVenueSubTab('dating')}
-              className={`px-3 py-1.5 rounded-lg transition ${venueSubTab === 'dating' ? 'bg-zinc-800 text-zinc-100 font-bold' : 'text-zinc-400'}`}
+              className={`px-3 py-1.5 rounded-lg transition ${venueSubTab === 'dating' ? 'bg-zinc-800 text-zinc-100 font-bold' : 'text-zinc-400 hover:text-zinc-200'}`}
             >
               Digital Dating (Datepath)
             </button>
             <button
               onClick={() => setVenueSubTab('screamsheets')}
-              className={`px-3 py-1.5 rounded-lg transition ${venueSubTab === 'screamsheets' ? 'bg-zinc-800 text-zinc-100 font-bold' : 'text-zinc-400'}`}
+              className={`px-3 py-1.5 rounded-lg transition ${venueSubTab === 'screamsheets' ? 'bg-zinc-800 text-zinc-100 font-bold' : 'text-zinc-400 hover:text-zinc-200'}`}
             >
               Notícias Screamsheets
             </button>
@@ -2539,6 +2676,16 @@ export const WorldPage: React.FC = () => {
           {/* 2. NIGHT MARKET / MERCADO NEGRO */}
           {venueSubTab === 'market' && (
             <NightMarketSection initialDistrict={selectedDistrict?.name} />
+          )}
+
+          {/* 3. SAFE HOUSES & ESCONDERIJOS */}
+          {venueSubTab === 'safehouses' && (
+            <SafeHousesSection />
+          )}
+
+          {/* 4. STREET FOOD, DRINKS & VENDIT */}
+          {venueSubTab === 'streetfood' && (
+            <StreetFoodDrinksSection />
           )}
 
           {/* 3. DATING */}

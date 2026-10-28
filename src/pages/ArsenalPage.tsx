@@ -18,6 +18,10 @@ import {
   Check,
   ChevronRight,
   SlidersHorizontal,
+  Skull,
+  Dices,
+  Eye,
+  Lock,
 } from 'lucide-react';
 import { useSystem } from '../context/SystemContext';
 import {
@@ -30,6 +34,14 @@ import {
   STREET_DRUGS_DATABASE,
 } from '../data/arsenalData';
 import { POCKET_PERSONAL_ITEMS, BODY_BANK_HARVEST_TABLE } from '../data/lootData';
+import {
+  CORPSE_LOOT_TABLE,
+  HIDDEN_STASH_TABLE,
+  CorpseLootItem,
+  HiddenStashItem,
+  rollCorpseLoot,
+  rollHiddenStash,
+} from '../data/chanceOfLifetimeData';
 import { VEHICLES_LIST, NOMAD_UPGRADES_TABLE, VehicleModel, VehicleCategory } from '../data/vehiclesData';
 import { NPCTier, WeaponItem, CyberwareItem, ArmorItem, AttachmentItem, AmmunitionItem, GearItem, StreetDrugItem } from '../types/system';
 import { generateAICustomVehicle } from '../services/aiService';
@@ -50,6 +62,7 @@ export const ArsenalPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'catalog' | 'market' | 'loot' | 'garage'>('catalog');
 
   // LOOT STATE
+  const [lootSubTab, setLootSubTab] = useState<'harvest' | 'corpse' | 'stash'>('harvest');
   const [lootTier, setLootTier] = useState<NPCTier>('mook');
   const [generatedLoot, setGeneratedLoot] = useState<{
     cash: number;
@@ -60,6 +73,10 @@ export const ArsenalPage: React.FC = () => {
     pocketItems: string[];
     harvestables: { name: string; value: number; dv: number; desc: string }[];
   } | null>(null);
+  const [rolledCorpse, setRolledCorpse] = useState<CorpseLootItem | null>(null);
+  const [rolledStash, setRolledStash] = useState<HiddenStashItem | null>(null);
+  const [corpseSearch, setCorpseSearch] = useState<string>('');
+  const [stashSearch, setStashSearch] = useState<string>('');
 
   // CATALOG STATE
   const [catalogSearch, setCatalogSearch] = useState<string>('');
@@ -837,165 +854,473 @@ export const ArsenalPage: React.FC = () => {
       )}
 
       {/* ======================================================== */}
-      {/* ABA 3: SAQUE DE ABATE (LOOT GENERATOR DETALHADO)         */}
+      {/* ABA 3: SAQUE DE ABATE & TABELAS DO CHANCE OF A LIFETIME  */}
       {/* ======================================================== */}
       {activeTab === 'loot' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Controls (4 cols) */}
-          <div className="lg:col-span-4 p-6 rounded-2xl bg-[#121217] border border-[#27272a] space-y-4">
-            <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 block font-mono">
-              Inimigo Abatido:
-            </span>
-
-            <div className="space-y-2">
-              {[
-                { id: 'mook', label: 'Capanga / Mook Comum', desc: 'Troco de bolso, armas de rua e drogas leves' },
-                { id: 'lieutenant', label: 'Tenente Tático', desc: 'Mais eddies, armas boas e granadas' },
-                { id: 'miniboss', label: 'Mini-Chefe Blindado', desc: 'Cromo valioso, armas excelentes e Speedheal' },
-                { id: 'boss', label: 'Chefe / Ciberpsicopata', desc: 'Grande soma em eddies, armas raras e cromo pesado' },
-              ].map(t => (
-                <button
-                  key={t.id}
-                  onClick={() => setLootTier(t.id as NPCTier)}
-                  className={`w-full p-2.5 rounded-xl border text-left transition ${
-                    lootTier === t.id
-                      ? 'bg-emerald-950/40 border-emerald-600/60 text-zinc-100 shadow-sm'
-                      : 'bg-[#0a0a0d] border-[#27272a] text-zinc-400 hover:bg-zinc-800'
-                  }`}
-                >
-                  <div className="text-xs font-semibold">{t.label}</div>
-                  <div className="text-[10px] text-zinc-500">{t.desc}</div>
-                </button>
-              ))}
-            </div>
-
+        <div className="space-y-6">
+          {/* Sub-Tabs Selector */}
+          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 border-b border-[#27272a] pb-3 text-xs font-medium">
             <button
-              onClick={handleGenerateLoot}
-              className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs tracking-wider uppercase transition shadow-md flex items-center justify-center gap-2"
+              onClick={() => setLootSubTab('harvest')}
+              className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
+                lootSubTab === 'harvest'
+                  ? 'bg-zinc-800 text-emerald-400 font-bold'
+                  : 'text-zinc-400 hover:text-zinc-200'
+              }`}
             >
-              <Zap className="w-4 h-4" />
-              <span>Gerar Saque Real do Cadáver</span>
+              <Cpu className="w-3.5 h-3.5" />
+              <span>1. Necrópsia de Inimigo Abatido</span>
+            </button>
+            <button
+              onClick={() => setLootSubTab('corpse')}
+              className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
+                lootSubTab === 'corpse'
+                  ? 'bg-zinc-800 text-amber-400 font-bold'
+                  : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+            >
+              <Skull className="w-3.5 h-3.5" />
+              <span>2. Revista Rápida de Cadáver (Stuff on a Corpse - D20)</span>
+            </button>
+            <button
+              onClick={() => setLootSubTab('stash')}
+              className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
+                lootSubTab === 'stash'
+                  ? 'bg-zinc-800 text-cyan-400 font-bold'
+                  : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+            >
+              <Package className="w-3.5 h-3.5" />
+              <span>3. Esconderijo Secreto Oculto (Hidden Stashes - D20)</span>
             </button>
           </div>
 
-          {/* Loot Result Display (8 cols) */}
-          <div className="lg:col-span-8">
-            {generatedLoot ? (
-              <div className="p-6 rounded-2xl bg-[#121217] border border-[#27272a] space-y-5 shadow-lg">
-                <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
-                  <div>
-                    <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-emerald-950/60 text-emerald-300 border border-emerald-800/40">
-                      Saque Concluído // {lootTier.toUpperCase()}
-                    </span>
-                    <h2 className="text-base font-bold text-zinc-100 mt-1">Espólio e Recompensas Recuperadas</h2>
-                  </div>
+          {/* SUB-TAB 1: ORIGINAL HARVEST GENERATOR */}
+          {lootSubTab === 'harvest' && (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Controls (4 cols) */}
+              <div className="lg:col-span-4 p-6 rounded-2xl bg-[#121217] border border-[#27272a] space-y-4">
+                <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 block font-mono">
+                  Inimigo Abatido:
+                </span>
 
+                <div className="space-y-2">
+                  {[
+                    { id: 'mook', label: 'Capanga / Mook Comum', desc: 'Troco de bolso, armas de rua e drogas leves' },
+                    { id: 'lieutenant', label: 'Tenente Tático', desc: 'Mais eddies, armas boas e granadas' },
+                    { id: 'miniboss', label: 'Mini-Chefe Blindado', desc: 'Cromo valioso, armas excelentes e Speedheal' },
+                    { id: 'boss', label: 'Chefe / Ciberpsicopata', desc: 'Grande soma em eddies, armas raras e cromo pesado' },
+                  ].map(t => (
+                    <button
+                      key={t.id}
+                      onClick={() => setLootTier(t.id as NPCTier)}
+                      className={`w-full p-2.5 rounded-xl border text-left transition ${
+                        lootTier === t.id
+                          ? 'bg-emerald-950/40 border-emerald-600/60 text-zinc-100 shadow-sm'
+                          : 'bg-[#0a0a0d] border-[#27272a] text-zinc-400 hover:bg-zinc-800'
+                      }`}
+                    >
+                      <div className="text-xs font-semibold">{t.label}</div>
+                      <div className="text-[10px] text-zinc-500">{t.desc}</div>
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  onClick={handleGenerateLoot}
+                  className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs tracking-wider uppercase transition shadow-md flex items-center justify-center gap-2"
+                >
+                  <Zap className="w-4 h-4" />
+                  <span>Gerar Saque Real do Cadáver</span>
+                </button>
+              </div>
+
+              {/* Loot Result Display (8 cols) */}
+              <div className="lg:col-span-8">
+                {generatedLoot ? (
+                  <div className="p-6 rounded-2xl bg-[#121217] border border-[#27272a] space-y-5 shadow-lg">
+                    <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
+                      <div>
+                        <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-emerald-950/60 text-emerald-300 border border-emerald-800/40">
+                          Saque Concluído // {lootTier.toUpperCase()}
+                        </span>
+                        <h2 className="text-base font-bold text-zinc-100 mt-1">Espólio e Recompensas Recuperadas</h2>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          const text = `[SAQUE DE ABATE - ${lootTier.toUpperCase()}]\nDinheiro: ${generatedLoot.cash}eb\nMunição: ${generatedLoot.ammo}\nArma: ${generatedLoot.weaponDropped.name} (${generatedLoot.weaponDropped.damage}) [${generatedLoot.weaponDropped.quality}]\nEquipamento: ${generatedLoot.gearDropped}\n${generatedLoot.drugDropped ? `Droga: ${generatedLoot.drugDropped}\n` : ''}Bolsos: ${generatedLoot.pocketItems.join(', ')}\nColheita Ripperdoc: ${generatedLoot.harvestables.map(h => `${h.name} (+${h.value}eb)`).join(', ')}`;
+                          handleCopy(text, 'loot-summary');
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-xs text-zinc-300 font-mono border border-zinc-800 transition"
+                      >
+                        {copiedId === 'loot-summary' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                        <span>{copiedId === 'loot-summary' ? 'Copiado!' : 'Copiar Saque'}</span>
+                      </button>
+                    </div>
+
+                    {/* Cash and Ammo Highlights */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-mono">
+                      <div className="p-3.5 rounded-xl bg-[#0a0a0d] border border-[#27272a] space-y-1">
+                        <span className="text-[10px] text-zinc-500 uppercase block flex items-center gap-1">
+                          <Coins className="w-3.5 h-3.5 text-amber-400" /> Dinheiro em Espécie (Eddies)
+                        </span>
+                        <span className="text-2xl font-bold text-emerald-400">{generatedLoot.cash} eb</span>
+                      </div>
+
+                      <div className="p-3.5 rounded-xl bg-[#0a0a0d] border border-[#27272a] space-y-1">
+                        <span className="text-[10px] text-zinc-500 uppercase block flex items-center gap-1">
+                          <Package className="w-3.5 h-3.5 text-zinc-400" /> Munição Aproveitável
+                        </span>
+                        <span className="text-sm font-semibold text-zinc-200">{generatedLoot.ammo}</span>
+                      </div>
+                    </div>
+
+                    {/* Real Weapon & Gear Dropped */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div className="p-3.5 rounded-xl bg-[#0a0a0d] border border-red-950/40 space-y-1">
+                        <span className="text-[10px] font-mono uppercase text-red-400 font-bold flex items-center gap-1">
+                          <Crosshair className="w-3.5 h-3.5" /> Arma Recuperada
+                        </span>
+                        <strong className="text-zinc-100 text-sm block">{generatedLoot.weaponDropped.name}</strong>
+                        <div className="text-[11px] font-mono text-zinc-400 flex items-center justify-between">
+                          <span>Dano: <strong className="text-red-400">{generatedLoot.weaponDropped.damage}</strong></span>
+                          <span className="text-emerald-400">{generatedLoot.weaponDropped.cost}</span>
+                        </div>
+                        <span className="text-[10px] font-mono text-amber-400/90 block pt-0.5">
+                          Condição: {generatedLoot.weaponDropped.quality}
+                        </span>
+                      </div>
+
+                      <div className="p-3.5 rounded-xl bg-[#0a0a0d] border border-purple-950/40 space-y-1">
+                        <span className="text-[10px] font-mono uppercase text-purple-400 font-bold flex items-center gap-1">
+                          <Radio className="w-3.5 h-3.5" /> Equipamento Encontrado
+                        </span>
+                        <strong className="text-zinc-100 text-sm block">{generatedLoot.gearDropped}</strong>
+                        {generatedLoot.drugDropped && (
+                          <div className="text-[11px] text-emerald-400 font-mono pt-1 flex items-center gap-1">
+                            <Pill className="w-3 h-3" />
+                            <span>{generatedLoot.drugDropped}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Pocket and Personal Items */}
+                    <div className="p-4 rounded-xl bg-[#0a0a0d] border border-[#27272a] space-y-2 text-xs">
+                      <span className="text-[10px] font-mono uppercase text-zinc-400 font-bold block">
+                        Itens Pessoais dos Bolsos (Tabelas Oficiais do Data Pack)
+                      </span>
+                      <ul className="space-y-1 text-zinc-300">
+                        {generatedLoot.pocketItems.map((item, idx) => (
+                          <li key={idx} className="bg-zinc-900/60 p-2 rounded-lg border border-zinc-800 text-[11px]">
+                            &bull; {item}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {/* Body Bank Harvest Value Table */}
+                    <div className="p-4 rounded-xl bg-[#0a0a0d] border border-red-950/40 space-y-3 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-mono uppercase text-red-400 font-bold flex items-center gap-1.5">
+                          <Cpu className="w-3.5 h-3.5" /> Colheita de Órgãos / Cromo (Banco de Corpos & Ripperdoc)
+                        </span>
+                        <span className="text-[10px] font-mono text-zinc-500">Exige Cirurgia / First Aid</span>
+                      </div>
+
+                      <div className="space-y-2">
+                        {generatedLoot.harvestables.map((h, i) => (
+                          <div key={i} className="p-2.5 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-between">
+                            <div>
+                              <strong className="text-zinc-100 block">{h.name}</strong>
+                              <span className="text-[10px] text-zinc-400 font-mono">Dificuldade de Extração: DV {h.dv}</span>
+                            </div>
+                            <div className="text-right font-mono">
+                              <span className="text-xs font-bold text-emerald-400">+{h.value} eb</span>
+                              <span className="text-[9px] text-zinc-500 block">Revenda na Rua</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-12 rounded-2xl bg-[#121217] border border-dashed border-[#27272a] text-center space-y-2">
+                    <Crosshair className="w-8 h-8 text-zinc-600 mx-auto" />
+                    <p className="text-xs text-zinc-400">Nenhum saque gerado no momento.</p>
+                    <p className="text-[11px] text-zinc-500">Selecione o nível do inimigo à esquerda e gere o espólio.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* SUB-TAB 2: STUFF ON A CORPSE (D20) */}
+          {lootSubTab === 'corpse' && (
+            <div className="space-y-6">
+              {/* Header and Quick Roll Toolbar */}
+              <div className="p-6 rounded-2xl bg-[#121217] border border-[#27272a] flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-base font-bold text-zinc-100 flex items-center gap-2">
+                    <Skull className="w-5 h-5 text-amber-500" />
+                    <span>Revista Rápida de Cadáver (Stuff You Find on a Corpse - D20)</span>
+                  </h3>
+                  <p className="text-xs text-zinc-400 mt-0.5">
+                    Tabela suplementar oficial de <em>Chance of a Lifetime</em>. Itens encontrados em bolsos e cadáveres com valor de revenda imediata em eurodólares (€/eb) e ganchos narrativos.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 w-full md:w-auto">
                   <button
-                    onClick={() => {
-                      const text = `[SAQUE DE ABATE - ${lootTier.toUpperCase()}]\nDinheiro: ${generatedLoot.cash}eb\nMunição: ${generatedLoot.ammo}\nArma: ${generatedLoot.weaponDropped.name} (${generatedLoot.weaponDropped.damage}) [${generatedLoot.weaponDropped.quality}]\nEquipamento: ${generatedLoot.gearDropped}\n${generatedLoot.drugDropped ? `Droga: ${generatedLoot.drugDropped}\n` : ''}Bolsos: ${generatedLoot.pocketItems.join(', ')}\nColheita Ripperdoc: ${generatedLoot.harvestables.map(h => `${h.name} (+${h.value}eb)`).join(', ')}`;
-                      handleCopy(text, 'loot-summary');
-                    }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-xs text-zinc-300 font-mono border border-zinc-800 transition"
+                    onClick={() => setRolledCorpse(rollCorpseLoot())}
+                    className="flex-1 md:flex-initial px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-black font-semibold text-xs tracking-wider uppercase transition flex items-center justify-center gap-2 shadow-sm font-mono"
                   >
-                    {copiedId === 'loot-summary' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{copiedId === 'loot-summary' ? 'Copiado!' : 'Copiar Saque'}</span>
+                    <Dices className="w-4 h-4" />
+                    <span>Rolar d20 no Cadáver</span>
                   </button>
                 </div>
+              </div>
 
-                {/* Cash and Ammo Highlights */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-mono">
-                  <div className="p-3.5 rounded-xl bg-[#0a0a0d] border border-[#27272a] space-y-1">
-                    <span className="text-[10px] text-zinc-500 uppercase block flex items-center gap-1">
-                      <Coins className="w-3.5 h-3.5 text-amber-400" /> Dinheiro em Espécie (Eddies)
-                    </span>
-                    <span className="text-2xl font-bold text-emerald-400">{generatedLoot.cash} eb</span>
-                  </div>
-
-                  <div className="p-3.5 rounded-xl bg-[#0a0a0d] border border-[#27272a] space-y-1">
-                    <span className="text-[10px] text-zinc-500 uppercase block flex items-center gap-1">
-                      <Package className="w-3.5 h-3.5 text-zinc-400" /> Munição Aproveitável
-                    </span>
-                    <span className="text-sm font-semibold text-zinc-200">{generatedLoot.ammo}</span>
-                  </div>
-                </div>
-
-                {/* Real Weapon & Gear Dropped */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  <div className="p-3.5 rounded-xl bg-[#0a0a0d] border border-red-950/40 space-y-1">
-                    <span className="text-[10px] font-mono uppercase text-red-400 font-bold flex items-center gap-1">
-                      <Crosshair className="w-3.5 h-3.5" /> Arma Recuperada
-                    </span>
-                    <strong className="text-zinc-100 text-sm block">{generatedLoot.weaponDropped.name}</strong>
-                    <div className="text-[11px] font-mono text-zinc-400 flex items-center justify-between">
-                      <span>Dano: <strong className="text-red-400">{generatedLoot.weaponDropped.damage}</strong></span>
-                      <span className="text-emerald-400">{generatedLoot.weaponDropped.cost}</span>
+              {/* Rolled Result Highlight */}
+              {rolledCorpse && (
+                <div className="p-6 rounded-2xl bg-[#121217] border border-amber-900/40 space-y-4 shadow-lg animate-in fade-in duration-150">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#27272a] pb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono px-2 py-0.5 rounded bg-amber-950 text-amber-400 border border-amber-800/40 font-bold">
+                        d20: #{rolledCorpse.roll}
+                      </span>
+                      <h4 className="text-base font-bold text-zinc-100">{rolledCorpse.item}</h4>
                     </div>
-                    <span className="text-[10px] font-mono text-amber-400/90 block pt-0.5">
-                      Condição: {generatedLoot.weaponDropped.quality}
-                    </span>
+
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <span className="text-[10px] font-mono text-zinc-500 uppercase block">Valor Estimado de Revenda</span>
+                        <span className="text-sm font-bold font-mono text-emerald-400">
+                          {rolledCorpse.resaleEb !== undefined ? `${rolledCorpse.resaleEb} eb` : rolledCorpse.valueFormula || 'Especial'}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          const text = `[REVISTA DE CADÁVER - d20 #${rolledCorpse.roll}]\nItem: ${rolledCorpse.item}\nValor: ${rolledCorpse.resaleEb ?? rolledCorpse.valueFormula} eb\nDescrição: ${rolledCorpse.description}\nGancho de Mestre: ${rolledCorpse.storyHook}`;
+                          handleCopy(text, `corpse-${rolledCorpse.roll}`);
+                        }}
+                        className="p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 transition"
+                        title="Copiar Item"
+                      >
+                        {copiedId === `corpse-${rolledCorpse.roll}` ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="p-3.5 rounded-xl bg-[#0a0a0d] border border-purple-950/40 space-y-1">
-                    <span className="text-[10px] font-mono uppercase text-purple-400 font-bold flex items-center gap-1">
-                      <Radio className="w-3.5 h-3.5" /> Equipamento Encontrado
-                    </span>
-                    <strong className="text-zinc-100 text-sm block">{generatedLoot.gearDropped}</strong>
-                    {generatedLoot.drugDropped && (
-                      <div className="text-[11px] text-emerald-400 font-mono pt-1 flex items-center gap-1">
-                        <Pill className="w-3 h-3" />
-                        <span>{generatedLoot.drugDropped}</span>
-                      </div>
-                    )}
+                  <div className="space-y-3 text-xs">
+                    <div>
+                      <span className="text-[10px] font-mono uppercase text-zinc-500 block mb-0.5">Descrição do Item Encontrado:</span>
+                      <p className="text-zinc-300 bg-[#0a0a0d] p-3 rounded-xl border border-zinc-800/80 leading-relaxed">{rolledCorpse.description}</p>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-amber-950/20 border border-amber-800/40">
+                      <span className="text-[10px] font-mono uppercase text-amber-400 font-bold block mb-1">Gancho de Investigação & Mestre (GM Hook):</span>
+                      <p className="text-amber-200 text-xs leading-relaxed">{rolledCorpse.storyHook}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Complete Table Browser */}
+              <div className="p-5 rounded-2xl bg-[#121217] border border-[#27272a] space-y-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-[#27272a] pb-3">
+                  <div>
+                    <h4 className="text-sm font-bold text-zinc-200">Catálogo Completo da Tabela D20 (20 Itens de Bolso)</h4>
+                    <p className="text-[11px] text-zinc-400">Clique em qualquer item para inspecioná-lo ou selecionar para a cena.</p>
+                  </div>
+                  <div className="relative w-full sm:w-64">
+                    <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-zinc-500" />
+                    <input
+                      type="text"
+                      placeholder="Filtrar itens ou ganchos..."
+                      value={corpseSearch}
+                      onChange={e => setCorpseSearch(e.target.value)}
+                      className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-xl pl-8 pr-3 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-amber-500 font-mono"
+                    />
                   </div>
                 </div>
 
-                {/* Pocket and Personal Items */}
-                <div className="p-4 rounded-xl bg-[#0a0a0d] border border-[#27272a] space-y-2 text-xs">
-                  <span className="text-[10px] font-mono uppercase text-zinc-400 font-bold block">
-                    Itens Pessoais dos Bolsos (Tabelas Oficiais do Data Pack)
-                  </span>
-                  <ul className="space-y-1 text-zinc-300">
-                    {generatedLoot.pocketItems.map((item, idx) => (
-                      <li key={idx} className="bg-zinc-900/60 p-2 rounded-lg border border-zinc-800 text-[11px]">
-                        &bull; {item}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                {/* Body Bank Harvest Value Table */}
-                <div className="p-4 rounded-xl bg-[#0a0a0d] border border-red-950/40 space-y-3 text-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-mono uppercase text-red-400 font-bold flex items-center gap-1.5">
-                      <Cpu className="w-3.5 h-3.5" /> Colheita de Órgãos / Cromo (Banco de Corpos & Ripperdoc)
-                    </span>
-                    <span className="text-[10px] font-mono text-zinc-500">Exige Cirurgia / First Aid</span>
-                  </div>
-
-                  <div className="space-y-2">
-                    {generatedLoot.harvestables.map((h, i) => (
-                      <div key={i} className="p-2.5 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-between">
-                        <div>
-                          <strong className="text-zinc-100 block">{h.name}</strong>
-                          <span className="text-[10px] text-zinc-400 font-mono">Dificuldade de Extração: DV {h.dv}</span>
-                        </div>
-                        <div className="text-right font-mono">
-                          <span className="text-xs font-bold text-emerald-400">+{h.value} eb</span>
-                          <span className="text-[9px] text-zinc-500 block">Revenda na Rua</span>
-                        </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {CORPSE_LOOT_TABLE.filter(item =>
+                    item.item.toLowerCase().includes(corpseSearch.toLowerCase()) ||
+                    item.description.toLowerCase().includes(corpseSearch.toLowerCase()) ||
+                    item.storyHook.toLowerCase().includes(corpseSearch.toLowerCase())
+                  ).map(item => (
+                    <div
+                      key={item.roll}
+                      onClick={() => setRolledCorpse(item)}
+                      className={`p-3.5 rounded-xl border cursor-pointer transition ${
+                        rolledCorpse?.roll === item.roll
+                          ? 'bg-amber-950/20 border-amber-600/60 shadow-sm'
+                          : 'bg-[#0a0a0d] border-[#27272a] hover:border-zinc-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between font-mono text-xs mb-1">
+                        <span className="text-amber-400 font-bold">d20 #{item.roll}</span>
+                        <span className="text-emerald-400 font-bold">
+                          {item.resaleEb !== undefined ? `${item.resaleEb} eb` : item.valueFormula}
+                        </span>
                       </div>
-                    ))}
-                  </div>
+                      <h5 className="text-xs font-bold text-zinc-100">{item.item}</h5>
+                      <p className="text-[11px] text-zinc-400 line-clamp-2 mt-1">{item.description}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
-            ) : (
-              <div className="p-12 rounded-2xl bg-[#121217] border border-dashed border-[#27272a] text-center space-y-2">
-                <Crosshair className="w-8 h-8 text-zinc-600 mx-auto" />
-                <p className="text-xs text-zinc-400">Nenhum saque gerado no momento.</p>
-                <p className="text-[11px] text-zinc-500">Selecione o nível do inimigo à esquerda e gere o espólio.</p>
+            </div>
+          )}
+
+          {/* SUB-TAB 3: HIDDEN STASHES (D20) */}
+          {lootSubTab === 'stash' && (
+            <div className="space-y-6">
+              {/* Header and Quick Roll Toolbar */}
+              <div className="p-6 rounded-2xl bg-[#121217] border border-[#27272a] flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-base font-bold text-zinc-100 flex items-center gap-2">
+                    <Package className="w-5 h-5 text-cyan-500" />
+                    <span>Esconderijos Secretos Ocultos (Hidden Stash Loot - D20)</span>
+                  </h3>
+                  <p className="text-xs text-zinc-400 mt-0.5">
+                    Tabela suplementar de <em>Chance of a Lifetime</em>. Esconderijos com Dificuldade de Detecção (DV de Percepção), tipo de recipiente, valores calculados em eb e ganchos táticos.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 w-full md:w-auto">
+                  <button
+                    onClick={() => setRolledStash(rollHiddenStash())}
+                    className="flex-1 md:flex-initial px-4 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white font-semibold text-xs tracking-wider uppercase transition flex items-center justify-center gap-2 shadow-sm font-mono"
+                  >
+                    <Dices className="w-4 h-4" />
+                    <span>Rolar d20 no Esconderijo</span>
+                  </button>
+                </div>
               </div>
-            )}
-          </div>
+
+              {/* Rolled Result Highlight */}
+              {rolledStash && (
+                <div className="p-6 rounded-2xl bg-[#121217] border border-cyan-900/40 space-y-4 shadow-lg animate-in fade-in duration-150">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#27272a] pb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800/40 font-bold">
+                        d20: #{rolledStash.roll}
+                      </span>
+                      <h4 className="text-base font-bold text-zinc-100">{rolledStash.title}</h4>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <span className="text-[10px] font-mono text-zinc-500 uppercase block">Valor Total do Saque</span>
+                        <span className="text-sm font-bold font-mono text-emerald-400">
+                          {rolledStash.valueEb !== undefined ? `${rolledStash.valueEb} eb` : rolledStash.valueFormula || 'Variável'}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          const text = `[ESCONDERIJO OCULTO - d20 #${rolledStash.roll}]\nTítulo: ${rolledStash.title}\nRecipiente: ${rolledStash.container}\nDetecção: ${rolledStash.detectionDV}\nValor: ${rolledStash.valueEb ?? rolledStash.valueFormula} eb\nConteúdo: ${rolledStash.lootContents}\nDescrição: ${rolledStash.description}\nGancho: ${rolledStash.plotHook}`;
+                          handleCopy(text, `stash-${rolledStash.roll}`);
+                        }}
+                        className="p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 transition"
+                        title="Copiar Esconderijo"
+                      >
+                        {copiedId === `stash-${rolledStash.roll}` ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-mono">
+                    <div className="p-3 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-0.5">
+                      <span className="text-[10px] text-zinc-500 uppercase block">Tipo de Recipiente / Compartimento</span>
+                      <strong className="text-zinc-200">{rolledStash.container}</strong>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-[#0a0a0d] border border-cyan-900/40 space-y-0.5">
+                      <span className="text-[10px] text-cyan-400 uppercase block font-bold">Teste de Percepção / Busca</span>
+                      <strong className="text-cyan-200">{rolledStash.detectionDV}</strong>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 text-xs">
+                    <div>
+                      <span className="text-[10px] font-mono uppercase text-zinc-500 block mb-0.5">Conteúdo do Saque (Loot Contents):</span>
+                      <p className="text-zinc-200 bg-[#0a0a0d] p-3 rounded-xl border border-zinc-800/80 font-mono text-[11px] leading-relaxed">
+                        {rolledStash.lootContents}
+                      </p>
+                    </div>
+
+                    <div>
+                      <span className="text-[10px] font-mono uppercase text-zinc-500 block mb-0.5">Descrição do Local & Contexto:</span>
+                      <p className="text-zinc-300 bg-[#0a0a0d] p-3 rounded-xl border border-zinc-800/80 leading-relaxed">
+                        {rolledStash.description}
+                      </p>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-cyan-950/20 border border-cyan-800/40">
+                      <span className="text-[10px] font-mono uppercase text-cyan-400 font-bold block mb-1">Complicação / Gancho de Campanha (Plot Hook):</span>
+                      <p className="text-cyan-200 text-xs leading-relaxed">{rolledStash.plotHook}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Complete Table Browser */}
+              <div className="p-5 rounded-2xl bg-[#121217] border border-[#27272a] space-y-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-[#27272a] pb-3">
+                  <div>
+                    <h4 className="text-sm font-bold text-zinc-200">Catálogo Completo da Tabela D20 (20 Esconderijos Secretos)</h4>
+                    <p className="text-[11px] text-zinc-400">Clique em qualquer esconderijo para visualizar detalhes e estatísticas completas.</p>
+                  </div>
+                  <div className="relative w-full sm:w-64">
+                    <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-zinc-500" />
+                    <input
+                      type="text"
+                      placeholder="Filtrar por nome, container ou DV..."
+                      value={stashSearch}
+                      onChange={e => setStashSearch(e.target.value)}
+                      className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-xl pl-8 pr-3 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-cyan-500 font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {HIDDEN_STASH_TABLE.filter(stash =>
+                    stash.title.toLowerCase().includes(stashSearch.toLowerCase()) ||
+                    stash.container.toLowerCase().includes(stashSearch.toLowerCase()) ||
+                    stash.description.toLowerCase().includes(stashSearch.toLowerCase()) ||
+                    stash.plotHook.toLowerCase().includes(stashSearch.toLowerCase())
+                  ).map(stash => (
+                    <div
+                      key={stash.roll}
+                      onClick={() => setRolledStash(stash)}
+                      className={`p-3.5 rounded-xl border cursor-pointer transition ${
+                        rolledStash?.roll === stash.roll
+                          ? 'bg-cyan-950/20 border-cyan-600/60 shadow-sm'
+                          : 'bg-[#0a0a0d] border-[#27272a] hover:border-zinc-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between font-mono text-xs mb-1">
+                        <span className="text-cyan-400 font-bold">d20 #{stash.roll}</span>
+                        <span className="text-emerald-400 font-bold">
+                          {stash.valueEb !== undefined ? `${stash.valueEb} eb` : stash.valueFormula}
+                        </span>
+                      </div>
+                      <h5 className="text-xs font-bold text-zinc-100">{stash.title}</h5>
+                      <div className="flex items-center gap-2 text-[10px] font-mono text-zinc-400 mt-1">
+                        <span>{stash.container}</span>
+                        <span>&bull;</span>
+                        <span className="text-cyan-300">{stash.detectionDV}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

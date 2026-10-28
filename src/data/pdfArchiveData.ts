@@ -12,6 +12,17 @@ export interface PDFDocEntry {
 
 export const PDF_ARCHIVE_CATALOG: PDFDocEntry[] = [
   {
+    "id": "pdf-chance-of-a-lifetime",
+    "name": "RTG-CPR-DLC-ChanceOfALifetime.pdf",
+    "title": "Chance of a Lifetime (Sourcebook de Rua, Esconderijos e Tabelas)",
+    "category": "Suplemento",
+    "size": "1.0 MB",
+    "description": "Suplemento completo com 20 Safe Houses (aluguéis e diárias em eb), 20 Hidden Stashes (saques secretos e DVs), 20 Máquinas Vendit, 20 itens de revista de cadáver, 20 comidas e 20 bebidas de rua, estranhos no metrô e templos de Night City.",
+    "downloadUrl": "/downloads/RTG-CPR-DLC-ChanceOfALifetime.pdf",
+    "pagesEstimate": 37,
+    "system": "RED"
+  },
+  {
     "id": "pdf-1",
     "name": "cyberpunk-um-rpg-num-futuro-sombrio-biblioteca-elfica.pdf",
     "title": "cyberpunk-um-rpg-num-futuro-sombrio-biblioteca-elfica",
