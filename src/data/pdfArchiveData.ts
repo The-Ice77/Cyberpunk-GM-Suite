@@ -6,6 +6,7 @@ export interface PDFDocEntry {
   size: string;
   description: string;
   downloadUrl: string;
+  mirrorUrl?: string;
   pagesEstimate: number;
   system: 'RED' | '2020' | 'Geral';
 }
@@ -84,7 +85,7 @@ export const PDF_ARCHIVE_CATALOG: PDFDocEntry[] = [
     "category": "Fichas Oficiais",
     "size": "1.6 MB",
     "description": "Documento oficial indexado para Cyberpunk. Arquivo original: CYBERPUNK_RED_FICHA_PREENCHÍVEL.pdf",
-    "downloadUrl": "/downloads/CYBERPUNK_RED_FICHA_PREENCHIVEL.pdf",
+    "downloadUrl": "/sheets/CYBERPUNK_RED_FICHA_PREENCHIVEL.pdf",
     "pagesEstimate": 24,
     "system": "RED"
   },
@@ -689,7 +690,7 @@ export const PDF_ARCHIVE_CATALOG: PDFDocEntry[] = [
     "category": "Fichas Oficiais",
     "size": "1.3 MB",
     "description": "Documento oficial indexado para Cyberpunk. Arquivo original: RTG-CPR-CharacterSheet-Fillable.pdf",
-    "downloadUrl": "/downloads/RTG-CPR-CharacterSheet-Fillable.pdf",
+    "downloadUrl": "/sheets/RTG-CPR-CharacterSheet-Fillable.pdf",
     "pagesEstimate": 20,
     "system": "RED"
   },
@@ -700,7 +701,7 @@ export const PDF_ARCHIVE_CATALOG: PDFDocEntry[] = [
     "category": "Fichas Oficiais",
     "size": "0.3 MB",
     "description": "Documento oficial indexado para Cyberpunk. Arquivo original: RTG-CPR-DataPack-Charsheet-CLC-Form.pdf",
-    "downloadUrl": "/downloads/RTG-CPR-DataPack-Charsheet-CLC-Form.pdf",
+    "downloadUrl": "/sheets/RTG-CPR-DataPack-Charsheet-CLC-Form.pdf",
     "pagesEstimate": 4,
     "system": "RED"
   },
@@ -711,7 +712,7 @@ export const PDF_ARCHIVE_CATALOG: PDFDocEntry[] = [
     "category": "DLC / Expansão Gratuita",
     "size": "1.1 MB",
     "description": "Documento oficial indexado para Cyberpunk. Arquivo original: RTG-CPR-DLC-Edgerunner-Folio-Form-Fillable.pdf",
-    "downloadUrl": "/downloads/RTG-CPR-DLC-Edgerunner-Folio-Form-Fillable.pdf",
+    "downloadUrl": "/sheets/RTG-CPR-DLC-Edgerunner-Folio-Form-Fillable.pdf",
     "pagesEstimate": 17,
     "system": "RED"
   },
@@ -722,7 +723,7 @@ export const PDF_ARCHIVE_CATALOG: PDFDocEntry[] = [
     "category": "Fichas Oficiais",
     "size": "0.3 MB",
     "description": "Documento oficial indexado para Cyberpunk. Arquivo original: RTG-CPR-MooksSheetFormFillable.pdf",
-    "downloadUrl": "/downloads/RTG-CPR-MooksSheetFormFillable.pdf",
+    "downloadUrl": "/sheets/RTG-CPR-MooksSheetFormFillable.pdf",
     "pagesEstimate": 5,
     "system": "RED"
   },
@@ -920,7 +921,7 @@ export const PDF_ARCHIVE_CATALOG: PDFDocEntry[] = [
     "category": "Fichas Oficiais",
     "size": "2.1 MB",
     "description": "Ficha de personagem oficial em PDF com campos interativos de preenchimento para Cyberpunk RED.",
-    "downloadUrl": "/downloads/CYBERPUNK_RED_FICHA_PREENCHIVEL.pdf",
+    "downloadUrl": "/sheets/CYBERPUNK_RED_FICHA_PREENCHIVEL.pdf",
     "pagesEstimate": 4,
     "system": "RED"
   }

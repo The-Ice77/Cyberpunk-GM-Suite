@@ -47,6 +47,8 @@ import {
   Bot,
   MapPin,
   Camera,
+  Download,
+  Search,
 } from 'lucide-react';
 import { useUserRole } from '../context/UserRoleContext';
 import { getWeaponIcon, getCyberwareIcon, getGearIcon, getVehicleIcon } from '../utils/itemIcons';
@@ -67,6 +69,8 @@ import {
   AMMUNITION_DATABASE,
   CYBERWARE_DATABASE,
 } from '../data/arsenalData';
+import { CodexItemSearchModal, CodexCategory } from '../components/character/CodexItemSearchModal';
+import { exportCharacterSheetToPrintPDF } from '../utils/sheetPdfExport';
 
 type CreationMethod = 'streetrat' | 'edgerunner' | 'pointbuy';
 
@@ -374,6 +378,8 @@ export const PlayerSheetPage: React.FC = () => {
   const [showArmorModal, setShowArmorModal] = useState<boolean>(false);
   const [showAddWeaponModal, setShowAddWeaponModal] = useState<boolean>(false);
   const [showAddCyberModal, setShowAddCyberModal] = useState<boolean>(false);
+  const [showCodexSearchModal, setShowCodexSearchModal] = useState<boolean>(false);
+  const [codexInitialCategory, setCodexInitialCategory] = useState<CodexCategory>('all');
   const [newGearInput, setNewGearInput] = useState<string>('');
 
   // Creation Wizard State (7 Comprehensive Steps)
@@ -902,6 +908,79 @@ export const PlayerSheetPage: React.FC = () => {
     setShowAddWeaponModal(false);
   };
 
+  // Handlers for Codex Item Search Modal
+  const handleEquipWeaponFromCodex = (w: {
+    name: string;
+    damage: string;
+    rof: number;
+    ammoType: string;
+    magCapacity: number;
+    magCurrent: number;
+    notes?: string;
+  }) => {
+    if (!char) return;
+    const weapons = [...char.weapons, w];
+    savePlayerCharacter({ ...char, weapons });
+  };
+
+  const handleInstallCyberwareFromCodex = (
+    c: {
+      name: string;
+      type: string;
+      humanityCost: number;
+      description: string;
+    },
+    deductHumanity: boolean
+  ) => {
+    if (!char) return;
+    const cyberware = [...char.cyberware, c];
+    const updatedHumanity = deductHumanity ? Math.max(0, char.humanity - c.humanityCost) : char.humanity;
+    savePlayerCharacter({ ...char, cyberware, humanity: updatedHumanity });
+  };
+
+  const handleEquipArmorFromCodex = (a: {
+    type: 'head' | 'body';
+    name: string;
+    sp: number;
+    penalty?: number;
+  }) => {
+    if (!char) return;
+    const armor = { ...char.armor };
+    if (a.type === 'head') {
+      armor.head = { name: a.name, sp: a.sp, maxSP: a.sp };
+      savePlayerCharacter({ ...char, armor, headSP: a.sp });
+    } else {
+      armor.body = { name: a.name, sp: a.sp, maxSP: a.sp, penalty: a.penalty || 0 };
+      savePlayerCharacter({ ...char, armor, bodySP: a.sp });
+    }
+  };
+
+  const handleAddGearItemFromCodex = (itemString: string) => {
+    if (!char) return;
+    const currentGear = Array.isArray(char.gear) ? [...char.gear, itemString] : [itemString];
+    savePlayerCharacter({ ...char, gear: currentGear });
+  };
+
+  const handleAttachToWeaponFromCodex = (weaponIdx: number, attachmentName: string, benefitText: string) => {
+    if (!char) return;
+    const weapons = [...char.weapons];
+    if (weapons[weaponIdx]) {
+      const existingNotes = weapons[weaponIdx].notes ? `${weapons[weaponIdx].notes} | ` : '';
+      weapons[weaponIdx] = {
+        ...weapons[weaponIdx],
+        notes: `${existingNotes}+ ${attachmentName} (${benefitText})`,
+      };
+      savePlayerCharacter({ ...char, weapons });
+    }
+  };
+
+  const handleDeductCashFromCodex = (amount: number) => {
+    if (!char) return;
+    const currentCash = char.cashEb || 0;
+    const updatedCash = Math.max(0, currentCash - amount);
+    savePlayerCharacter({ ...char, cashEb: updatedCash });
+  };
+
   // Wizard Point Buy Total
   const getPointBuyTotal = () => {
     if (!wizardChar.statsRED) return 0;
@@ -1242,6 +1321,27 @@ export const PlayerSheetPage: React.FC = () => {
             {/* Quick Actions */}
             <div className="flex flex-wrap items-center gap-2">
               <button
+                onClick={() => {
+                  setCodexInitialCategory('all');
+                  setShowCodexSearchModal(true);
+                }}
+                className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-mono text-xs flex items-center gap-1.5 transition shadow-sm font-bold"
+                title="Pesquisar e equipar armas, ciberware, armaduras e equipamentos do Códice Oficial"
+              >
+                <Search className="w-3.5 h-3.5" />
+                <span>Buscar no Códice</span>
+              </button>
+
+              <button
+                onClick={() => exportCharacterSheetToPrintPDF(char)}
+                className="px-3 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 font-mono text-xs flex items-center gap-1.5 transition"
+                title="Exportar ou Imprimir Ficha Completa em PDF Oficial (Vetor)"
+              >
+                <Download className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Baixar Ficha em PDF</span>
+              </button>
+
+              <button
                 onClick={handleSendPlayerToCombat}
                 className="px-3 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-mono text-xs flex items-center gap-1.5 transition shadow-sm font-semibold"
                 title="Enviar este personagem com armas e atributos para o Rastreador de Combate"
@@ -1514,10 +1614,13 @@ export const PlayerSheetPage: React.FC = () => {
                       <Crosshair className="w-4 h-4 text-red-500" /> Armas Equipadas ({char.weapons.length})
                     </span>
                     <button
-                      onClick={() => setShowAddWeaponModal(true)}
+                      onClick={() => {
+                        setCodexInitialCategory('weapons');
+                        setShowCodexSearchModal(true);
+                      }}
                       className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-mono flex items-center gap-1 border border-zinc-700"
                     >
-                      <Plus className="w-3.5 h-3.5 text-cyan-400" /> Adicionar Arma
+                      <Plus className="w-3.5 h-3.5 text-cyan-400" /> Buscar Arma / Acessório no Códice
                     </button>
                   </div>
 
@@ -1752,7 +1855,7 @@ export const PlayerSheetPage: React.FC = () => {
 
               {/* Section 2: Backpack & Field Gear */}
               <div className="p-6 rounded-2xl bg-[#121217] border border-[#27272a] space-y-4">
-                <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-[#27272a] pb-3">
                   <div>
                     <h3 className="text-sm font-bold text-zinc-100 flex items-center gap-2">
                       <Backpack className="w-4 h-4 text-cyan-400" />
@@ -1762,6 +1865,17 @@ export const PlayerSheetPage: React.FC = () => {
                       Ferramentas, kits de primeiros socorros, lockpicks eletrônicos e suprimentos de missão.
                     </p>
                   </div>
+
+                  <button
+                    onClick={() => {
+                      setCodexInitialCategory('gear');
+                      setShowCodexSearchModal(true);
+                    }}
+                    className="px-3.5 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-cyan-300 font-mono text-xs flex items-center gap-1.5 border border-zinc-700 transition shrink-0"
+                  >
+                    <Search className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>Buscar no Códice</span>
+                  </button>
                 </div>
 
                 {/* Add Custom Item Form */}
@@ -1946,10 +2060,13 @@ export const PlayerSheetPage: React.FC = () => {
                   <Cpu className="w-4 h-4 text-cyan-400" /> Ciberware Instalado ({char.cyberware.length})
                 </h3>
                 <button
-                  onClick={() => setShowAddCyberModal(true)}
-                  className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-mono flex items-center gap-1 border border-zinc-700"
+                  onClick={() => {
+                    setCodexInitialCategory('cyberware');
+                    setShowCodexSearchModal(true);
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-purple-300 text-xs font-mono flex items-center gap-1.5 border border-zinc-700 transition"
                 >
-                  <Plus className="w-3.5 h-3.5 text-purple-400" /> Instalar Novo Implante
+                  <Plus className="w-3.5 h-3.5 text-purple-400" /> Buscar Implante no Códice
                 </button>
               </div>
 
@@ -2905,6 +3022,24 @@ export const PlayerSheetPage: React.FC = () => {
       )}
 
       {/* ======================================================== */}
+      {/* MODAL: UNIVERSAL CODEX ITEM & ACCESSORY SEARCH           */}
+      {/* ======================================================== */}
+      {char && (
+        <CodexItemSearchModal
+          isOpen={showCodexSearchModal}
+          onClose={() => setShowCodexSearchModal(false)}
+          character={char}
+          initialCategory={codexInitialCategory}
+          onEquipWeapon={handleEquipWeaponFromCodex}
+          onInstallCyberware={handleInstallCyberwareFromCodex}
+          onEquipArmor={handleEquipArmorFromCodex}
+          onAddGearItem={handleAddGearItemFromCodex}
+          onAttachToWeapon={handleAttachToWeaponFromCodex}
+          onDeductCash={handleDeductCashFromCodex}
+        />
+      )}
+
+      {/* ======================================================== */}
       {/* MODAL: ATACAR VS DV (ADVANCED ATTACK ROLLER)             */}
       {/* ======================================================== */}
       {attackModal?.isOpen && (
@@ -3618,23 +3753,35 @@ export const PlayerSheetPage: React.FC = () => {
             {/* STEP 5: WEAPONS ARSENAL SELECTION */}
             {wizardStep === 5 && (
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <span className="text-xs text-zinc-300 font-semibold block">Seleção de Armas & Arsenal Inicial:</span>
                     <p className="text-[11px] text-zinc-400">Adicione armas de fogo ou brancas para o seu personagem.</p>
                   </div>
-                  <button
-                    onClick={() => {
-                      const pack = ROLE_STARTING_PACKAGES[wizardChar.role || 'Solo'] || ROLE_STARTING_PACKAGES['Solo'];
-                      setWizardChar(prev => ({
-                        ...prev,
-                        weapons: JSON.parse(JSON.stringify(pack.weapons)),
-                      }));
-                    }}
-                    className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-amber-400 text-xs font-mono flex items-center gap-1"
-                  >
-                    <Zap className="w-3.5 h-3.5" /> Arsenal do {wizardChar.role}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCodexInitialCategory('weapons');
+                        setShowCodexSearchModal(true);
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white text-xs font-mono font-bold flex items-center gap-1 shadow-sm"
+                    >
+                      <Search className="w-3.5 h-3.5" /> Buscar no Códice
+                    </button>
+                    <button
+                      onClick={() => {
+                        const pack = ROLE_STARTING_PACKAGES[wizardChar.role || 'Solo'] || ROLE_STARTING_PACKAGES['Solo'];
+                        setWizardChar(prev => ({
+                          ...prev,
+                          weapons: JSON.parse(JSON.stringify(pack.weapons)),
+                        }));
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-amber-400 text-xs font-mono flex items-center gap-1"
+                    >
+                      <Zap className="w-3.5 h-3.5" /> Arsenal do {wizardChar.role}
+                    </button>
+                  </div>
                 </div>
 
                 {/* Weapons in Current Loadout */}
@@ -3722,24 +3869,36 @@ export const PlayerSheetPage: React.FC = () => {
             {/* STEP 6: INVENTORY, GEAR & EURODOLLARS */}
             {wizardStep === 6 && (
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <span className="text-xs text-zinc-300 font-semibold block">Inventário, Equipamentos & Eddies (eb):</span>
                     <p className="text-[11px] text-zinc-400">Configure sua mochila e seus fundos iniciais.</p>
                   </div>
-                  <button
-                    onClick={() => {
-                      const pack = ROLE_STARTING_PACKAGES[wizardChar.role || 'Solo'] || ROLE_STARTING_PACKAGES['Solo'];
-                      setWizardChar(prev => ({
-                        ...prev,
-                        gear: [...pack.gear],
-                        cashEb: pack.cashEb,
-                      }));
-                    }}
-                    className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-amber-400 text-xs font-mono flex items-center gap-1"
-                  >
-                    <Zap className="w-3.5 h-3.5" /> Pacote do {wizardChar.role}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCodexInitialCategory('gear');
+                        setShowCodexSearchModal(true);
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-mono font-bold flex items-center gap-1 shadow-sm"
+                    >
+                      <Search className="w-3.5 h-3.5" /> Buscar no Códice
+                    </button>
+                    <button
+                      onClick={() => {
+                        const pack = ROLE_STARTING_PACKAGES[wizardChar.role || 'Solo'] || ROLE_STARTING_PACKAGES['Solo'];
+                        setWizardChar(prev => ({
+                          ...prev,
+                          gear: [...pack.gear],
+                          cashEb: pack.cashEb,
+                        }));
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-amber-400 text-xs font-mono flex items-center gap-1"
+                    >
+                      <Zap className="w-3.5 h-3.5" /> Pacote do {wizardChar.role}
+                    </button>
+                  </div>
                 </div>
 
                 {/* Cash Eurodollars Wallet Input */}

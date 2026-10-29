@@ -172,6 +172,8 @@ import { useUserRole } from '../context/UserRoleContext';
 
 import { NIGHT_CITY_DISTRICTS } from '../data/mapData';
 
+import { cyberpunkDB } from '../services/db';
+
 
 
 
@@ -874,12 +876,20 @@ ${rewardResult.nextSessionHooks.map(h => `• ${h}`).join('\n')}
 
 
 
-  // Persist diaries
+  // Persist diaries in IndexedDB and LocalStorage
+  useEffect(() => {
+    cyberpunkDB.loadDiaries().then(saved => {
+      if (saved && Array.isArray(saved) && saved.length > 0) {
+        setDiaries(saved);
+      }
+    });
+  }, []);
 
   useEffect(() => {
-
-    localStorage.setItem('cyberpunk_campaign_markdown_diaries', JSON.stringify(diaries));
-
+    cyberpunkDB.saveDiaries(diaries);
+    try {
+      localStorage.setItem('cyberpunk_campaign_markdown_diaries', JSON.stringify(diaries));
+    } catch {}
   }, [diaries]);
 
 

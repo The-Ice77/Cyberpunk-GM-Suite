@@ -34,3 +34,4 @@ cyberpunk-master-toolkit-v5.0/
 # Large PDF files (prevents GitHub 100MB rejection and keeps repository under Vercel 100MB Hobby limit)
 *.pdf
 !public/downloads/.gitkeep
+!public/sheets/*.pdf

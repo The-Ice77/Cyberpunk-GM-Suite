@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { PlayerCharacter, PREMADE_ARCHETYPES } from '../data/playerArchetypes';
+import { cyberpunkDB } from '../services/db';
 
 export type UserRole = 'GM' | 'PLAYER';
 
@@ -118,16 +119,36 @@ export const UserRoleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   });
 
+  // Load from IndexedDB on startup
+  useEffect(() => {
+    cyberpunkDB.loadCharacters().then(chars => {
+      if (chars && Array.isArray(chars) && chars.length > 0) {
+        setPlayerCharacters(chars);
+      }
+    });
+    cyberpunkDB.loadWorldState().then(ws => {
+      if (ws && ws.customLocations) {
+        setWorldState(ws);
+      }
+    });
+  }, []);
+
   useEffect(() => {
     localStorage.setItem('cyberpunk_user_role', role);
   }, [role]);
 
   useEffect(() => {
-    localStorage.setItem('cyberpunk_player_characters', JSON.stringify(playerCharacters));
+    cyberpunkDB.saveCharacters(playerCharacters);
+    try {
+      localStorage.setItem('cyberpunk_player_characters', JSON.stringify(playerCharacters));
+    } catch {}
   }, [playerCharacters]);
 
   useEffect(() => {
-    localStorage.setItem('cyberpunk_gm_world_state', JSON.stringify(worldState));
+    cyberpunkDB.saveWorldState(worldState);
+    try {
+      localStorage.setItem('cyberpunk_gm_world_state', JSON.stringify(worldState));
+    } catch {}
   }, [worldState]);
 
   const setRole = (newRole: UserRole) => {

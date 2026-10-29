@@ -4,6 +4,7 @@ import { useSystem } from '../../context/SystemContext';
 import { useCombat } from '../../context/CombatContext';
 import { useCampaign } from '../../context/CampaignContext';
 import { useUserRole } from '../../context/UserRoleContext';
+import { cyberpunkDB } from '../../services/db';
 
 interface NavbarProps {
   onToggleDice: () => void;
@@ -28,28 +29,54 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [importText, setImportText] = useState<string>('');
   const [importFeedback, setImportFeedback] = useState<string>('');
 
-  const handleExport = () => {
-    const dataStr = exportNPCsJSON();
-    const blob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `cyberpunk_gm_suite_backup_${new Date().toISOString().slice(0, 10)}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
+  const handleExport = async () => {
+    try {
+      const dataStr = await cyberpunkDB.exportFullDatabaseBackup();
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `cyberpunk_gm_suite_full_backup_${new Date().toISOString().slice(0, 10)}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      const dataStr = exportNPCsJSON();
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `cyberpunk_gm_suite_backup_${new Date().toISOString().slice(0, 10)}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+    }
   };
 
-  const handleImport = () => {
+  const handleImport = async () => {
     if (!importText.trim()) return;
-    const ok = importNPCsJSON(importText);
-    if (ok) {
-      setImportFeedback('Dados importados com sucesso!');
-      setTimeout(() => {
-        setImportFeedback('');
-        setShowBackupModal(false);
-      }, 1200);
-    } else {
-      setImportFeedback('Erro: JSON inválido. Verifique o formato.');
+    try {
+      const res = await cyberpunkDB.importFullDatabaseBackup(importText);
+      if (res.success) {
+        setImportFeedback(res.message);
+        setTimeout(() => {
+          setImportFeedback('');
+          setShowBackupModal(false);
+          window.location.reload();
+        }, 1200);
+      } else {
+        const ok = importNPCsJSON(importText);
+        if (ok) {
+          setImportFeedback('Dados importados com sucesso!');
+          setTimeout(() => {
+            setImportFeedback('');
+            setShowBackupModal(false);
+            window.location.reload();
+          }, 1200);
+        } else {
+          setImportFeedback(res.message);
+        }
+      }
+    } catch (e: any) {
+      setImportFeedback(`Erro: ${e?.message || 'JSON inválido'}`);
     }
   };
 

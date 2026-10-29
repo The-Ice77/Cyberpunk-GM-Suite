@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { NPCSheet } from '../types/system';
+import { cyberpunkDB } from '../services/db';
 
 interface CampaignContextType {
   savedNPCs: NPCSheet[];
@@ -28,8 +29,20 @@ export const CampaignProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return localStorage.getItem('cyberpunk_gm_campaign_notes') || '';
   });
 
+  // Load from IndexedDB on startup
   useEffect(() => {
-    localStorage.setItem('cyberpunk_gm_saved_npcs', JSON.stringify(savedNPCs));
+    cyberpunkDB.loadNPCs().then(npcs => {
+      if (npcs && Array.isArray(npcs) && npcs.length > 0) {
+        setSavedNPCs(npcs);
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    cyberpunkDB.saveNPCs(savedNPCs);
+    try {
+      localStorage.setItem('cyberpunk_gm_saved_npcs', JSON.stringify(savedNPCs));
+    } catch {}
   }, [savedNPCs]);
 
   useEffect(() => {
