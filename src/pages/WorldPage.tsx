@@ -47,7 +47,7 @@ import {
 } from 'lucide-react';
 import { useSystem } from '../context/SystemContext';
 import { useUserRole, CustomDistrictLocation } from '../context/UserRoleContext';
-import { NIGHT_CITY_DISTRICTS, MapDistrict, isPointInPolygon, detectDistrictByCoords } from '../data/mapData';
+import { NIGHT_CITY_DISTRICTS, MapDistrict, isPointInPolygon, detectDistrictByCoords, DISTRICT_LEGACY_ALIASES } from '../data/mapData';
 import { seasonalWeatherTables, strangeWeatherTable, urbanEventsList, StrangeWeatherRoll, UrbanEvent, WeatherRollEntry, DISTRICT_WEATHER_NUANCES } from '../data/weatherData';
 import { NIGHT_CITY_BARS, BarVenue } from '../data/barsData';
 import { DATING_KEYWORDS, DATING_LOCATIONS, DATING_COMPLICATIONS } from '../data/datingData';
@@ -67,7 +67,7 @@ import {
   rollHouseOfWorship,
 } from '../data/chanceOfLifetimeData';
 
-// Gang Map Overlay Data
+// Gang Map Overlay Data - Calibrated with official Cyberpunk RED 2045 Map
 interface MapGangSpot {
   id: string;
   name: string;
@@ -79,66 +79,53 @@ interface MapGangSpot {
 }
 
 const MAP_GANG_SPOTS: MapGangSpot[] = [
-  // Watson (North & Northwest)
-  { id: 'g-maelstrom', name: 'Maelstrom', gangId: 'maelstrom', logo: '/gang_logos/Maelstrom Logo.png', xPct: 43, yPct: 20, turfText: 'Watson / NID & Totentanz' },
-  { id: 'g-piranhas', name: 'Piranhas', gangId: 'piranhas', logo: '/gang_logos/Piranhas Logo.png', xPct: 40, yPct: 34, turfText: 'Watson / Marina & Little China' },
-  { id: 'g-lightning', name: 'Lightning Cats', gangId: 'lightning-cats', logo: '/gang_logos/Lightning Cats Logo.png', xPct: 42, yPct: 27, turfText: 'Kabuki / Beco dos Sintetizadores' },
-  { id: 'g-fixies', name: 'Fixies Couriers', gangId: 'fixies-couriers', logo: '/gang_logos/Fixies Couriers Logo.png', xPct: 44, yPct: 29, turfText: 'Corredores Expressos de Watson' },
-  { id: 'g-princesses', name: 'Princesses of Justice', gangId: 'princesses-of-justice', logo: '/gang_logos/Princesses of Justice Logo.png', xPct: 46, yPct: 25, turfText: 'Kabuki / Arcades de Little China' },
-  { id: 'g-mudang', name: 'Mudang Gumi', gangId: 'mudang-gumi', logo: '/gang_logos/Mudang Gumi Logo.png', xPct: 45, yPct: 22, turfText: 'Little China / Templos Subterrâneos' },
-  { id: 'g-shroomers', name: 'Shroomers', gangId: 'shroomers', logo: '/gang_logos/Shroomers Logo.png', xPct: 41, yPct: 31, turfText: 'Watson / Porões Úmidos' },
+  // Watson Peninsula & Kabuki (North)
+  { id: 'g-maelstrom', name: 'Maelstrom', gangId: 'maelstrom', logo: '/gang_logos/Maelstrom Logo.png', xPct: 43.0, yPct: 24.0, turfText: 'Watson Development / Totentanz' },
+  { id: 'g-piranhas', name: 'Piranhas', gangId: 'piranhas', logo: '/gang_logos/Piranhas Logo.png', xPct: 55.0, yPct: 43.0, turfText: 'Upper Marina / Doca dos Iates' },
+  { id: 'g-lightning', name: 'Lightning Cats', gangId: 'lightning-cats', logo: '/gang_logos/Lightning Cats Logo.png', xPct: 49.5, yPct: 26.5, turfText: 'Kabuki / Beco dos Sintetizadores' },
+  { id: 'g-fixies', name: 'Fixies Couriers', gangId: 'fixies-couriers', logo: '/gang_logos/Fixies Couriers Logo.png', xPct: 44.0, yPct: 29.0, turfText: 'Corredores Expressos de Watson' },
+  { id: 'g-princesses', name: 'Princesses of Justice', gangId: 'princesses-of-justice', logo: '/gang_logos/Princesses of Justice Logo.png', xPct: 51.5, yPct: 24.5, turfText: 'Kabuki / Arcades de Little China' },
+  { id: 'g-mudang', name: 'Mudang Gumi', gangId: 'mudang-gumi', logo: '/gang_logos/Mudang Gumi Logo.png', xPct: 61.5, yPct: 54.5, turfText: 'Little China / Templos Subterrâneos' },
+  { id: 'g-golddragons', name: 'Gold Dragons', gangId: 'gold-dragons', logo: '/gang_logos/Gold Dragons Logo.png', xPct: 60.5, yPct: 53.0, turfText: 'Little China / Casas de Mahjong' },
 
-  // Westbrook & City Center (East & Center)
-  { id: 'g-tyger', name: 'Tyger Claws', gangId: 'tyger-claws', logo: '/gang_logos/Tyger Claws Logo.png', xPct: 62, yPct: 32, turfText: 'Westbrook / Japantown & Kabuki' },
-  { id: 'g-g3', name: 'G3', gangId: 'g3', logo: '/gang_logos/G3 Logo.png', xPct: 63, yPct: 36, turfText: 'Charter Hill / Complexo Tático' },
-  { id: 'g-julliard', name: 'Julliard Guild', gangId: 'julliard-guild', logo: '/gang_logos/Julliard Guild Logo.png', xPct: 65, yPct: 33, turfText: 'Westbrook / Teatros de Gala' },
-  { id: 'g-muses', name: 'The Muses', gangId: 'muses', logo: '/gang_logos/Muses Logo.png', xPct: 64, yPct: 29, turfText: 'Westbrook / Galerias de Alta Moda' },
-  { id: 'g-willows', name: 'The Willows', gangId: 'willows', logo: '/gang_logos/Willows Logo.png', xPct: 61, yPct: 35, turfText: 'Charter Hill / Salões de Chá de Luxo' },
-  { id: 'g-culper', name: 'Culper Ring', gangId: 'culper-ring', logo: '/gang_logos/Culper Ring Logo.png', xPct: 53, yPct: 43, turfText: 'Centro Corporativo / Redes de Sombra' },
-  { id: 'g-vampyres', name: 'Philharmonic Vampyres', gangId: 'philharmonic-vampyres', logo: '/gang_logos/Philharmonic Vampyres Logo.png', xPct: 50, yPct: 45, turfText: 'Centro Corporativo / Teatros Góticos' },
-  { id: 'g-eurotrashers', name: 'Eurotrashers', gangId: 'eurotrashers', logo: '/gang_logos/Eurotrashers Logo.png', xPct: 55, yPct: 38, turfText: 'North Oak / Coberturas Exclusivas' },
-  { id: 'g-golddragons', name: 'Gold Dragons', gangId: 'gold-dragons', logo: '/gang_logos/Gold Dragons Logo.png', xPct: 48, yPct: 26, turfText: 'Chinatown / Docas e Casas de Mahjong' },
-  { id: 'g-enhanced', name: 'The Enhanced', gangId: 'enhanced', logo: '/gang_logos/Enhanced Logo.png', xPct: 47, yPct: 28, turfText: 'Centro Médico / Laboratórios Cromados' },
+  // New Westbrook & Charter Hill (Northeast)
+  { id: 'g-tyger', name: 'Tyger Claws', gangId: 'tyger-claws', logo: '/gang_logos/Tyger Claws Logo.png', xPct: 54.0, yPct: 60.0, turfText: 'Old Japantown & Kabuki' },
+  { id: 'g-g3', name: 'G3', gangId: 'g3', logo: '/gang_logos/G3 Logo.png', xPct: 72.0, yPct: 33.0, turfText: 'Charter Hill / Complexo Tático' },
+  { id: 'g-julliard', name: 'Julliard Guild', gangId: 'julliard-guild', logo: '/gang_logos/Julliard Guild Logo.png', xPct: 64.0, yPct: 23.0, turfText: 'New Westbrook / Teatros de Gala' },
+  { id: 'g-muses', name: 'The Muses', gangId: 'muses', logo: '/gang_logos/Muses Logo.png', xPct: 61.0, yPct: 21.0, turfText: 'New Westbrook / Galerias de Alta Moda' },
+  { id: 'g-willows', name: 'The Willows', gangId: 'willows', logo: '/gang_logos/Willows Logo.png', xPct: 71.0, yPct: 31.5, turfText: 'Charter Hill / Salões de Chá de Luxo' },
 
-  // Heywood (Southwest & Central South)
-  { id: 'g-valentinos', name: 'Valentinos', gangId: 'valentinos', logo: '/gang_logos/Street Queens Logo.png', xPct: 42, yPct: 54, turfText: 'Heywood / The Glen & El Coyote Cojo' },
-  { id: 'g-queens', name: 'Street Queens', gangId: 'street-queens', logo: '/gang_logos/Street Queens Logo.png', xPct: 40, yPct: 51, turfText: 'Heywood / Calçadão das Boates' },
-  { id: 'g-sinful', name: 'Sinful Adams', gangId: 'sinful-adams', logo: '/gang_logos/Sinful Adams Logo.png', xPct: 44, yPct: 57, turfText: 'Heywood / Cortiços de Carne Crua' },
-  { id: 'g-undertow', name: 'Undertow', gangId: 'undertow', logo: '/gang_logos/Undertow Logo.png', xPct: 37, yPct: 48, turfText: 'Docas de Morro Rock & Baía' },
+  // Center, Downtown & The Glen
+  { id: 'g-culper', name: 'Culper Ring', gangId: 'culper-ring', logo: '/gang_logos/Culper Ring Logo.png', xPct: 31.0, yPct: 48.0, turfText: 'Downtown / Redes de Sombra' },
+  { id: 'g-valentinos', name: 'Valentinos', gangId: 'valentinos', logo: '/gang_logos/Street Queens Logo.png', xPct: 44.3, yPct: 63.0, turfText: 'The Glen / El Coyote Cojo' },
+  { id: 'g-queens', name: 'Street Queens', gangId: 'street-queens', logo: '/gang_logos/Street Queens Logo.png', xPct: 43.0, yPct: 61.5, turfText: 'The Glen / Calçadão das Boates' },
+  { id: 'g-sinful', name: 'Sinful Adams', gangId: 'sinful-adams', logo: '/gang_logos/Sinful Adams Logo.png', xPct: 34.0, yPct: 63.0, turfText: 'South Night City / Cortiços de Carne Crua' },
+  { id: 'g-undertow', name: 'Undertow', gangId: 'undertow', logo: '/gang_logos/Undertow Logo.png', xPct: 20.0, yPct: 38.5, turfText: 'Morro Rock & Baía de Del Coronado' },
 
-  // Santo Domingo (Southeast Industrial)
-  { id: 'g-6th', name: '6th Street', gangId: '6th-street', logo: '/gang_logos/6th Street Logo.png', xPct: 66, yPct: 53, turfText: 'Santo Domingo / Rancho Coronado' },
-  { id: 'g-iron', name: 'Iron Sights', gangId: 'iron-sights', logo: '/gang_logos/Iron Sights Logo.png', xPct: 60, yPct: 60, turfText: 'Arroyo Industrial / Silos de Ferro' },
-  { id: 'g-generationred', name: 'Generation Red', gangId: 'generation-red', logo: '/gang_logos/Generation Red Logo.png', xPct: 64, yPct: 55, turfText: 'Rancho Coronado / Escolas em Ruínas' },
-  { id: 'g-toecutters', name: 'ToeCutters', gangId: 'toecutters', logo: '/gang_logos/ToeCutters Logo.png', xPct: 62, yPct: 58, turfText: 'Arroyo / Desmanches e Açougues' },
-  { id: 'g-killkrashers', name: 'Kill Krashers', gangId: 'kill-krashers', logo: '/gang_logos/Kill Krashers Logo.png', xPct: 67, yPct: 57, turfText: 'Arroyo / Pátios de Demolição' },
-  { id: 'g-dragula', name: 'Dragula Racers', gangId: 'dragula-racers', logo: '/gang_logos/Dragula Racers Logo.png', xPct: 65, yPct: 62, turfText: 'Santo Domingo / Autoestrada dos Caixões' },
-  { id: 'g-yellowbrick', name: 'Yellow Brick Road', gangId: 'yellow-brick-road', logo: '/gang_logos/Yellow Brick Road Gang.png', xPct: 69, yPct: 51, turfText: 'Colinas Orientais / Estrada Amarela' },
+  // Old Combat Zone & Central Ruins
+  { id: 'g-inquisitors', name: 'Inquisidores', gangId: 'inquisitors', logo: '/gang_logos/Inquisitors Logo.png', xPct: 51.0, yPct: 67.0, turfText: 'Old Combat Zone / Catedral em Ruínas' },
+  { id: 'g-zoners', name: 'Zoners', gangId: 'zoners', logo: '/gang_logos/Zoners Logo.png', xPct: 50.0, yPct: 66.0, turfText: 'Old Combat Zone / Bunkers Murados' },
+  { id: 'g-reckoners', name: 'Reckoners', gangId: 'reckoners', logo: '/gang_logos/Reckoners Logo.png', xPct: 47.4, yPct: 50.5, turfText: 'The Hot Zone / Marco Zero Apocalíptico' },
 
-  // Pacifica & Coastview (Far South Coastal)
-  { id: 'g-voodoo', name: 'Voodoo Boys', gangId: 'voodoo-boys', logo: '/gang_logos/Voodoo Boys Logo.png', xPct: 38, yPct: 72, turfText: 'Pacifica / Coastview & Batty\'s Hotel' },
-  { id: 'g-alligators', name: 'Albino Alligators', gangId: 'albino-alligators', logo: '/gang_logos/Albino Alligators Logo.png', xPct: 35, yPct: 75, turfText: 'Esgotos Subterrâneos de Pacifica' },
-  { id: 'g-bozos', name: 'Bozos', gangId: 'bozos', logo: '/gang_logos/Bozos Logo.png', xPct: 40, yPct: 78, turfText: 'Parque de Diversão em Ruínas Pacifica' },
-  { id: 'g-hippies', name: 'Dirty Hippies', gangId: 'dirty-hippies', logo: '/gang_logos/Dirty Hippies Logo.png', xPct: 33, yPct: 71, turfText: 'Praias Tóxicas de Pacifica' },
+  // East Side Across Canal (Heywood Industrial & Santo Domingo)
+  { id: 'g-iron', name: 'Iron Sights', gangId: 'iron-sights', logo: '/gang_logos/Iron Sights Logo.png', xPct: 61.5, yPct: 72.0, turfText: 'Heywood Industrial / Silos de Ferro' },
+  { id: 'g-toecutters', name: 'ToeCutters', gangId: 'toecutters', logo: '/gang_logos/ToeCutters Logo.png', xPct: 63.0, yPct: 73.5, turfText: 'Heywood Industrial / Desmanches e Açougues' },
+  { id: 'g-6th', name: '6th Street', gangId: '6th-street', logo: '/gang_logos/6th Street Logo.png', xPct: 70.5, yPct: 79.0, turfText: 'Santo Domingo / QG Fortaleza' },
+  { id: 'g-generationred', name: 'Generation Red', gangId: 'generation-red', logo: '/gang_logos/Generation Red Logo.png', xPct: 50.0, yPct: 92.0, turfText: 'Rancho Coronado / Escolas em Ruínas' },
+  { id: 'g-dragula', name: 'Dragula Racers', gangId: 'dragula-racers', logo: '/gang_logos/Dragula Racers Logo.png', xPct: 72.0, yPct: 82.0, turfText: 'Santo Domingo / Rodovias dos Caixões' },
 
-  // Combat Zones (Fortified Ruins)
-  { id: 'g-inquisitors', name: 'Inquisidores', gangId: 'inquisitors', logo: '/gang_logos/Inquisitors Logo.png', xPct: 48, yPct: 56, turfText: 'Zona de Combate Central / Igrejas Mortas' },
-  { id: 'g-zoners', name: 'Zoners', gangId: 'zoners', logo: '/gang_logos/Zoners Logo.png', xPct: 52, yPct: 54, turfText: 'Zona de Combate / Bunkers Murados' },
-  { id: 'g-reckoners', name: 'Reckoners', gangId: 'reckoners', logo: '/gang_logos/Reckoners Logo.png', xPct: 50, yPct: 58, turfText: 'Zona de Combate / Marco Zero Apocalíptico' },
-  { id: 'g-wildthings', name: 'Wild Things', gangId: 'wild-things', logo: '/gang_logos/Wild Things Logo.png', xPct: 53, yPct: 50, turfText: 'Combat Zone Norte / Galpões Selvagens' },
-  { id: 'g-ratkings', name: 'Rat Kings', gangId: 'rat-kings', logo: '/gang_logos/Rat Kings Logo.png', xPct: 48, yPct: 49, turfText: 'Galerias do Antigo Metrô Abandonado' },
+  // Pacifica Playground & Coast (South)
+  { id: 'g-voodoo', name: 'Voodoo Boys', gangId: 'voodoo-boys', logo: '/gang_logos/Voodoo Boys Logo.png', xPct: 34.0, yPct: 85.5, turfText: 'Pacifica Playground / Batty\'s Hotel' },
+  { id: 'g-alligators', name: 'Albino Alligators', gangId: 'albino-alligators', logo: '/gang_logos/Albino Alligators Logo.png', xPct: 32.0, yPct: 87.0, turfText: 'Pacifica / Esgotos Costeiros Subterrâneos' },
+  { id: 'g-bozos', name: 'Bozos', gangId: 'bozos', logo: '/gang_logos/Bozos Logo.png', xPct: 38.0, yPct: 84.0, turfText: 'Pacifica / Parque de Diversões em Ruínas' },
+  { id: 'g-hippies', name: 'Dirty Hippies', gangId: 'dirty-hippies', logo: '/gang_logos/Dirty Hippies Logo.png', xPct: 33.0, yPct: 89.0, turfText: 'Pacifica / Praias Tóxicas de Coastview' },
 
-  // Badlands & Outskirts (North, East, South)
-  { id: 'g-steel', name: 'Steel Vaqueros', gangId: 'steel-vaqueros', logo: '/gang_logos/Steel Vaqueros Logo.png', xPct: 79, yPct: 75, turfText: 'Badlands Sul / Interestadual 101' },
-  { id: 'g-arzintynon', name: 'Arzin Tynon', gangId: 'arzin-tynon', logo: '/gang_logos/Arzin Tynon Logo.png', xPct: 83, yPct: 71, turfText: 'Badlands / Pedágios de Chooh2' },
-  { id: 'g-redchrome', name: 'Red Chrome Legion', gangId: 'red-chrome-legion', logo: '/gang_logos/Red Chrome Legion Logo.png', xPct: 74, yPct: 24, turfText: 'North Oak Periferia / Desmanches' },
-  { id: 'g-deadwoods', name: 'Deadwoods', gangId: 'deadwoods', logo: '/gang_logos/Deadwoods Logo.png', xPct: 70, yPct: 18, turfText: 'Florestas Mortas ao Norte' },
-  { id: 'g-tombstone', name: 'Tombstone Preservers', gangId: 'tombstone-preservers', logo: '/gang_logos/Tombstone Preservers Logo.png', xPct: 55, yPct: 22, turfText: 'Cemitério de Night City & Crematórios' },
-  { id: 'g-andersons', name: 'The Andersons', gangId: 'andersons', logo: '/gang_logos/Andersons Logo.png', xPct: 58, yPct: 27, turfText: 'Little Europe / Subúrbios Nostálgicos' },
-  { id: 'g-primetime', name: 'PrimeTimePlayers', gangId: 'primetime-players', logo: '/gang_logos/PrimeTimePlayers Logo.png', xPct: 56, yPct: 35, turfText: 'Estúdios de TV Abandonados' },
+  // Badlands & Outskirts
+  { id: 'g-steel', name: 'Steel Vaqueros', gangId: 'steel-vaqueros', logo: '/gang_logos/Steel Vaqueros Logo.png', xPct: 86.0, yPct: 60.0, turfText: 'Badlands Sul / Rodovias Nômades' },
+  { id: 'g-redchrome', name: 'Red Chrome Legion', gangId: 'red-chrome-legion', logo: '/gang_logos/Red Chrome Legion Logo.png', xPct: 82.0, yPct: 30.0, turfText: 'Badlands Leste / Desmanches Nômades' },
 ];
 
-// Megacorporate Complexes & Fortresses
+// Megacorporate Complexes & Fortresses - Aligned with official 2045 locations
 interface MapCorpFacility {
   id: string;
   name: string;
@@ -152,41 +139,18 @@ interface MapCorpFacility {
 }
 
 const MAP_CORP_FACILITIES: MapCorpFacility[] = [
-  { id: 'corp-arasaka', name: 'Memorial & Antiga Torre Arasaka', corp: 'Arasaka', districtId: 'corporate-center', type: 'Marco Zero / Fortaleza', xPct: 49, yPct: 43, securityRating: 'Máxima Militar', description: 'Cratera da explosão de 2022 rodeada por torres de metralhadoras automáticas e patrulhas da Arasaka com armadura pesada.' },
-  { id: 'corp-militech', name: 'Sede Regional Militech Night City', corp: 'Militech', districtId: 'corporate-center', type: 'Complexo Militar Brutalista', xPct: 52, yPct: 46, securityRating: 'Máxima Militar', description: 'Quartel corporativo blindado com artilharia antiaérea no telhado e divisão de tanques leves prontos para mobilização.' },
-  { id: 'corp-petrochem', name: 'Megausina & Tanques de CHOOH2 Petrochem', corp: 'Petrochem', districtId: 'santo-domingo', type: 'Refinaria Química', xPct: 67, yPct: 59, securityRating: 'Alta Corporativa', description: 'Labirinto de tubulações sob pressão vigiado por Solos de segurança privada e torres de alarme halon.' },
-  { id: 'corp-biotechnica', name: 'Complexo de Estufas Biotechnica', corp: 'Biotechnica', districtId: 'badlands', type: 'Fazendas de Proteína & Trigo Transgênico', xPct: 75, yPct: 82, securityRating: 'Alta Corporativa', description: 'Quilômetros de estufas seladas no deserto protegidas por drones de reconhecimento aéreo e cercas eletrificadas.' },
-  { id: 'corp-kangtao', name: 'Centro de Pesquisa Cibernética Kang Tao', corp: 'Kang Tao', districtId: 'westbrook', type: 'Laboratório de Armas Inteligentes', xPct: 65, yPct: 37, securityRating: 'Extrema / Ciberdefesa', description: 'Instalação ultra-secreta de engenharia de smart-weapons e micro-chips sob firewall de Black ICE duplo.' },
-  { id: 'corp-ziggurat', name: 'Torre Central CitiNet & Data Pool Ziggurat', corp: 'Ziggurat', districtId: 'corporate-center', type: 'Hub de Telecomunicações', xPct: 47, yPct: 48, securityRating: 'Extrema / Ciberdefesa', description: 'O cérebro digital da nova rede de Night City, com antenas parabólicas gigantes e servidores refrigerados a nitrogênio.' },
-  { id: 'corp-trauma', name: 'Heliponto Central Trauma Team™ Internacional', corp: 'Trauma Team', districtId: 'corporate-center', type: 'Despacho Médico de Emergência', xPct: 45, yPct: 42, securityRating: 'Alta Corporativa', description: 'Base de lançamento imediato de canhoneiras médicas AV-4 equipadas para ressuscitação de clientes corporativos.' },
-  { id: 'corp-continental', name: 'Complexo de Alimentos OASIS Continental Brands', corp: 'Continental Brands', districtId: 'santo-domingo', type: 'Sintetizador de Ração', xPct: 62, yPct: 53, securityRating: 'Alta Corporativa', description: 'Fábrica de pasta alimentícia kibble e prepack operando 24 horas sob escolta de guardas armados.' },
-  { id: 'corp-nightcorp', name: 'Centro de Inteligência Urbana Night Corp', corp: 'Night Corp', districtId: 'corporate-center', type: 'Infraestrutura Urbana Secreta', xPct: 49, yPct: 40, securityRating: 'Extrema / Ciberdefesa', description: 'O misterioso consórcio gestor da infraestrutura de Night City, com firewalls indevassáveis e agentes autônomos de segurança.' },
+  { id: 'corp-arasaka', name: 'Memorial & Antiga Torre Arasaka', corp: 'Arasaka', districtId: 'the-hot-zone', type: 'Marco Zero / Fortaleza', xPct: 47.4, yPct: 49.6, securityRating: 'Máxima Militar', description: 'Cratera da explosão atômica de 2022 rodeada por torres automatizadas e patrulhas da Arasaka com blindagem pesada.' },
+  { id: 'corp-militech', name: 'Sede Regional Militech Night City', corp: 'Militech', districtId: 'downtown', type: 'Complexo Militar Brutalista', xPct: 30.5, yPct: 47.5, securityRating: 'Máxima Militar', description: 'Quartel corporativo blindado com artilharia antiaérea no heliponto e divisão de veículos leves de intervenção tática.' },
+  { id: 'corp-petrochem', name: 'Megausina & Tanques de CHOOH2 Petrochem', corp: 'Petrochem', districtId: 'heywood-industrial', type: 'Refinaria Química', xPct: 62.0, yPct: 72.0, securityRating: 'Alta Corporativa', description: 'Labirinto de tubulações pressurizadas vigiado por Solos privados e sensores térmicos.' },
+  { id: 'corp-biotechnica', name: 'Complexo de Estufas Biotechnica', corp: 'Biotechnica', districtId: 'badlands', type: 'Fazendas de Proteína & Trigo Transgênico', xPct: 86.0, yPct: 52.0, securityRating: 'Alta Corporativa', description: 'Quilômetros de estufas seladas no deserto protegidas por drones de reconhecimento aéreo e cercas de alta voltagem.' },
+  { id: 'corp-kangtao', name: 'Centro de Pesquisa Cibernética Kang Tao', corp: 'Kang Tao', districtId: 'new-westbrook', type: 'Laboratório de Armas Inteligentes', xPct: 61.0, yPct: 22.0, securityRating: 'Extrema / Ciberdefesa', description: 'Instalação de ponta desenvolvendo micro-smart-weapons sob firewall de Black ICE duplo.' },
+  { id: 'corp-ziggurat', name: 'Torre Central CitiNet & Data Pool Ziggurat', corp: 'Ziggurat', districtId: 'downtown', type: 'Hub de Telecomunicações', xPct: 32.0, yPct: 49.0, securityRating: 'Extrema / Ciberdefesa', description: 'O cérebro digital da nova rede de Night City, com antenas parabólicas gigantes e servidores refrigerados a nitrogênio.' },
+  { id: 'corp-trauma', name: 'Heliponto Central Trauma Team™ Internacional', corp: 'Trauma Team', districtId: 'upper-marina', type: 'Despacho Médico de Emergência', xPct: 54.5, yPct: 43.5, securityRating: 'Alta Corporativa', description: 'Base de lançamento imediato de canhoneiras médicas AV-4 equipadas para ressuscitação e resgate sob fogo cerrado.' },
+  { id: 'corp-continental', name: 'Complexo de Alimentos OASIS Continental Brands', corp: 'Continental Brands', districtId: 'santo-domingo', type: 'Sintetizador de Ração', xPct: 70.5, yPct: 79.0, securityRating: 'Alta Corporativa', description: 'Fábrica de pasta alimentícia kibble e prepack operando 24 horas sob escolta de guardas uniformizados armados.' },
+  { id: 'corp-nightcorp', name: 'Centro de Inteligência Urbana Night Corp', corp: 'Night Corp', districtId: 'little-europe', type: 'Infraestrutura Urbana Secreta', xPct: 39.0, yPct: 42.0, securityRating: 'Extrema / Ciberdefesa', description: 'O misterioso consórcio gestor da infraestrutura municipal com agentes autônomos de segurança cibernética.' },
 ];
 
-// Map District Centers for Overlay Markers
-interface MapDistrictZoneMarker {
-  id: string;
-  name: string;
-  shortName: string;
-  xPct: number;
-  yPct: number;
-  threatLevel: string;
-  color: string;
-  bounds: { left: number; top: number; width: number; height: number };
-}
-
-const MAP_DISTRICT_ZONES: MapDistrictZoneMarker[] = [
-  { id: 'watson', name: 'Watson', shortName: 'WATSON', xPct: 45, yPct: 25, threatLevel: 'Alto', color: 'border-amber-500 text-amber-400 bg-amber-950/40', bounds: { left: 28, top: 8, width: 32, height: 30 } },
-  { id: 'corporate-center', name: 'Centro Corporativo', shortName: 'CORP CENTER', xPct: 48, yPct: 46, threatLevel: 'Baixo', color: 'border-emerald-500 text-emerald-400 bg-emerald-950/40', bounds: { left: 42, top: 38, width: 18, height: 16 } },
-  { id: 'westbrook', name: 'Westbrook', shortName: 'WESTBROOK', xPct: 63, yPct: 34, threatLevel: 'Médio', color: 'border-blue-500 text-blue-400 bg-blue-950/40', bounds: { left: 56, top: 22, width: 24, height: 22 } },
-  { id: 'heywood', name: 'Heywood', shortName: 'HEYWOOD', xPct: 41, yPct: 54, threatLevel: 'Médio', color: 'border-amber-500 text-amber-400 bg-amber-950/40', bounds: { left: 32, top: 46, width: 22, height: 20 } },
-  { id: 'santo-domingo', name: 'Santo Domingo', shortName: 'SANTO DOMINGO', xPct: 65, yPct: 56, threatLevel: 'Alto', color: 'border-orange-500 text-orange-400 bg-orange-950/40', bounds: { left: 55, top: 46, width: 25, height: 22 } },
-  { id: 'pacifica', name: 'Pacifica', shortName: 'PACIFICA', xPct: 36, yPct: 73, threatLevel: 'Extremo', color: 'border-red-600 text-red-400 bg-red-950/60', bounds: { left: 26, top: 66, width: 24, height: 20 } },
-  { id: 'combat-zones', name: 'Zonas de Combate', shortName: 'COMBAT ZONE', xPct: 52, yPct: 54, threatLevel: 'Extremo', color: 'border-red-600 text-red-500 bg-red-950/70', bounds: { left: 45, top: 48, width: 16, height: 18 } },
-  { id: 'badlands', name: 'Badlands', shortName: 'BADLANDS', xPct: 80, yPct: 78, threatLevel: 'Alto', color: 'border-amber-600 text-amber-400 bg-amber-950/40', bounds: { left: 70, top: 60, width: 28, height: 35 } },
-];
-
-// Notable POI Pins for Overlay
+// Notable POI Pins for Overlay - Aligned with official 2045 map
 interface MapPoiMarker {
   id: string;
   name: string;
@@ -198,18 +162,24 @@ interface MapPoiMarker {
 }
 
 const MAP_POI_MARKERS: MapPoiMarker[] = [
-  { id: 'poi-afterlife', name: 'The Afterlife Bar', districtId: 'watson', type: 'Bar de Mercenários', xPct: 47, yPct: 30, danger: 'Médio' },
-  { id: 'poi-totentanz', name: 'Totentanz Club', districtId: 'watson', type: 'Covil Maelstrom', xPct: 44, yPct: 20, danger: 'Extremo' },
-  { id: 'poi-kabuki', name: 'Mercado de Kabuki', districtId: 'watson', type: 'Bazar Noturno', xPct: 42, yPct: 26, danger: 'Médio' },
-  { id: 'poi-lizzies', name: "Lizzie's Bar", districtId: 'watson', type: 'Clube Mox', xPct: 44, yPct: 33, danger: 'Baixo' },
-  { id: 'poi-cherry', name: 'Santuário Cherry Blossom', districtId: 'westbrook', type: 'Parque Sagrado', xPct: 62, yPct: 30, danger: 'Baixo' },
-  { id: 'poi-clouds', name: 'Hotel & Cassino Clouds', districtId: 'westbrook', type: 'Dolls Lounge', xPct: 64, yPct: 36, danger: 'Médio' },
-  { id: 'poi-coyote', name: 'Bar El Coyote Cojo', districtId: 'heywood', type: 'Bar Valentinos', xPct: 42, yPct: 56, danger: 'Baixo' },
-  { id: 'poi-ncpd-glen', name: 'Delegacia DPNC The Glen', districtId: 'heywood', type: 'Fortaleza Policial', xPct: 39, yPct: 52, danger: 'Médio' },
-  { id: 'poi-6th-hq', name: 'QG da 6th Street', districtId: 'santo-domingo', type: 'Armazém Militar', xPct: 66, yPct: 52, danger: 'Alto' },
-  { id: 'poi-battys', name: "Batty's Hotel", districtId: 'pacifica', type: 'Cripta Voodoo Boys', xPct: 35, yPct: 71, danger: 'Extremo' },
-  { id: 'poi-gim', name: 'Grand Imperial Mall (GIM)', districtId: 'pacifica', type: 'Shopping em Ruínas', xPct: 38, yPct: 76, danger: 'Extremo' },
-  { id: 'poi-aldecaldo', name: 'Acampamento Aldecaldo', districtId: 'badlands', type: 'Cidade de Trailers', xPct: 82, yPct: 77, danger: 'Baixo' },
+  { id: 'poi-norcal-base', name: 'Base Militar NorCal', districtId: 'norcal-military', type: 'Instalação Militar', xPct: 41.0, yPct: 12.0, danger: 'Extremo' },
+  { id: 'poi-totentanz', name: 'Totentanz Club', districtId: 'watson-development', type: 'Covil Maelstrom', xPct: 43.0, yPct: 24.0, danger: 'Extremo' },
+  { id: 'poi-kabuki', name: 'Mercado Redondo de Kabuki', districtId: 'kabuki', type: 'Bazar Noturno', xPct: 50.5, yPct: 25.5, danger: 'Médio' },
+  { id: 'poi-clouds', name: 'Hotel & Cassino Clouds', districtId: 'new-westbrook', type: 'Dolls Lounge VIP', xPct: 61.0, yPct: 24.0, danger: 'Médio' },
+  { id: 'poi-charter-mansion', name: 'Mansões de Charter Hill', districtId: 'charter-hill', type: 'Residências Fortificadas', xPct: 72.0, yPct: 32.5, danger: 'Alto para Invasores' },
+  { id: 'poi-afterlife', name: 'The Afterlife Bar', districtId: 'little-china', type: 'Bar Lendário de Mercenários', xPct: 58.0, yPct: 51.0, danger: 'Médio / Trégua Armada' },
+  { id: 'poi-hotzone-crater', name: 'Cratera da Bomba de 2022', districtId: 'the-hot-zone', type: 'Marco Zero Nuclear', xPct: 47.4, yPct: 49.6, danger: 'Extremo / Radiação' },
+  { id: 'poi-ncpd-cityhall', name: 'Prefeitura & Corte Cívica', districtId: 'downtown', type: 'Governo Municipal', xPct: 30.1, yPct: 48.0, danger: 'Baixo' },
+  { id: 'poi-coyote', name: 'Bar El Coyote Cojo', districtId: 'the-glen', type: 'Território Valentinos', xPct: 44.0, yPct: 63.5, danger: 'Baixo' },
+  { id: 'poi-ncpd-glen', name: 'Delegacia DPNC The Glen', districtId: 'the-glen', type: 'Fortaleza Policial', xPct: 42.5, yPct: 61.0, danger: 'Médio' },
+  { id: 'poi-cherry', name: 'Santuário Cherry Blossom', districtId: 'old-japantown', type: 'Parque Shinto Tradicional', xPct: 54.0, yPct: 59.5, danger: 'Médio' },
+  { id: 'poi-inquisitor-cathedral', name: 'Catedral dos Inquisidores', districtId: 'old-combat-zone', type: 'Covil Extremista', xPct: 51.0, yPct: 67.0, danger: 'Extremo' },
+  { id: 'poi-san-morro-bridge', name: 'Ponte San Morro', districtId: 'heywood-docks', type: 'Conexão Rodoviária', xPct: 68.0, yPct: 60.5, danger: 'Médio' },
+  { id: 'poi-6th-hq', name: 'QG Fortaleza da 6th Street', districtId: 'santo-domingo', type: 'Armazém Militarizado', xPct: 71.0, yPct: 78.5, danger: 'Alto' },
+  { id: 'poi-battys', name: "Batty's Hotel", districtId: 'pacifica-playground', type: 'Cripta Voodoo Boys', xPct: 34.0, yPct: 84.5, danger: 'Extremo' },
+  { id: 'poi-gim', name: 'Grand Imperial Mall (GIM)', districtId: 'pacifica-playground', type: 'Arena de Luta dos Animais', xPct: 35.5, yPct: 88.0, danger: 'Extremo' },
+  { id: 'poi-morro-rock', name: 'Torre de Lançamento Morro Rock', districtId: 'morro-rock', type: 'Porto Espacial Orbital', xPct: 19.5, yPct: 38.5, danger: 'Extremo' },
+  { id: 'poi-aldecaldo', name: 'Acampamento Aldecaldo', districtId: 'badlands', type: 'Cidade de Carretas', xPct: 88.0, yPct: 48.0, danger: 'Baixo para Aliados' },
 ];
 
 export type WorldTab =
@@ -238,9 +208,11 @@ export const WorldPage: React.FC = () => {
 
   // MAP ENHANCED STATE
   const viewportRef = useRef<HTMLDivElement>(null);
-  const [selectedDistrictId, setSelectedDistrictId] = useState<string>('watson');
-  const selectedDistrict = NIGHT_CITY_DISTRICTS.find(d => d.id === selectedDistrictId) || NIGHT_CITY_DISTRICTS[0];
-  const [mapSource, setMapSource] = useState<'2045' | 'atlas'>('2045');
+  const [selectedDistrictId, setSelectedDistrictId] = useState<string>('the-hot-zone');
+  const selectedDistrict = NIGHT_CITY_DISTRICTS.find(d => d.id === selectedDistrictId)
+    || NIGHT_CITY_DISTRICTS.find(d => d.id === DISTRICT_LEGACY_ALIASES[selectedDistrictId])
+    || NIGHT_CITY_DISTRICTS[0];
+  const [mapSource, setMapSource] = useState<'2045' | 'atlas'>('atlas');
   const [zoomLevel, setZoomLevel] = useState<number>(1);
   const [filterGangs, setFilterGangs] = useState<boolean>(true);
   const [filterPOIs, setFilterPOIs] = useState<boolean>(true);
@@ -265,7 +237,7 @@ export const WorldPage: React.FC = () => {
   const [showAddPinModal, setShowAddPinModal] = useState<boolean>(false);
   const [newPinName, setNewPinName] = useState<string>('');
   const [newPinType, setNewPinType] = useState<string>('Clube / Bar Noturno');
-  const [newPinDistrict, setNewPinDistrict] = useState<string>('watson');
+  const [newPinDistrict, setNewPinDistrict] = useState<string>('the-hot-zone');
   const [newPinDanger, setNewPinDanger] = useState<string>('Médio');
   const [newPinGangId, setNewPinGangId] = useState<string>('');
   const [newPinColor, setNewPinColor] = useState<string>('amber');
@@ -1103,24 +1075,24 @@ export const WorldPage: React.FC = () => {
               </span>
               <div className="flex items-center bg-[#0a0a0d] border border-[#27272a] rounded-lg p-0.5">
                 <button
-                  onClick={() => setMapSource('2045')}
-                  className={`px-3 py-1 rounded-md text-xs font-mono transition ${
-                    mapSource === '2045'
-                      ? 'bg-red-600 text-white font-bold'
-                      : 'text-zinc-400 hover:text-zinc-200'
-                  }`}
-                >
-                  Night City 2045
-                </button>
-                <button
                   onClick={() => setMapSource('atlas')}
                   className={`px-3 py-1 rounded-md text-xs font-mono transition ${
                     mapSource === 'atlas'
-                      ? 'bg-amber-600 text-white font-bold'
+                      ? 'bg-red-600 text-white font-bold shadow-sm'
                       : 'text-zinc-400 hover:text-zinc-200'
                   }`}
                 >
-                  Atlas HD (Saga MacKenzie)
+                  Atlas Oficial 2045 (Com Distritos)
+                </button>
+                <button
+                  onClick={() => setMapSource('2045')}
+                  className={`px-3 py-1 rounded-md text-xs font-mono transition ${
+                    mapSource === '2045'
+                      ? 'bg-amber-600 text-white font-bold shadow-sm'
+                      : 'text-zinc-400 hover:text-zinc-200'
+                  }`}
+                >
+                  Visão Tática (Sem Rótulos)
                 </button>
               </div>
             </div>
@@ -1237,17 +1209,17 @@ export const WorldPage: React.FC = () => {
             <div className="lg:col-span-8 p-3 rounded-2xl bg-[#121217] border border-[#27272a] space-y-3 shadow-sm">
               <div className="flex items-center justify-between text-xs font-mono text-zinc-400 px-1">
                 <span>
-                  MAPA: <strong className="text-zinc-200">{mapSource === '2045' ? 'NIGHT CITY 2045 (CORE RED)' : 'ATLAS HD (SAGA MACKENZIE)'}</strong>
+                  MAPA: <strong className="text-zinc-200">{mapSource === 'atlas' ? 'ATLAS OFICIAL NIGHT CITY 2045 (R. TALSORIAN GAMES)' : 'MAPA TÁTICO MINIMALISTA (SEM TEXTO)'}</strong>
                 </span>
                 <span className="text-[11px] text-zinc-500">
                   Clique e arraste com o mouse para mover • Roda do mouse amplia
                 </span>
               </div>
 
-              {/* Viewport Box */}
+              {/* Viewport Box - Aspect Ratio calibrated directly to 6600x5894 map image */}
               <div
                 ref={viewportRef}
-                className="relative w-full aspect-[4/3] bg-[#09090c] rounded-xl border border-[#1f1f26] overflow-hidden select-none shadow-inner"
+                className="relative w-full aspect-[6600/5894] max-h-[85vh] bg-[#09090c] rounded-xl border border-[#1f1f26] overflow-hidden select-none shadow-inner"
                 onMouseDown={onMouseDownMap}
                 onMouseMove={onMouseMoveMap}
                 onMouseUp={onMouseUpMap}
@@ -1279,9 +1251,9 @@ export const WorldPage: React.FC = () => {
                 >
                   {/* Official High-Resolution Map Image */}
                   <img
-                    src={mapSource === '2045' ? '/nc_2045_map_0.jpg' : '/map_extract_0.jpg'}
+                    src={mapSource === 'atlas' ? '/map_extract_0.jpg' : '/nc_2045_map_0.jpg'}
                     alt="Night City Map"
-                    className="w-full h-full object-cover rounded-lg filter brightness-90 contrast-105 pointer-events-none select-none"
+                    className="w-full h-full object-fill rounded-lg filter brightness-95 contrast-105 pointer-events-none select-none"
                     draggable={false}
                   />
 
@@ -2171,7 +2143,7 @@ export const WorldPage: React.FC = () => {
                       >
                         {NIGHT_CITY_DISTRICTS.map(d => (
                           <option key={d.id} value={d.id}>
-                            {d.name.split(' ')[0]}
+                            {d.name}
                           </option>
                         ))}
                       </select>
