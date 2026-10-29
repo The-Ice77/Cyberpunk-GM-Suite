@@ -558,9 +558,9 @@ export const NetrunningPage: React.FC = () => {
             <div className="space-y-6">
               {/* Controls Bar: Target Org, Difficulty Preset & Buttons */}
               <div className="p-5 rounded-2xl bg-[#121217] border border-[#27272a] space-y-4">
-                <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+                <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4">
                   {/* Target Org Selection */}
-                  <div className="space-y-1 w-full lg:w-1/3">
+                  <div className="space-y-1 w-full xl:w-1/3">
                     <label className="text-xs font-mono uppercase text-zinc-400 font-semibold block">
                       Organização / Alvo da Invasão:
                     </label>
@@ -583,7 +583,7 @@ export const NetrunningPage: React.FC = () => {
                   </div>
 
                   {/* Difficulty Presets (Cyberpunk RED Official Rules) */}
-                  <div className="space-y-1 w-full lg:w-auto">
+                  <div className="space-y-1 w-full xl:w-auto">
                     <label className="text-xs font-mono uppercase text-zinc-400 font-semibold block">
                       Dificuldade Oficial (Regras Corebook):
                     </label>
@@ -610,7 +610,7 @@ export const NetrunningPage: React.FC = () => {
                   </div>
 
                   {/* Generation Action Buttons */}
-                  <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full lg:w-auto pt-2 lg:pt-0">
+                  <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto pt-2 xl:pt-0">
                     <button
                       onClick={handleGenerateREDArchitecture}
                       className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-100 font-semibold text-xs uppercase tracking-wider transition border border-zinc-700 flex items-center justify-center gap-1.5"

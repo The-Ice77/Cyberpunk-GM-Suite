@@ -1530,7 +1530,7 @@ ${generatedScene.twist}`;
               </div>
 
               {/* Preset Adventure Themes Selector */}
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
                 <span className="text-[11px] font-mono text-zinc-400 shrink-0">Temas Clássicos:</span>
                 <select
                   value={selectedPresetTheme}
@@ -1555,16 +1555,16 @@ ${generatedScene.twist}`;
             </div>
 
             {/* Input & Dual Action Buttons */}
-            <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
+            <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3">
               <input
                 type="text"
                 placeholder="Tema ou gancho da aventura (ex: Assalto ao laboratório da Biotechnica, vingança contra o Maelstrom...)"
                 value={beatThemeInput}
                 onChange={e => setBeatThemeInput(e.target.value)}
-                className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-xl px-3.5 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-cyan-500 font-sans"
+                className="w-full min-w-0 bg-[#0a0a0d] border border-[#27272a] rounded-xl px-3.5 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-cyan-500 font-sans"
               />
 
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex flex-wrap items-center gap-2">
                 {/* 1. Procedural Offline Roll Button */}
                 <button
                   onClick={handleRollProceduralBeatChart}

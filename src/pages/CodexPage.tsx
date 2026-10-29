@@ -527,8 +527,8 @@ export const CodexPage: React.FC = () => {
       {activeTab === 'official' && (
         <div className="space-y-6">
           {/* Sub-selector: Bestiário vs Regras */}
-          <div className="flex items-center justify-between bg-[#121217] p-2 rounded-2xl border border-[#27272a]">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 bg-[#121217] p-2 rounded-2xl border border-[#27272a]">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={() => setOfficialSubTab('bestiary')}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium transition ${

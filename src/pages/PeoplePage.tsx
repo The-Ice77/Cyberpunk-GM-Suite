@@ -2503,7 +2503,7 @@ Táticas: ${generatedNPC.tactics}`;
                     </div>
 
                     {/* Actions: Edit, Save, Send to Combat, Copy */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <button
                         onClick={() => handleOpenEdit(generatedNPC, 'enemy')}
                         className="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-amber-300 hover:text-amber-200 border border-amber-600/50 text-xs font-medium flex items-center gap-1.5 transition shadow"
@@ -2986,7 +2986,7 @@ Táticas: ${generatedNPC.tactics}`;
                     </div>
 
                     {/* Actions: Edit, Save, Copy */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <button
                         onClick={() => handleOpenEdit(generatedCivilian, 'civilian')}
                         className="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-amber-300 hover:text-amber-200 border border-amber-600/50 text-xs font-medium flex items-center gap-1.5 transition shadow"
@@ -3992,7 +3992,7 @@ Táticas: ${generatedNPC.tactics}`;
                     </div>
 
                     {/* Actions: Edit, Combat, Save, Copy */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <button
                         onClick={() => handleOpenEdit(generatedPet, 'pet')}
                         className="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-amber-300 hover:text-amber-200 border border-amber-600/50 text-xs font-medium flex items-center gap-1.5 transition shadow"

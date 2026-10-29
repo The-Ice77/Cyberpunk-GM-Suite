@@ -237,7 +237,7 @@ ${r.lootText ? `Saque Especial: ${r.lootText}` : ''}
           </h2>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={handleCopyDossier}
@@ -376,11 +376,11 @@ ${r.lootText ? `Saque Especial: ${r.lootText}` : ''}
         )}
 
         {/* Action Triggers */}
-        <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
           <button
             type="button"
             onClick={handleGenerateProcedural}
-            className="w-full sm:flex-1 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-zinc-200 font-mono text-xs font-semibold transition border border-zinc-700 flex items-center justify-center gap-2 shadow"
+            className="w-full py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-zinc-200 font-mono text-xs font-semibold transition border border-zinc-700 flex items-center justify-center gap-2 shadow"
           >
             <Dices className="w-4 h-4 text-purple-400" />
             <span>🎲 Gerar Planta Baixa por Regras Oficiais (Offline)</span>
@@ -390,7 +390,7 @@ ${r.lootText ? `Saque Especial: ${r.lootText}` : ''}
             type="button"
             onClick={handleGenerateAI}
             disabled={isLoadingAI}
-            className="w-full sm:flex-1 py-3 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 hover:from-purple-500 hover:to-red-500 active:scale-95 text-white font-mono text-xs font-bold transition flex items-center justify-center gap-2 shadow-lg disabled:opacity-50"
+            className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 hover:from-purple-500 hover:to-red-500 active:scale-95 text-white font-mono text-xs font-bold transition flex items-center justify-center gap-2 shadow-lg disabled:opacity-50"
           >
             <Sparkles className={`w-4 h-4 text-yellow-200 ${isLoadingAI ? 'animate-spin' : ''}`} />
             <span>{isLoadingAI ? 'Sintetizando Estrutura com IA...' : '⚡ Forjar Estrutura com IA Co-GM (Gemini)'}</span>
@@ -725,7 +725,7 @@ ${r.lootText ? `Saque Especial: ${r.lootText}` : ''}
                 )}
               </div>
 
-              <div className="flex items-center gap-1.5 text-zinc-400">
+              <div className="flex flex-wrap items-center gap-1.5 text-zinc-400">
                 <span>Passagens Diretas:</span>
                 {selectedRoom.connectedRoomNumbers.map(cNum => (
                   <button

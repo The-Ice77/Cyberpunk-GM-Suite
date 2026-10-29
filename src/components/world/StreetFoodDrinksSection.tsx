@@ -541,7 +541,7 @@ ${
             <span className="text-[11px] font-mono text-zinc-500">
               Disponível para consumo imediato nas ruas de Night City.
             </span>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={() => {
                   if (activeSubTab === 'food') handleRollFood();
@@ -566,14 +566,14 @@ ${
       )}
 
       {/* CATEGORY FILTER CHIPS ROW */}
-      <div className="space-y-1.5">
+      <div className="space-y-1.5 min-w-0 max-w-full">
         <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 font-bold flex items-center gap-1.5">
           <Tag className="w-3 h-3 text-orange-400" />
           <span>Filtrar por Categoria / Cultura:</span>
         </span>
 
         {activeSubTab === 'food' && (
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs whitespace-nowrap">
+          <div className="flex flex-wrap items-center gap-1.5 text-xs">
             {[
               { id: 'all', label: `Todas as Comidas (${STREET_FOOD_TABLE.length})` },
               { id: 'asiatica', label: '🍜 Asiática (Kabuki)' },
@@ -602,7 +602,7 @@ ${
         )}
 
         {activeSubTab === 'drinks' && (
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs whitespace-nowrap">
+          <div className="flex flex-wrap items-center gap-1.5 text-xs">
             {[
               { id: 'all', label: `Todas as Bebidas (${STREET_DRINKS_TABLE.length})` },
               { id: 'cocktails', label: '🍸 Coquetéis de Balcão' },
@@ -629,7 +629,7 @@ ${
         )}
 
         {activeSubTab === 'vendit' && (
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs whitespace-nowrap">
+          <div className="flex flex-wrap items-center gap-1.5 text-xs">
             {[
               { id: 'all', label: `Todos os Itens (${VENDIT_MACHINE_TABLE.length})` },
               { id: 'higiene', label: '🩹 Higiene & Remédios' },

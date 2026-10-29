@@ -189,7 +189,7 @@ ${
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-cyan-600/10 rounded-full blur-3xl pointer-events-none" />
 
         {/* Top Header Bar */}
-        <div className="p-4 border-b border-[#27272a] bg-[#121217]/90 flex items-center justify-between shrink-0 relative z-10">
+        <div className="p-4 border-b border-[#27272a] bg-[#121217]/90 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shrink-0 relative z-10">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-purple-600 to-pink-600 flex items-center justify-center text-white shadow-md shadow-purple-950/50">
               <Sparkles className="w-5 h-5 text-amber-200" />
@@ -206,7 +206,7 @@ ${
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
             {/* View Switch: Reading vs Compendium */}
             <div className="flex items-center bg-[#1a1a24] p-0.5 rounded-lg border border-zinc-800 text-xs font-mono">
               <button
@@ -323,7 +323,7 @@ ${
 
                 {/* Actions Toolbar */}
                 <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <button
                       onClick={() => handleDrawCards(spreadType)}
                       className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-mono font-medium flex items-center gap-1.5 transition"
@@ -340,7 +340,7 @@ ${
                     </button>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <button
                       onClick={handleCopyReading}
                       className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-mono font-medium flex items-center gap-1.5 transition"
