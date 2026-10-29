@@ -18,8 +18,16 @@ import {
   Swords,
   Dice5,
   Check,
+  Network,
+  Terminal,
+  Zap,
+  Hammer,
+  Footprints,
+  Key,
+  RefreshCw,
 } from 'lucide-react';
 import { useCombat, Combatant } from '../../context/CombatContext';
+import { RED_BLACK_ICE_ROSTER } from '../../data/netrunningData';
 
 interface CombatDrawerProps {
   isOpen: boolean;
@@ -93,6 +101,14 @@ export const CombatDrawer: React.FC<CombatDrawerProps> = ({ isOpen, onClose, onO
   // VISUAL APPEARANCE MODAL STATE
   const [editingAppearanceCombatant, setEditingAppearanceCombatant] = useState<Combatant | null>(null);
   const [tempAppearance, setTempAppearance] = useState<string>('');
+
+  // NETRUNNING COMBAT MODAL STATE
+  const [netrunningCombatant, setNetrunningCombatant] = useState<Combatant | null>(null);
+  const [netrunInterfaceRank, setNetrunInterfaceRank] = useState<number>(6);
+  const [netrunActionsLeft, setNetrunActionsLeft] = useState<number>(3);
+  const [selectedIceIdx, setSelectedIceIdx] = useState<number>(0);
+  const [currentIceHp, setCurrentIceHp] = useState<number>(20);
+  const [netrunLog, setNetrunLog] = useState<string[]>([]);
 
   if (!isOpen) return null;
 
@@ -381,6 +397,27 @@ export const CombatDrawer: React.FC<CombatDrawerProps> = ({ isOpen, onClose, onO
                     >
                       <Crosshair className="w-3 h-3" />
                       <span>Atacar</span>
+                    </button>
+
+                    {/* Netrun Button */}
+                    <button
+                      onClick={() => {
+                        setNetrunningCombatant(c);
+                        const defaultIce = RED_BLACK_ICE_ROSTER[0];
+                        setSelectedIceIdx(0);
+                        setCurrentIceHp(defaultIce.hp);
+                        setNetrunInterfaceRank(6);
+                        setNetrunActionsLeft(3);
+                        setNetrunLog([
+                          `[JACK IN COMBATE] ${c.name} conectou ao ponto de acesso físico no calor do combate!`,
+                          `Engajado contra Black ICE: ${defaultIce.name} [HP: ${defaultIce.hp}, DEF: ${defaultIce.def}, ATK: ${defaultIce.atk}].`,
+                        ]);
+                      }}
+                      className="px-2 py-1 rounded bg-purple-950/80 hover:bg-purple-900 border border-purple-700/60 text-purple-300 text-[10px] font-mono font-bold flex items-center gap-1 transition"
+                      title="Ações de Netrunning no Turno de Combate"
+                    >
+                      <Network className="w-3 h-3 text-purple-400" />
+                      <span>Netrun</span>
                     </button>
 
                     {/* Appearance Button */}
@@ -947,6 +984,309 @@ export const CombatDrawer: React.FC<CombatDrawerProps> = ({ isOpen, onClose, onO
           </div>
         </div>
       )}
+
+      {/* MODAL: FAST NETRUNNING IN COMBAT */}
+      {netrunningCombatant && (() => {
+        const ice = RED_BLACK_ICE_ROSTER[selectedIceIdx] || RED_BLACK_ICE_ROSTER[0];
+        const isIceDead = currentIceHp <= 0;
+
+        const handleSwordAttack = () => {
+          if (netrunActionsLeft <= 0) {
+            alert('Ações de Interface esgotadas nesta rodada! Clique em "Encerrar Turno NET".');
+            return;
+          }
+          const d10 = Math.floor(Math.random() * 10) + 1;
+          const total = d10 + netrunInterfaceRank;
+          const hit = total >= ice.def;
+          setNetrunActionsLeft(prev => prev - 1);
+
+          if (hit) {
+            const dmg = (Math.floor(Math.random() * 6) + 1) + (Math.floor(Math.random() * 6) + 1) + (Math.floor(Math.random() * 6) + 1);
+            const newHp = Math.max(0, currentIceHp - dmg);
+            setCurrentIceHp(newHp);
+            setNetrunLog(prev => [
+              ...prev,
+              newHp === 0
+                ? `⚔️ [SWORD DE-REZ! Total ${total} vs DEF ${ice.def}]: Causou ${dmg} de dano! ${ice.name} foi COMPLETAMENTE DESTRUÍDO!`
+                : `⚔️ [SWORD ACERTOU! Total ${total} vs DEF ${ice.def}]: Causou ${dmg} de dano ao ${ice.name}! HP restante: ${newHp}/${ice.hp}.`,
+            ]);
+          } else {
+            setNetrunLog(prev => [
+              ...prev,
+              `❌ [SWORD ERROU! Total ${total} vs DEF ${ice.def}]: O ataque desviou pelo buffer do ${ice.name}!`,
+            ]);
+          }
+        };
+
+        const handleBanhammerAttack = () => {
+          if (netrunActionsLeft <= 0) {
+            alert('Ações de Interface esgotadas nesta rodada! Clique em "Encerrar Turno NET".');
+            return;
+          }
+          const d10 = Math.floor(Math.random() * 10) + 1;
+          const total = d10 + netrunInterfaceRank;
+          const hit = total >= ice.def;
+          setNetrunActionsLeft(prev => prev - 1);
+
+          if (hit) {
+            const dmg = (Math.floor(Math.random() * 6) + 1) + (Math.floor(Math.random() * 6) + 1) + (Math.floor(Math.random() * 6) + 1) + 2;
+            const newHp = Math.max(0, currentIceHp - dmg);
+            setCurrentIceHp(newHp);
+            setNetrunLog(prev => [
+              ...prev,
+              newHp === 0
+                ? `🔨 [BANHAMMER ESMAGOU! Total ${total} vs DEF ${ice.def}]: Causou ${dmg} de dano! ${ice.name} foi DELETADO DA MEMÓRIA!`
+                : `🔨 [BANHAMMER ACERTOU! Total ${total} vs DEF ${ice.def}]: Causou ${dmg} de dano pesado ao ${ice.name}! HP restante: ${newHp}/${ice.hp}.`,
+            ]);
+          } else {
+            setNetrunLog(prev => [
+              ...prev,
+              `❌ [BANHAMMER ERROU! Total ${total} vs DEF ${ice.def}]: O martelo errou a matriz de código!`,
+            ]);
+          }
+        };
+
+        const handleSlideAction = () => {
+          if (netrunActionsLeft <= 0) {
+            alert('Ações de Interface esgotadas nesta rodada!');
+            return;
+          }
+          const d10 = Math.floor(Math.random() * 10) + 1;
+          const total = d10 + netrunInterfaceRank;
+          const dv = 13 + ice.spd;
+          setNetrunActionsLeft(prev => prev - 1);
+
+          if (total >= dv) {
+            setNetrunLog(prev => [
+              ...prev,
+              `💨 [SLIDE SUCESSO! Total ${total} vs DV ${dv}]: O Netrunner quebrou a trava de mira do ${ice.name} e pode se mover livremente!`,
+            ]);
+          } else {
+            setNetrunLog(prev => [
+              ...prev,
+              `❌ [SLIDE FALHOU! Total ${total} vs DV ${dv}]: O ${ice.name} manteve a mira neural travada!`,
+            ]);
+          }
+        };
+
+        const handleBlackIceAttack = () => {
+          const d10Atk = Math.floor(Math.random() * 10) + 1 + ice.atk;
+          const d10Def = Math.floor(Math.random() * 10) + 1 + netrunInterfaceRank;
+
+          if (d10Atk > d10Def) {
+            const dmg = (Math.floor(Math.random() * 6) + 1) + (Math.floor(Math.random() * 6) + 1); // 2d6
+            updateHP(netrunningCombatant.id, -dmg);
+            setNetrunLog(prev => [
+              ...prev,
+              `💥 [CONTRA-ATAQUE DO ${ice.name}]: ACERTOU! (ATK ${d10Atk} vs DEF ${d10Def}). Causou ${dmg} de dano cerebral direto a ${netrunningCombatant.name}!`,
+            ]);
+          } else {
+            setNetrunLog(prev => [
+              ...prev,
+              `🛡️ [DEFESA BEM SUCEDIDA]: ${netrunningCombatant.name} desviou do ataque de ${ice.name}! (DEF ${d10Def} vs ATK ${d10Atk}).`,
+            ]);
+          }
+        };
+
+        const handleEndNetRound = () => {
+          if (currentIceHp > 0) {
+            handleBlackIceAttack();
+          }
+          setNetrunActionsLeft(3);
+          setNetrunLog(prev => [
+            ...prev,
+            `--- Nova Rodada NET iniciada (3 Ações de Interface recarregadas) ---`,
+          ]);
+        };
+
+        return (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+            <div className="bg-[#121217] border border-purple-600/70 rounded-2xl max-w-lg w-full p-4 sm:p-6 space-y-4 shadow-2xl text-xs max-h-[92vh] overflow-y-auto font-sans">
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
+                <div className="flex items-center gap-2">
+                  <Terminal className="w-5 h-5 text-purple-400" />
+                  <div>
+                    <h3 className="text-sm font-bold text-zinc-100 uppercase font-mono">
+                      Console NET em Combate
+                    </h3>
+                    <span className="text-[10px] text-purple-400 font-mono">
+                      Netrunner: {netrunningCombatant.name}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setNetrunningCombatant(null)}
+                  className="p-1 rounded text-zinc-400 hover:text-zinc-200"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Status bar: Meat HP & Net Actions */}
+              <div className="grid grid-cols-2 gap-2 text-center font-mono">
+                <div className="p-2.5 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-1">
+                  <span className="text-[10px] text-zinc-400 block uppercase">HP Físico / Neural</span>
+                  <span className="text-sm font-bold text-emerald-400 block">
+                    {netrunningCombatant.currentHP} / {netrunningCombatant.maxHP} HP
+                  </span>
+                  <div className="h-1 w-full bg-zinc-800 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-emerald-500"
+                      style={{
+                        width: `${Math.max(0, Math.min(100, (netrunningCombatant.currentHP / netrunningCombatant.maxHP) * 100))}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-[#0a0a0d] border border-purple-900/60 space-y-1">
+                  <span className="text-[10px] text-purple-400 block uppercase">Ações de Interface</span>
+                  <span className="text-sm font-bold text-purple-300 block">
+                    {netrunActionsLeft} / 3 Restantes
+                  </span>
+                  <span className="text-[9px] text-zinc-500 block">Rank de Interface {netrunInterfaceRank}</span>
+                </div>
+              </div>
+
+              {/* Target Black ICE Selection & Stat Card */}
+              <div className="p-3.5 rounded-xl bg-black/60 border border-red-900/50 space-y-2.5 font-mono">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] uppercase font-bold text-red-400 flex items-center gap-1.5">
+                    <Skull className="w-3.5 h-3.5" /> Alvo Black ICE Engajado:
+                  </span>
+                  <select
+                    value={selectedIceIdx}
+                    onChange={e => {
+                      const idx = parseInt(e.target.value);
+                      setSelectedIceIdx(idx);
+                      const newIce = RED_BLACK_ICE_ROSTER[idx] || RED_BLACK_ICE_ROSTER[0];
+                      setCurrentIceHp(newIce.hp);
+                      setNetrunLog(prev => [
+                        ...prev,
+                        `[ALVO ALTERADO] Netrunner engajou ${newIce.name} [HP: ${newIce.hp}, DEF: ${newIce.def}, ATK: ${newIce.atk}].`,
+                      ]);
+                    }}
+                    className="bg-[#0a0a0d] border border-zinc-700 rounded px-2 py-1 text-zinc-200 text-xs"
+                  >
+                    {RED_BLACK_ICE_ROSTER.map((b, bIdx) => (
+                      <option key={b.name} value={bIdx}>
+                        {b.name} ({b.hp} HP)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Black ICE HP Bar */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-zinc-400">Integridade do {ice.name}:</span>
+                    <span className={`font-bold ${isIceDead ? 'text-zinc-500 line-through' : 'text-red-400'}`}>
+                      {currentIceHp} / {ice.hp} HP {isIceDead ? '(DE-REZZADO)' : ''}
+                    </span>
+                  </div>
+                  <div className="h-2 w-full bg-zinc-900 rounded-full overflow-hidden border border-zinc-800">
+                    <div
+                      className="h-full bg-gradient-to-r from-red-600 to-amber-500 transition-all duration-300"
+                      style={{ width: `${Math.max(0, Math.min(100, (currentIceHp / ice.hp) * 100))}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Stats */}
+                <div className="grid grid-cols-4 gap-2 text-center text-[10px]">
+                  <div className="bg-zinc-900 p-1 rounded">SPD: <strong className="text-zinc-100">{ice.spd}</strong></div>
+                  <div className="bg-zinc-900 p-1 rounded">HP: <strong className="text-zinc-100">{currentIceHp}</strong></div>
+                  <div className="bg-zinc-900 p-1 rounded">ATK: <strong className="text-red-400">{ice.atk}</strong></div>
+                  <div className="bg-zinc-900 p-1 rounded">DEF: <strong className="text-cyan-400">{ice.def}</strong></div>
+                </div>
+              </div>
+
+              {/* Combat Action Buttons */}
+              <div className="space-y-2">
+                <span className="text-[10px] font-mono uppercase text-zinc-400 font-semibold block">
+                  Ações de Interface Rápidas:
+                </span>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    onClick={handleSwordAttack}
+                    disabled={isIceDead}
+                    className="p-2 rounded-lg bg-red-950/80 hover:bg-red-900 border border-red-700/60 text-red-200 text-left transition flex flex-col font-mono disabled:opacity-40"
+                  >
+                    <span className="font-bold text-[11px] flex items-center gap-1">
+                      <Crosshair className="w-3 h-3 text-red-400" /> Sword
+                    </span>
+                    <span className="text-[9px] text-zinc-400">3d6 vs DEF {ice.def}</span>
+                  </button>
+
+                  <button
+                    onClick={handleBanhammerAttack}
+                    disabled={isIceDead}
+                    className="p-2 rounded-lg bg-amber-950/80 hover:bg-amber-900 border border-amber-700/60 text-amber-200 text-left transition flex flex-col font-mono disabled:opacity-40"
+                  >
+                    <span className="font-bold text-[11px] flex items-center gap-1">
+                      <Hammer className="w-3 h-3 text-amber-400" /> Banhammer
+                    </span>
+                    <span className="text-[9px] text-zinc-400">3d6+2 Dano</span>
+                  </button>
+
+                  <button
+                    onClick={handleSlideAction}
+                    disabled={isIceDead}
+                    className="p-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-200 text-left transition flex flex-col font-mono disabled:opacity-40"
+                  >
+                    <span className="font-bold text-[11px] flex items-center gap-1">
+                      <Footprints className="w-3 h-3 text-cyan-400" /> Slide
+                    </span>
+                    <span className="text-[9px] text-zinc-400">DV {13 + ice.spd}</span>
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <button
+                    onClick={handleBlackIceAttack}
+                    disabled={isIceDead}
+                    className="py-2 px-3 rounded-xl bg-red-950 hover:bg-red-900 border border-red-800 text-red-300 font-mono text-xs flex items-center justify-center gap-1.5 transition disabled:opacity-40"
+                  >
+                    <Skull className="w-3.5 h-3.5 text-red-400" />
+                    <span>Contra-Ataque ICE</span>
+                  </button>
+
+                  <button
+                    onClick={handleEndNetRound}
+                    className="py-2 px-3 rounded-xl bg-purple-700 hover:bg-purple-600 text-white font-mono text-xs font-bold uppercase flex items-center justify-center gap-1.5 transition shadow"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Fim Turno NET</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Combat Run Log */}
+              <div className="space-y-1 pt-1">
+                <span className="text-[10px] font-mono text-zinc-500 uppercase block">Log de Combate Neural:</span>
+                <div className="p-3 rounded-lg bg-black/80 border border-zinc-800 text-[11px] font-mono text-zinc-300 max-h-40 overflow-y-auto space-y-1">
+                  {netrunLog.map((log, idx) => (
+                    <div key={idx} className="leading-snug">
+                      {log}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="pt-2 border-t border-[#27272a] flex justify-end">
+                <button
+                  onClick={() => setNetrunningCombatant(null)}
+                  className="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-semibold"
+                >
+                  Fechar Console NET
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   </>
   );

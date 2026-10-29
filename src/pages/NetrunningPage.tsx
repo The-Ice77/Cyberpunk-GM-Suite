@@ -28,8 +28,18 @@ import {
   Play,
   LogOut,
   RefreshCw,
+  ArrowUp,
+  ArrowDown,
+  Hammer,
+  Sword as SwordIcon,
+  Heart,
+  ShieldAlert,
+  Footprints,
+  User,
+  Activity,
 } from 'lucide-react';
 import { useSystem } from '../context/SystemContext';
+import { useCombat } from '../context/CombatContext';
 import { RED_BLACK_ICE_ROSTER, CP2020_PROGRAMS_ROSTER, DATA_FORTRESS_THEMES_2020, BlackIceStatBlock } from '../data/netrunningData';
 import { MICRO_NET_SYSTEMS, MicroNetSystem } from '../data/microNetrunningData';
 import { generateAINetArchitecture } from '../services/aiService';
@@ -41,13 +51,35 @@ interface FloorItem {
   dv?: number;
   description: string;
   blackIce?: BlackIceStatBlock;
+  blackIceCurrentHp?: number;
+  blackIceMaxHp?: number;
+  blackIceDefeated?: boolean;
+  blackIceSlid?: boolean;
   cleared?: boolean;
 }
+
+interface NetrunnerPrograms {
+  sword: boolean;
+  banhammer: boolean;
+  zap: boolean;
+  armor: boolean;
+  shield: boolean;
+  worm: boolean;
+  speedbrute: boolean;
+}
+
+export const getMaxNetActionsForRank = (rank: number): number => {
+  if (rank <= 3) return 2;
+  if (rank <= 6) return 3;
+  if (rank <= 9) return 4;
+  return 5;
+};
 
 type NetDifficultyTier = 'basic' | 'standard' | 'advanced' | 'fortress' | 'custom';
 
 export const NetrunningPage: React.FC = () => {
   const { system, isRed } = useSystem();
+  const { combatants, updateHP } = useCombat();
   const [activeSubTab, setActiveSubTab] = useState<'architecture' | 'micro-net' | 'catalog'>('architecture');
 
   // RED Elevator Architecture Generator State
@@ -62,11 +94,25 @@ export const NetrunningPage: React.FC = () => {
   // INTERACTIVE RUN STATE (JACK IN)
   const [isJackedIn, setIsJackedIn] = useState<boolean>(false);
   const [currentFloorIndex, setCurrentFloorIndex] = useState<number>(0);
-  const [netActionsLeft, setNetActionsLeft] = useState<number>(3);
+  const [interfaceSkill, setInterfaceSkill] = useState<number>(6);
   const [maxNetActions, setMaxNetActions] = useState<number>(3);
+  const [netActionsLeft, setNetActionsLeft] = useState<number>(3);
   const [runLog, setRunLog] = useState<string[]>([]);
   const [netrunnerBrainHP, setNetrunnerBrainHP] = useState<number>(35);
+  const [netrunnerBrainMaxHP, setNetrunnerBrainMaxHP] = useState<number>(35);
   const [collectedEddiesLoot, setCollectedEddiesLoot] = useState<number>(0);
+  const [selectedCombatantId, setSelectedCombatantId] = useState<string>('');
+
+  // Cyberdeck Programs Loaded
+  const [loadedPrograms, setLoadedPrograms] = useState<NetrunnerPrograms>({
+    sword: true,
+    banhammer: true,
+    zap: true,
+    armor: true,
+    shield: true,
+    worm: false,
+    speedbrute: false,
+  });
 
   // 2020 Datafortress Generator State
   const [datafortress, setDatafortress] = useState<{
@@ -82,7 +128,6 @@ export const NetrunningPage: React.FC = () => {
   // MICRO-NETRUNNING STATE
   const [microCategory, setMicroCategory] = useState<string>('Todos');
   const [selectedMicroSystem, setSelectedMicroSystem] = useState<MicroNetSystem>(MICRO_NET_SYSTEMS[0]);
-  const [interfaceSkill, setInterfaceSkill] = useState<number>(6);
   const [hackResults, setHackResults] = useState<{
     [level: number]: { roll: number; total: number; success: boolean; text: string };
   }>({});
@@ -195,7 +240,19 @@ export const NetrunningPage: React.FC = () => {
         }
       }
 
-      floors.push({ floorNumber: f, type, title, dv, description: desc, blackIce, cleared: false });
+      floors.push({
+        floorNumber: f,
+        type,
+        title,
+        dv,
+        description: desc,
+        blackIce,
+        blackIceCurrentHp: blackIce ? blackIce.hp : undefined,
+        blackIceMaxHp: blackIce ? blackIce.hp : undefined,
+        blackIceDefeated: false,
+        blackIceSlid: false,
+        cleared: false,
+      });
     }
 
     setNetworkName(`Arquitetura ${networkTargetOrg} [${difficultyTier.toUpperCase()}]`);
@@ -245,6 +302,10 @@ export const NetrunningPage: React.FC = () => {
           dv: f.dv || 13,
           description: f.notes ? `${f.notes}` : `Exige Ação de Interface (DV ${f.dv || 13})`,
           blackIce,
+          blackIceCurrentHp: blackIce ? blackIce.hp : undefined,
+          blackIceMaxHp: blackIce ? blackIce.hp : undefined,
+          blackIceDefeated: false,
+          blackIceSlid: false,
           cleared: false,
         };
       });
@@ -264,41 +325,300 @@ export const NetrunningPage: React.FC = () => {
     if (generatedFloors.length === 0) return;
     setIsJackedIn(true);
     setCurrentFloorIndex(0);
-    setNetActionsLeft(maxNetActions);
-    setNetrunnerBrainHP(35);
+
+    const calculatedActions = getMaxNetActionsForRank(interfaceSkill);
+    setMaxNetActions(calculatedActions);
+    setNetActionsLeft(calculatedActions);
+
+    // If combatant is linked from CombatTracker, sync their HP
+    const linked = combatants.find(c => c.id === selectedCombatantId);
+    const initialHP = linked ? linked.currentHP : 35;
+    const initialMaxHP = linked ? linked.maxHP : 35;
+    setNetrunnerBrainHP(initialHP);
+    setNetrunnerBrainMaxHP(initialMaxHP);
     setCollectedEddiesLoot(0);
+
+    // Reset floor statuses and initialize Black ICE HP
+    const freshFloors: FloorItem[] = generatedFloors.map(f => ({
+      ...f,
+      blackIceCurrentHp: f.blackIce ? (f.blackIceCurrentHp ?? f.blackIce.hp) : undefined,
+      blackIceMaxHp: f.blackIce ? (f.blackIceMaxHp ?? f.blackIce.hp) : undefined,
+      blackIceDefeated: false,
+      blackIceSlid: false,
+      cleared: false,
+    }));
+    setGeneratedFloors(freshFloors);
+
+    // Reset cyberdeck programs
+    setLoadedPrograms({
+      sword: true,
+      banhammer: true,
+      zap: true,
+      armor: true,
+      shield: true,
+      worm: true,
+      speedbrute: false,
+    });
+
     setRunLog([
       `[JACK IN REALIZADO] Cabo de interface conectado ao ponto de acesso físico de ${networkName}.`,
-      `Você entra no Andar 1: ${generatedFloors[0].title}.`,
+      `Você entra no Andar 1: ${freshFloors[0].title}.`,
+      `Ações de Interface por rodada: ${calculatedActions} (Rank de Interface ${interfaceSkill}).`,
+      linked ? `Netrunner vinculado ao combatente: ${linked.name} (HP: ${linked.currentHP}/${linked.maxHP}).` : `Modo Autônomo (HP Neural Base: ${initialHP}).`,
     ]);
   };
 
   const handleJackOut = (emergency: boolean = false) => {
     if (emergency) {
       const dmg = Math.floor(Math.random() * 6) + 1 + Math.floor(Math.random() * 6) + 1; // 2d6
-      setNetrunnerBrainHP(prev => Math.max(0, prev - dmg));
+      setNetrunnerBrainHP(prev => {
+        const newHP = Math.max(0, prev - dmg);
+        return newHP;
+      });
+      if (selectedCombatantId) {
+        updateHP(selectedCombatantId, -dmg);
+      }
       setRunLog(prev => [
         ...prev,
-        `[DESCONEXÃO DE EMERGÊNCIA!] O Netrunner arrancou os cabos! Sofreu ${dmg} de dano cerebral direto e fica Desorientado!`,
+        `⚡ [DESCONEXÃO DE EMERGÊNCIA!] O Netrunner arrancou os cabos bruscamente! Sofreu ${dmg} de dano cerebral direto e fica Desorientado no mundo real!`,
       ]);
     } else {
       setRunLog(prev => [
         ...prev,
-        `[JACK OUT SEGURO] Sessão de invasão encerrada. Total de Eddies e dados salvos no Cyberdeck!`,
+        `🔌 [JACK OUT SEGURO] Sessão de invasão encerrada. Total de Eddies e dados salvos no Cyberdeck (+${collectedEddiesLoot} eb)!`,
       ]);
     }
     setIsJackedIn(false);
   };
 
-  const executeNetAction = (actionType: 'pathfinder' | 'backdoor' | 'control' | 'eye' | 'slide' | 'sword' | 'virus') => {
+  // Black ICE Counter-Attack Logic (Official Cyberpunk RED rules)
+  const triggerBlackIceCounterAttack = (
+    ice: BlackIceStatBlock,
+    floorIdx: number,
+    isOpportunity: boolean = false
+  ) => {
+    const d10Atk = Math.floor(Math.random() * 10) + 1;
+    let atkBonus = 0;
+    let atkCrit = '';
+    if (d10Atk === 10) {
+      const exp = Math.floor(Math.random() * 10) + 1;
+      atkBonus += exp;
+      atkCrit = ` (Crítico +${exp}!)`;
+    } else if (d10Atk === 1) {
+      const f = Math.floor(Math.random() * 10) + 1;
+      atkBonus -= f;
+      atkCrit = ` (Falha -${f}!)`;
+    }
+    const atkTotal = d10Atk + atkBonus + ice.atk;
+
+    // Netrunner Defense Roll
+    const d10Def = Math.floor(Math.random() * 10) + 1;
+    let defBonus = 0;
+    let defCrit = '';
+    if (d10Def === 10) {
+      const exp = Math.floor(Math.random() * 10) + 1;
+      defBonus += exp;
+      defCrit = ` (Defesa Crítica +${exp}!)`;
+    } else if (d10Def === 1) {
+      const f = Math.floor(Math.random() * 10) + 1;
+      defBonus -= f;
+      defCrit = ` (Falha Defesa -${f}!)`;
+    }
+    const defTotal = d10Def + defBonus + interfaceSkill;
+
+    const opPrefix = isOpportunity ? '⚠️ [ATAQUE DE OPORTUNIDADE] ' : '💥 [CONTRA-ATAQUE DO BLACK ICE] ';
+
+    if (atkTotal > defTotal) {
+      // Black ICE HIT! Calculate brain damage & special effects
+      let rawDmg = 0;
+      let extraEffect = '';
+
+      if (ice.name.includes('Hellhound')) {
+        rawDmg = Math.floor(Math.random() * 6) + 1 + Math.floor(Math.random() * 6) + 1; // 2d6
+        extraEffect = ' Cérebro em Chamas! Sofre 2 de dano cerebral no início de cada turno.';
+      } else if (ice.name.includes('Giant') || ice.name.includes('Asp') || ice.name.includes('Dragon')) {
+        rawDmg = Math.floor(Math.random() * 6) + 1 + Math.floor(Math.random() * 6) + 1 + Math.floor(Math.random() * 6) + 1; // 3d6
+      } else if (ice.name.includes('Liche')) {
+        rawDmg = Math.floor(Math.random() * 6) + 1; // 1d6
+        extraEffect = ' Carga neurotóxica: -1 de INT temporário!';
+      } else {
+        rawDmg = Math.floor(Math.random() * 6) + 1 + Math.floor(Math.random() * 6) + 1; // 2d6
+      }
+
+      // Check Program De-rez (Killer, Raven, Dragon)
+      if (ice.name.includes('Killer') || ice.name.includes('Dragon')) {
+        if (loadedPrograms.sword) {
+          setLoadedPrograms(p => ({ ...p, sword: false }));
+          extraEffect += ' Programa SWORD foi destruído (De-rez)!';
+        } else if (loadedPrograms.banhammer) {
+          setLoadedPrograms(p => ({ ...p, banhammer: false }));
+          extraEffect += ' Programa BANHAMMER foi destruído (De-rez)!';
+        }
+      } else if (ice.name.includes('Raven')) {
+        if (loadedPrograms.shield) {
+          setLoadedPrograms(p => ({ ...p, shield: false }));
+          extraEffect += ' Programa defensivo SHIELD foi desinstalado pelo Corvo!';
+        }
+      }
+
+      // Defense Program Absorption (Shield & Armor)
+      let appliedDmg = rawDmg;
+      let defMsg = '';
+
+      if (loadedPrograms.shield) {
+        defMsg = ` [SHIELD ABSORVEU!] O programa Shield bloqueou todos os ${rawDmg} de dano cerebral e foi de-rezzado!`;
+        appliedDmg = 0;
+        setLoadedPrograms(p => ({ ...p, shield: false }));
+      } else if (loadedPrograms.armor) {
+        const absorbed = Math.min(4, appliedDmg);
+        appliedDmg = Math.max(0, appliedDmg - 4);
+        defMsg = ` [ARMOR ABSORVEU!] O programa Armor reduziu ${absorbed} de dano cerebral (${rawDmg} -> ${appliedDmg})!`;
+      }
+
+      setNetrunnerBrainHP(prev => {
+        const newHP = Math.max(0, prev - appliedDmg);
+        return newHP;
+      });
+
+      if (selectedCombatantId && appliedDmg > 0) {
+        updateHP(selectedCombatantId, -appliedDmg);
+      }
+
+      setRunLog(prev => [
+        ...prev,
+        `${opPrefix}${ice.name} ACERTOU! (ATK ${atkTotal}${atkCrit} vs DEF ${defTotal}${defCrit}). Causou ${rawDmg} de dano cerebral.${defMsg}${extraEffect}`,
+      ]);
+
+      if (netrunnerBrainHP - appliedDmg <= 0) {
+        setRunLog(prev => [
+          ...prev,
+          `☠️ [COLAPSO NEURAL / COMA!] O cérebro do Netrunner fritou sob os pulsos do ${ice.name}! Desconexão forçada!`,
+        ]);
+        setIsJackedIn(false);
+      }
+    } else {
+      // Netrunner Dodged!
+      setRunLog(prev => [
+        ...prev,
+        `🛡️ [ESQUIVA NEURAL] Netrunner defendeu o ataque do ${ice.name}! (DEF ${defTotal}${defCrit} vs ATK ${atkTotal}${atkCrit})`,
+      ]);
+    }
+  };
+
+  const executeNetAction = (
+    actionType:
+      | 'pathfinder'
+      | 'backdoor'
+      | 'control'
+      | 'eye'
+      | 'slide'
+      | 'sword'
+      | 'banhammer'
+      | 'zap'
+      | 'move_down'
+      | 'move_up'
+      | 'rerez_program'
+      | 'virus'
+  ) => {
     if (netActionsLeft <= 0) {
-      alert('Você gastou todas as suas Ações de Interface desta rodada! Clique em "Finalizar Turno / Próxima Rodada".');
+      alert('Você gastou todas as suas Ações de Interface desta rodada! Clique em "Encerrar Turno (Recarregar Ações)".');
       return;
     }
 
     const currentFloor = generatedFloors[currentFloorIndex];
     if (!currentFloor) return;
 
+    // ELEVATOR NAVIGATION: MOVE DOWN
+    if (actionType === 'move_down') {
+      if (currentFloorIndex >= generatedFloors.length - 1) {
+        setRunLog(prev => [...prev, `⛔ [ELEVADOR] Você já está no andar mais profundo (${currentFloor.floorNumber}). Não há andares abaixo.`]);
+        return;
+      }
+
+      // Check blockers on current floor
+      if (currentFloor.type === 'password' && !currentFloor.cleared) {
+        setRunLog(prev => [
+          ...prev,
+          `⛔ [PASSAGEM BLOQUEADA] Firewall de Criptografia ativo no Andar ${currentFloor.floorNumber}! Use a Ação Backdoor para liberar a passagem.`,
+        ]);
+        return;
+      }
+
+      if (currentFloor.type === 'black-ice' && !currentFloor.blackIceDefeated && !currentFloor.blackIceSlid) {
+        setRunLog(prev => [
+          ...prev,
+          `⛔ [PASSAGEM BLOQUEADA] O Black ICE ${currentFloor.blackIce?.name} bloqueia a descida! Destrua-o com Sword/Banhammer ou execute Slide para escapar.`,
+        ]);
+        return;
+      }
+
+      setNetActionsLeft(prev => prev - 1);
+      const nextIdx = currentFloorIndex + 1;
+      setCurrentFloorIndex(nextIdx);
+      const nextFl = generatedFloors[nextIdx];
+
+      setRunLog(prev => [
+        ...prev,
+        `⬇️ [ELEVADOR] Netrunner desceu para o Andar ${nextFl.floorNumber}: ${nextFl.title} [Tipo: ${nextFl.type.toUpperCase()}].`,
+      ]);
+
+      if (nextFl.type === 'black-ice' && !nextFl.blackIceDefeated) {
+        setRunLog(prev => [
+          ...prev,
+          `🚨 [ALERTA DE COMBATE] O Black ICE ${nextFl.blackIce?.name} ativou sensores de intrusão e engajou seu Cyberdeck! (SPD: ${nextFl.blackIce?.spd}, HP: ${nextFl.blackIceCurrentHp || nextFl.blackIce?.hp}, ATK: ${nextFl.blackIce?.atk}, DEF: ${nextFl.blackIce?.def})`,
+        ]);
+      }
+      return;
+    }
+
+    // ELEVATOR NAVIGATION: MOVE UP
+    if (actionType === 'move_up') {
+      if (currentFloorIndex <= 0) {
+        setRunLog(prev => [...prev, `⛔ [ELEVADOR] Você já está no Andar 1 (Ponto de Acesso). Para sair, utilize Jack Out.`]);
+        return;
+      }
+
+      // If engaged with undefeated & un-slid Black ICE, moving up triggers Opportunity Attack!
+      if (currentFloor.type === 'black-ice' && !currentFloor.blackIceDefeated && !currentFloor.blackIceSlid && currentFloor.blackIce) {
+        setRunLog(prev => [
+          ...prev,
+          `⚠️ [FUGA ABRUPTA] O Netrunner recua pelo elevador enquanto engajado! ${currentFloor.blackIce?.name} desfere um Ataque de Oportunidade!`,
+        ]);
+        triggerBlackIceCounterAttack(currentFloor.blackIce, currentFloorIndex, true);
+      }
+
+      setNetActionsLeft(prev => prev - 1);
+      const prevIdx = currentFloorIndex - 1;
+      setCurrentFloorIndex(prevIdx);
+      const prevFl = generatedFloors[prevIdx];
+
+      setRunLog(prev => [
+        ...prev,
+        `⬆️ [ELEVADOR] Netrunner subiu para o Andar ${prevFl.floorNumber}: ${prevFl.title}.`,
+      ]);
+      return;
+    }
+
+    // RE-REZ PROGRAM (Restore de-rezzed program)
+    if (actionType === 'rerez_program') {
+      setNetActionsLeft(prev => prev - 1);
+      setLoadedPrograms({
+        sword: true,
+        banhammer: true,
+        zap: true,
+        armor: true,
+        shield: true,
+        worm: true,
+        speedbrute: false,
+      });
+      setRunLog(prev => [
+        ...prev,
+        `🔄 [RE-REZ DE PROGRAMAS] Compilação executada! Todos os programas (Sword, Banhammer, Shield, Armor) foram restabelecidos no Cyberdeck!`,
+      ]);
+      return;
+    }
+
+    // STANDARD D10 SKILL ROLL FOR ACTIONS
     const d10 = Math.floor(Math.random() * 10) + 1;
     let bonus = 0;
     let critText = '';
@@ -312,7 +632,11 @@ export const NetrunningPage: React.FC = () => {
       critText = ` (Falha Crítica -${fail}!)`;
     }
 
-    const rollTotal = d10 + bonus + interfaceSkill;
+    let programBonus = 0;
+    if (actionType === 'backdoor' && loadedPrograms.worm) programBonus += 2;
+    if (actionType === 'backdoor' && loadedPrograms.speedbrute) programBonus += 2;
+
+    const rollTotal = d10 + bonus + interfaceSkill + programBonus;
     const dv = currentFloor.dv || 13;
     const success = rollTotal >= dv;
 
@@ -320,40 +644,39 @@ export const NetrunningPage: React.FC = () => {
 
     if (actionType === 'pathfinder') {
       const nextFloor = generatedFloors[currentFloorIndex + 1];
+      const afterNextFloor = generatedFloors[currentFloorIndex + 2];
       if (nextFloor) {
-        setRunLog(prev => [
-          ...prev,
-          `[PATHFINDER - Total ${rollTotal} vs DV ${dv}]${critText}: O sensor óptico do deck revela o Andar ${nextFloor.floorNumber}: ${nextFloor.title} [Tipo: ${nextFloor.type.toUpperCase()}]`,
-        ]);
+        let pathMsg = `[PATHFINDER - Total ${rollTotal} vs DV ${dv}]${critText}: Sensor óptico revela o Andar ${nextFloor.floorNumber}: ${nextFloor.title} [Tipo: ${nextFloor.type.toUpperCase()}]`;
+        if (afterNextFloor && rollTotal >= dv + 3) {
+          pathMsg += ` | Andar ${afterNextFloor.floorNumber}: ${afterNextFloor.title} [Tipo: ${afterNextFloor.type.toUpperCase()}]`;
+        }
+        setRunLog(prev => [...prev, pathMsg]);
       } else {
         setRunLog(prev => [
           ...prev,
-          `[PATHFINDER - Total ${rollTotal}]: Você já está no andar mais profundo desta arquitetura!`,
+          `[PATHFINDER - Total ${rollTotal}]: Você já está no nó mais profundo desta arquitetura!`,
         ]);
       }
     } else if (actionType === 'backdoor') {
       if (success) {
         setRunLog(prev => [
           ...prev,
-          `[BACKDOOR SUCESSO! Total ${rollTotal} vs DV ${dv}]${critText}: Criptografia quebrada! Acesso liberado ao próximo nível.`,
+          `🔑 [BACKDOOR SUCESSO! Total ${rollTotal} vs DV ${dv}]${critText}: Criptografia do Firewall QUEBRADA! O elevador agora está liberado para avançar.`,
         ]);
         const updated = [...generatedFloors];
         updated[currentFloorIndex].cleared = true;
         setGeneratedFloors(updated);
-        if (currentFloorIndex < generatedFloors.length - 1) {
-          setCurrentFloorIndex(prev => prev + 1);
-        }
       } else {
         setRunLog(prev => [
           ...prev,
-          `[BACKDOOR FALHA! Total ${rollTotal} vs DV ${dv}]${critText}: Firewall resistiu e disparou contra-medidas!`,
+          `❌ [BACKDOOR FALHA! Total ${rollTotal} vs DV ${dv}]${critText}: O firewall criptográfico resistiu à injeção de senhas!`,
         ]);
       }
     } else if (actionType === 'control') {
       if (success) {
         setRunLog(prev => [
           ...prev,
-          `[CONTROL SUCESSO! Total ${rollTotal} vs DV ${dv}]${critText}: Dispositivo assumido! As câmeras/torretas agora obedecem ao seu cyberdeck.`,
+          `🎮 [CONTROL SUCESSO! Total ${rollTotal} vs DV ${dv}]${critText}: Dispositivo assumido! As câmeras/torretas/portas agora obedecem ao seu cyberdeck no mundo real!`,
         ]);
         const updated = [...generatedFloors];
         updated[currentFloorIndex].cleared = true;
@@ -361,7 +684,7 @@ export const NetrunningPage: React.FC = () => {
       } else {
         setRunLog(prev => [
           ...prev,
-          `[CONTROL FALHA! Total ${rollTotal} vs DV ${dv}]${critText}: O controlador físico recusou a injeção do comando.`,
+          `❌ [CONTROL FALHA! Total ${rollTotal} vs DV ${dv}]${critText}: O controlador físico recusou a injeção do comando.`,
         ]);
       }
     } else if (actionType === 'eye') {
@@ -370,7 +693,7 @@ export const NetrunningPage: React.FC = () => {
         setCollectedEddiesLoot(prev => prev + reward);
         setRunLog(prev => [
           ...prev,
-          `[EYE ON THE NET SUCESSO! Total ${rollTotal} vs DV ${dv}]${critText}: Arquivo sigiloso baixado! (+${reward} eb de dados comerciais salvos no deck)`,
+          `💾 [EYE ON THE NET SUCESSO! Total ${rollTotal} vs DV ${dv}]${critText}: Arquivo sigiloso baixado com sucesso! (+${reward} eb de dados confidenciais salvos no deck)`,
         ]);
         const updated = [...generatedFloors];
         updated[currentFloorIndex].cleared = true;
@@ -378,62 +701,180 @@ export const NetrunningPage: React.FC = () => {
       } else {
         setRunLog(prev => [
           ...prev,
-          `[EYE ON THE NET FALHA! Total ${rollTotal} vs DV ${dv}]${critText}: Arquivo protegido por chaves criptográficas assimétricas.`,
+          `❌ [EYE ON THE NET FALHA! Total ${rollTotal} vs DV ${dv}]${critText}: Arquivo protegido por chaves criptográficas assimétricas.`,
         ]);
       }
     } else if (actionType === 'sword') {
-      if (currentFloor.blackIce) {
+      if (!loadedPrograms.sword) {
+        setRunLog(prev => [...prev, `❌ [SWORD] Programa SWORD está desinstalado ou foi destruído! Use Re-rez para recompilar.`]);
+        return;
+      }
+      if (currentFloor.blackIce && !currentFloor.blackIceDefeated) {
         const iceDef = currentFloor.blackIce.def;
         const hit = rollTotal >= iceDef;
         if (hit) {
-          const dmg = Math.floor(Math.random() * 6) + 1 + Math.floor(Math.random() * 6) + 1 + Math.floor(Math.random() * 6) + 1; // 3d6
-          setRunLog(prev => [
-            ...prev,
-            `[COMBATE - PROGRAMA SWORD SUCESSO! Total ${rollTotal} vs DEF ${iceDef}]${critText}: Ataque desferido! Causou ${dmg} de dano direto ao ${currentFloor.blackIce?.name}!`,
-          ]);
+          const dmg = (Math.floor(Math.random() * 6) + 1) + (Math.floor(Math.random() * 6) + 1) + (Math.floor(Math.random() * 6) + 1); // 3d6
+          const currentHp = currentFloor.blackIceCurrentHp ?? currentFloor.blackIce.hp;
+          const newHp = Math.max(0, currentHp - dmg);
+
           const updated = [...generatedFloors];
-          updated[currentFloorIndex].cleared = true;
+          updated[currentFloorIndex].blackIceCurrentHp = newHp;
+
+          if (newHp <= 0) {
+            updated[currentFloorIndex].blackIceDefeated = true;
+            updated[currentFloorIndex].cleared = true;
+            setRunLog(prev => [
+              ...prev,
+              `⚔️ [SWORD CRÍTICO! Total ${rollTotal} vs DEF ${iceDef}]${critText}: Lâmina de código desferida! Causou ${dmg} de dano direto! O Black ICE ${currentFloor.blackIce?.name} FOI COMPLETAMENTE DESTRUÍDO (DE-REZ)!`,
+            ]);
+          } else {
+            setRunLog(prev => [
+              ...prev,
+              `⚔️ [SWORD ACERTOU! Total ${rollTotal} vs DEF ${iceDef}]${critText}: Ataque causou ${dmg} de dano ao ${currentFloor.blackIce?.name}! HP restante do Black ICE: ${newHp}/${currentFloor.blackIceMaxHp || currentFloor.blackIce?.hp}.`,
+            ]);
+          }
           setGeneratedFloors(updated);
         } else {
           setRunLog(prev => [
             ...prev,
-            `[COMBATE - PROGRAMA SWORD ERROU! Total ${rollTotal} vs DEF ${iceDef}]${critText}: O Black ICE desviou pelo buffer de memória!`,
+            `❌ [SWORD ERROU! Total ${rollTotal} vs DEF ${iceDef}]${critText}: O Black ICE desviou pelo buffer de memória!`,
           ]);
         }
       } else {
-        setRunLog(prev => [...prev, `[SWORD]: Não há Black ICE hostil ativo neste nó.`]);
+        setRunLog(prev => [...prev, `[SWORD]: Não há Black ICE hostil ativo neste andar.`]);
       }
-    } else if (actionType === 'slide') {
-      if (success) {
-        setRunLog(prev => [
-          ...prev,
-          `[SLIDE BEM SUCEDIDO! Total ${rollTotal} vs DV ${dv}]${critText}: Manobra evasiva executada! Você deslizou para fora do alcance do guardião.`,
-        ]);
-        if (currentFloorIndex > 0) {
-          setCurrentFloorIndex(prev => prev - 1);
+    } else if (actionType === 'banhammer') {
+      if (!loadedPrograms.banhammer) {
+        setRunLog(prev => [...prev, `❌ [BANHAMMER] Programa BANHAMMER está desinstalado ou foi destruído!`]);
+        return;
+      }
+      if (currentFloor.blackIce && !currentFloor.blackIceDefeated) {
+        const iceDef = currentFloor.blackIce.def;
+        const hit = rollTotal >= iceDef;
+        if (hit) {
+          const dmg = (Math.floor(Math.random() * 6) + 1) + (Math.floor(Math.random() * 6) + 1) + (Math.floor(Math.random() * 6) + 1) + 2; // 3d6 + 2
+          const currentHp = currentFloor.blackIceCurrentHp ?? currentFloor.blackIce.hp;
+          const newHp = Math.max(0, currentHp - dmg);
+
+          const updated = [...generatedFloors];
+          updated[currentFloorIndex].blackIceCurrentHp = newHp;
+
+          if (newHp <= 0) {
+            updated[currentFloorIndex].blackIceDefeated = true;
+            updated[currentFloorIndex].cleared = true;
+            setRunLog(prev => [
+              ...prev,
+              `🔨 [BANHAMMER ESMAGOU! Total ${rollTotal} vs DEF ${iceDef}]${critText}: O martelo anti-programa causou ${dmg} de dano massivo! O Black ICE ${currentFloor.blackIce?.name} FOI DELETADO DA MEMÓRIA!`,
+            ]);
+          } else {
+            setRunLog(prev => [
+              ...prev,
+              `🔨 [BANHAMMER ACERTOU! Total ${rollTotal} vs DEF ${iceDef}]${critText}: Causou ${dmg} de dano pesado ao ${currentFloor.blackIce?.name}! HP restante: ${newHp}/${currentFloor.blackIceMaxHp || currentFloor.blackIce?.hp}.`,
+            ]);
+          }
+          setGeneratedFloors(updated);
+        } else {
+          setRunLog(prev => [
+            ...prev,
+            `❌ [BANHAMMER ERROU! Total ${rollTotal} vs DEF ${iceDef}]${critText}: O golpe pesado errou a matriz do Black ICE.`,
+          ]);
         }
       } else {
-        setRunLog(prev => [
-          ...prev,
-          `[SLIDE FALHOU! Total ${rollTotal} vs DV ${dv}]${critText}: Você não conseguiu quebrar o engajamento com o Black ICE!`,
-        ]);
+        setRunLog(prev => [...prev, `[BANHAMMER]: Não há Black ICE hostil ativo neste andar.`]);
+      }
+    } else if (actionType === 'zap') {
+      if (!loadedPrograms.zap) {
+        setRunLog(prev => [...prev, `❌ [ZAP] Programa ZAP não está carregado!`]);
+        return;
+      }
+      if (currentFloor.blackIce && !currentFloor.blackIceDefeated) {
+        const iceDef = currentFloor.blackIce.def;
+        const hit = rollTotal >= iceDef;
+        if (hit) {
+          const dmg = Math.floor(Math.random() * 6) + 1; // 1d6
+          const currentHp = currentFloor.blackIceCurrentHp ?? currentFloor.blackIce.hp;
+          const newHp = Math.max(0, currentHp - dmg);
+
+          const updated = [...generatedFloors];
+          updated[currentFloorIndex].blackIceCurrentHp = newHp;
+
+          if (newHp <= 0) {
+            updated[currentFloorIndex].blackIceDefeated = true;
+            updated[currentFloorIndex].cleared = true;
+            setRunLog(prev => [
+              ...prev,
+              `⚡ [ZAP CRÍTICO! Total ${rollTotal} vs DEF ${iceDef}]: O choque de código causou ${dmg} de dano e finalizou o ${currentFloor.blackIce?.name}!`,
+            ]);
+          } else {
+            setRunLog(prev => [
+              ...prev,
+              `⚡ [ZAP ACERTOU! Total ${rollTotal} vs DEF ${iceDef}]: Causou ${dmg} de dano elétrico ao ${currentFloor.blackIce?.name}! HP restante: ${newHp}/${currentFloor.blackIceMaxHp || currentFloor.blackIce?.hp}.`,
+            ]);
+          }
+          setGeneratedFloors(updated);
+        } else {
+          setRunLog(prev => [
+            ...prev,
+            `❌ [ZAP ERROU! Total ${rollTotal} vs DEF ${iceDef}]: O arco voltaico passou longe do Black ICE.`,
+          ]);
+        }
+      } else {
+        setRunLog(prev => [...prev, `[ZAP]: Não há Black ICE hostil ativo neste andar.`]);
+      }
+    } else if (actionType === 'slide') {
+      if (currentFloor.blackIce && !currentFloor.blackIceDefeated) {
+        const slideDv = 13 + (currentFloor.blackIce.spd || 4);
+        const slideSuccess = rollTotal >= slideDv;
+        if (slideSuccess) {
+          const updated = [...generatedFloors];
+          updated[currentFloorIndex].blackIceSlid = true;
+          setGeneratedFloors(updated);
+          setRunLog(prev => [
+            ...prev,
+            `💨 [SLIDE BEM SUCEDIDO! Total ${rollTotal} vs DV ${slideDv}]${critText}: Manobra evasiva executada com perfeição! Você quebrou a trava de mira do ${currentFloor.blackIce?.name}! O elevador está livre para você se mover nesta rodada sem sofrer ataque!`,
+          ]);
+        } else {
+          setRunLog(prev => [
+            ...prev,
+            `❌ [SLIDE FALHOU! Total ${rollTotal} vs DV ${slideDv}]${critText}: Você não conseguiu quebrar o engajamento com o ${currentFloor.blackIce?.name}!`,
+          ]);
+        }
+      } else {
+        setRunLog(prev => [...prev, `[SLIDE]: Não há Black ICE ativo impedindo você neste andar.`]);
       }
     } else if (actionType === 'virus') {
       if (success) {
         setRunLog(prev => [
           ...prev,
-          `[VIRUS INJETADO NO NÚCLEO! Total ${rollTotal} vs DV ${dv}]${critText}: O código malicioso se espalhou por toda a arquitetura! O sistema agora está permanentemente comprometido!`,
+          `🦠 [VIRUS INJETADO NO NÚCLEO! Total ${rollTotal} vs DV ${dv}]${critText}: O payload malicioso se espalhou por toda a arquitetura! O sistema agora está permanentemente comprometido!`,
         ]);
+        const updated = [...generatedFloors];
+        updated[currentFloorIndex].cleared = true;
+        setGeneratedFloors(updated);
       } else {
         setRunLog(prev => [
           ...prev,
-          `[VIRUS RECUSADO! Total ${rollTotal} vs DV ${dv}]${critText}: O compilador do nó rejeitou o payload do vírus.`,
+          `❌ [VIRUS RECUSADO! Total ${rollTotal} vs DV ${dv}]${critText}: O compilador do nó rejeitou o payload do vírus.`,
         ]);
       }
     }
   };
 
   const handleNextNetRound = () => {
+    const currentFloor = generatedFloors[currentFloorIndex];
+
+    // If active undefeated Black ICE is present and not slid, it attacks at the end of Netrunner's turn!
+    if (currentFloor?.blackIce && !currentFloor.blackIceDefeated && !currentFloor.blackIceSlid) {
+      setRunLog(prev => [
+        ...prev,
+        `⚠️ [FIM DO TURNO DO NETRUNNER] O Black ICE ${currentFloor.blackIce?.name} aproveita a brecha e contra-ataca!`,
+      ]);
+      triggerBlackIceCounterAttack(currentFloor.blackIce, currentFloorIndex);
+    }
+
+    // Reset slid state on all floors for the new round
+    setGeneratedFloors(prev => prev.map(f => ({ ...f, blackIceSlid: false })));
+
     setNetActionsLeft(maxNetActions);
     setRunLog(prev => [
       ...prev,
@@ -652,12 +1093,18 @@ export const NetrunningPage: React.FC = () => {
                     <span>Habilidade Interface do Netrunner:</span>
                     <select
                       value={interfaceSkill}
-                      onChange={e => setInterfaceSkill(parseInt(e.target.value))}
+                      onChange={e => {
+                        const rank = parseInt(e.target.value);
+                        setInterfaceSkill(rank);
+                        const actions = getMaxNetActionsForRank(rank);
+                        setMaxNetActions(actions);
+                        if (!isJackedIn) setNetActionsLeft(actions);
+                      }}
                       className="bg-[#0a0a0d] border border-zinc-800 rounded px-2 py-1 text-zinc-200"
                     >
                       {[2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
                         <option key={n} value={n}>
-                          Rank {n} (+{n})
+                          Rank {n} (+{n}) • {getMaxNetActionsForRank(n)} Ações/Rodada
                         </option>
                       ))}
                     </select>
@@ -765,18 +1212,63 @@ export const NetrunningPage: React.FC = () => {
 
                             {/* Black ICE Stat Block if present */}
                             {fl.blackIce && (
-                              <div className="p-3 rounded-lg bg-black/50 border border-red-900/50 space-y-2 mt-2 font-mono text-xs">
+                              <div className={`p-3 rounded-lg border space-y-2 mt-2 font-mono text-xs transition ${
+                                fl.blackIceDefeated
+                                  ? 'bg-zinc-900/60 border-zinc-800 opacity-60'
+                                  : 'bg-black/60 border-red-900/60'
+                              }`}>
                                 <div className="flex items-center justify-between text-red-400 font-bold">
-                                  <span className="flex items-center gap-1.5">
+                                  <span className={`flex items-center gap-1.5 ${fl.blackIceDefeated ? 'line-through text-zinc-500' : ''}`}>
                                     <Skull className="w-3.5 h-3.5" />
                                     {fl.blackIce.name} [{fl.blackIce.classType}]
                                   </span>
-                                  <span className="text-[10px] text-zinc-500">{fl.blackIce.citation}</span>
+                                  <div className="flex items-center gap-1.5">
+                                    {fl.blackIceDefeated ? (
+                                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 font-bold">
+                                        ✓ DE-REZZADO
+                                      </span>
+                                    ) : (
+                                      <>
+                                        {fl.blackIceSlid && (
+                                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-yellow-950 text-yellow-300 border border-yellow-800">
+                                            💨 SLID
+                                          </span>
+                                        )}
+                                        <span className="text-[10px] text-zinc-500">{fl.blackIce.citation}</span>
+                                      </>
+                                    )}
+                                  </div>
                                 </div>
 
-                                <div className="grid grid-cols-4 gap-2 text-center text-[11px]">
+                                {/* HP Progress bar if not defeated */}
+                                {!fl.blackIceDefeated && (
+                                  <div className="space-y-1 pt-1">
+                                    <div className="flex justify-between text-[10px] text-zinc-400">
+                                      <span>HP do Guardião:</span>
+                                      <span className="font-bold text-red-400">
+                                        {fl.blackIceCurrentHp ?? fl.blackIce.hp} / {fl.blackIceMaxHp ?? fl.blackIce.hp} HP
+                                      </span>
+                                    </div>
+                                    <div className="h-1.5 w-full bg-zinc-950 rounded-full overflow-hidden border border-zinc-800">
+                                      <div
+                                        className="h-full bg-gradient-to-r from-red-600 to-amber-500 transition-all duration-300"
+                                        style={{
+                                          width: `${Math.max(
+                                            0,
+                                            Math.min(
+                                              100,
+                                              (((fl.blackIceCurrentHp ?? fl.blackIce.hp)) / (fl.blackIceMaxHp ?? fl.blackIce.hp)) * 100
+                                            )
+                                          )}%`,
+                                        }}
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+
+                                <div className="grid grid-cols-4 gap-2 text-center text-[11px] pt-1">
                                   <div className="bg-zinc-900 p-1 rounded">SPD: <strong className="text-zinc-100">{fl.blackIce.spd}</strong></div>
-                                  <div className="bg-zinc-900 p-1 rounded">HP: <strong className="text-zinc-100">{fl.blackIce.hp}</strong></div>
+                                  <div className="bg-zinc-900 p-1 rounded">HP: <strong className="text-zinc-100">{fl.blackIceDefeated ? 0 : (fl.blackIceCurrentHp ?? fl.blackIce.hp)}</strong></div>
                                   <div className="bg-zinc-900 p-1 rounded">ATK: <strong className="text-red-400">{fl.blackIce.atk}</strong></div>
                                   <div className="bg-zinc-900 p-1 rounded">DEF: <strong className="text-cyan-400">{fl.blackIce.def}</strong></div>
                                 </div>
@@ -800,31 +1292,259 @@ export const NetrunningPage: React.FC = () => {
                               Console de Invasão Neural
                             </h3>
                           </div>
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-800">
-                            ONLINE
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-800 animate-pulse">
+                            ONLINE • CONECTADO
                           </span>
+                        </div>
+
+                        {/* Link to Real-World Combatant */}
+                        <div className="flex items-center justify-between bg-[#0a0a0d] p-2 rounded-xl border border-zinc-800 text-xs">
+                          <span className="text-[11px] font-mono text-zinc-400 flex items-center gap-1.5">
+                            <User className="w-3.5 h-3.5 text-purple-400" />
+                            <span>Vincular Combatente (Mundo Real):</span>
+                          </span>
+                          <select
+                            value={selectedCombatantId}
+                            onChange={e => {
+                              const cid = e.target.value;
+                              setSelectedCombatantId(cid);
+                              const found = combatants.find(c => c.id === cid);
+                              if (found) {
+                                setNetrunnerBrainHP(found.currentHP);
+                                setNetrunnerBrainMaxHP(found.maxHP);
+                              }
+                            }}
+                            className="bg-black border border-zinc-700 rounded-lg px-2 py-1 text-zinc-200 text-xs max-w-[170px]"
+                          >
+                            <option value="">Nenhum (Autônomo)</option>
+                            {combatants.map(c => (
+                              <option key={c.id} value={c.id}>
+                                {c.name} ({c.currentHP}/{c.maxHP} HP)
+                              </option>
+                            ))}
+                          </select>
                         </div>
 
                         {/* Status bar: HP, Actions left, Eddies looted */}
                         <div className="grid grid-cols-3 gap-2 text-center font-mono text-xs">
-                          <div className="p-2 rounded-lg bg-[#0a0a0d] border border-zinc-800">
-                            <span className="text-[9px] text-zinc-500 block uppercase">Dano Neural</span>
-                            <span className="text-sm font-bold text-emerald-400">{netrunnerBrainHP} HP</span>
+                          <div className="p-2.5 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-1">
+                            <span className="text-[9px] text-zinc-400 block uppercase font-semibold">Dano Neural / HP</span>
+                            <span className={`text-sm font-bold block ${
+                              netrunnerBrainHP <= 10 ? 'text-red-400 animate-pulse' : 'text-emerald-400'
+                            }`}>
+                              {netrunnerBrainHP} / {netrunnerBrainMaxHP} HP
+                            </span>
+                            <div className="h-1 w-full bg-zinc-800 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full transition-all ${
+                                  netrunnerBrainHP <= 10 ? 'bg-red-500' : 'bg-emerald-500'
+                                }`}
+                                style={{ width: `${Math.max(0, Math.min(100, (netrunnerBrainHP / netrunnerBrainMaxHP) * 100))}%` }}
+                              />
+                            </div>
                           </div>
-                          <div className="p-2 rounded-lg bg-[#0a0a0d] border border-purple-900/60">
-                            <span className="text-[9px] text-purple-400 block uppercase">Ações Restantes</span>
-                            <span className="text-sm font-bold text-purple-300">{netActionsLeft} / {maxNetActions}</span>
+
+                          <div className="p-2.5 rounded-xl bg-[#0a0a0d] border border-purple-900/60 space-y-1">
+                            <span className="text-[9px] text-purple-400 block uppercase font-semibold">Ações Restantes</span>
+                            <span className="text-sm font-bold text-purple-300 block">
+                              {netActionsLeft} / {maxNetActions}
+                            </span>
+                            <span className="text-[9px] text-zinc-500 block">Rank {interfaceSkill}</span>
                           </div>
-                          <div className="p-2 rounded-lg bg-[#0a0a0d] border border-zinc-800">
-                            <span className="text-[9px] text-zinc-500 block uppercase">Eddies em Dados</span>
-                            <span className="text-sm font-bold text-amber-400">+{collectedEddiesLoot} eb</span>
+
+                          <div className="p-2.5 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-1">
+                            <span className="text-[9px] text-amber-400 block uppercase font-semibold">Eddies em Dados</span>
+                            <span className="text-sm font-bold text-amber-300 block">
+                              +{collectedEddiesLoot} eb
+                            </span>
+                            <span className="text-[9px] text-zinc-500 block">Loot Salvo</span>
                           </div>
                         </div>
 
-                        {/* Netrunner Action Buttons */}
-                        <div className="space-y-1.5 pt-1">
-                          <span className="text-[10px] font-mono uppercase text-zinc-400 font-semibold block">
-                            Ações de Interface Rápidas:
+                        {/* Cyberdeck Loaded Programs Row */}
+                        <div className="p-2.5 rounded-xl bg-[#0a0a0d] border border-zinc-800 space-y-2 text-xs">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-mono uppercase text-zinc-400 font-semibold flex items-center gap-1">
+                              <Cpu className="w-3 h-3 text-cyan-400" /> Programas Instalados no Deck:
+                            </span>
+                            {(!loadedPrograms.shield || !loadedPrograms.sword || !loadedPrograms.banhammer) && (
+                              <button
+                                onClick={() => executeNetAction('rerez_program')}
+                                className="px-2 py-0.5 rounded bg-purple-950 hover:bg-purple-900 text-purple-300 border border-purple-700 text-[10px] font-mono transition"
+                                title="Gasta 1 Ação de Interface para reinstalar programas destruídos"
+                              >
+                                🔄 Re-rez (1 Ação)
+                              </button>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-mono">
+                            <span className={`px-2 py-0.5 rounded border ${
+                              loadedPrograms.sword
+                                ? 'bg-red-950/60 border-red-800 text-red-300'
+                                : 'bg-zinc-900 border-zinc-800 text-zinc-600 line-through'
+                            }`}>
+                              🗡️ Sword (3d6)
+                            </span>
+                            <span className={`px-2 py-0.5 rounded border ${
+                              loadedPrograms.banhammer
+                                ? 'bg-amber-950/60 border-amber-800 text-amber-300'
+                                : 'bg-zinc-900 border-zinc-800 text-zinc-600 line-through'
+                            }`}>
+                              🔨 Banhammer (3d6+2)
+                            </span>
+                            <span className={`px-2 py-0.5 rounded border ${
+                              loadedPrograms.shield
+                                ? 'bg-cyan-950/60 border-cyan-800 text-cyan-300'
+                                : 'bg-zinc-900 border-zinc-800 text-zinc-600 line-through'
+                            }`}>
+                              🛡️ Shield (100% Absorção)
+                            </span>
+                            <span className={`px-2 py-0.5 rounded border ${
+                              loadedPrograms.armor
+                                ? 'bg-blue-950/60 border-blue-800 text-blue-300'
+                                : 'bg-zinc-900 border-zinc-800 text-zinc-600'
+                            }`}>
+                              🦺 Armor (-4 Dano)
+                            </span>
+                            <span className={`px-2 py-0.5 rounded border ${
+                              loadedPrograms.worm
+                                ? 'bg-emerald-950/60 border-emerald-800 text-emerald-300'
+                                : 'bg-zinc-900 border-zinc-800 text-zinc-600'
+                            }`}>
+                              🪱 Worm (+2 DV)
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* ELEVATOR NAVIGATION: Move Up & Move Down */}
+                        <div className="p-3 rounded-xl bg-purple-950/20 border border-purple-800/40 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-mono uppercase text-purple-300 font-bold flex items-center gap-1">
+                              <Layers className="w-3.5 h-3.5" /> Movimentação no Elevador NET:
+                            </span>
+                            <span className="text-[11px] font-mono text-zinc-300 font-bold">
+                              Andar {generatedFloors[currentFloorIndex]?.floorNumber} de {generatedFloors.length}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                            <button
+                              onClick={() => executeNetAction('move_up')}
+                              disabled={currentFloorIndex <= 0}
+                              className="p-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-200 transition flex items-center justify-center gap-1.5 disabled:opacity-40"
+                              title="Subir 1 Andar (Custa 1 Ação de Interface)"
+                            >
+                              <ArrowUp className="w-3.5 h-3.5 text-purple-400" />
+                              <span>Subir Andar (1 Ação)</span>
+                            </button>
+
+                            <button
+                              onClick={() => executeNetAction('move_down')}
+                              disabled={currentFloorIndex >= generatedFloors.length - 1}
+                              className="p-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-200 transition flex items-center justify-center gap-1.5 disabled:opacity-40"
+                              title="Descer 1 Andar (Custa 1 Ação de Interface)"
+                            >
+                              <ArrowDown className="w-3.5 h-3.5 text-purple-400" />
+                              <span>Descer Andar (1 Ação)</span>
+                            </button>
+                          </div>
+
+                          {/* Blocked warning banner if elevator is blocked */}
+                          {generatedFloors[currentFloorIndex]?.type === 'password' && !generatedFloors[currentFloorIndex]?.cleared && (
+                            <p className="text-[10px] text-amber-300 font-mono bg-amber-950/40 p-1.5 rounded border border-amber-900/60 flex items-center gap-1">
+                              <Lock className="w-3 h-3 text-amber-400 shrink-0" />
+                              <span>Firewall ativo bloqueia a descida! Use a ação <strong>Backdoor</strong> para abrir.</span>
+                            </p>
+                          )}
+                          {generatedFloors[currentFloorIndex]?.type === 'black-ice' && !generatedFloors[currentFloorIndex]?.blackIceDefeated && !generatedFloors[currentFloorIndex]?.blackIceSlid && (
+                            <p className="text-[10px] text-red-300 font-mono bg-red-950/40 p-1.5 rounded border border-red-900/60 flex items-center gap-1">
+                              <Skull className="w-3 h-3 text-red-400 shrink-0" />
+                              <span>Black ICE ativo bloqueia a descida! Destrua-o ou use <strong>Slide</strong> para passar.</span>
+                            </p>
+                          )}
+                        </div>
+
+                        {/* ACTIVE FLOOR CONTEXTUAL COMBAT & ACTIONS */}
+                        <div className="space-y-2 pt-1">
+                          {/* If on Black ICE Floor with Active Black ICE */}
+                          {generatedFloors[currentFloorIndex]?.blackIce && !generatedFloors[currentFloorIndex]?.blackIceDefeated ? (
+                            <div className="p-3 rounded-xl bg-red-950/30 border border-red-800/60 space-y-2">
+                              <div className="flex items-center justify-between text-xs font-mono font-bold text-red-300">
+                                <span className="flex items-center gap-1.5">
+                                  <AlertTriangle className="w-4 h-4 text-red-500 animate-pulse" />
+                                  <span>Combate: {generatedFloors[currentFloorIndex]?.blackIce?.name}</span>
+                                </span>
+                                <span className="text-[10px] px-2 py-0.5 rounded bg-red-900 text-red-100">
+                                  DEF {generatedFloors[currentFloorIndex]?.blackIce?.def} • ATK {generatedFloors[currentFloorIndex]?.blackIce?.atk}
+                                </span>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-2 text-xs">
+                                <button
+                                  onClick={() => executeNetAction('sword')}
+                                  disabled={!loadedPrograms.sword}
+                                  className="p-2 rounded-lg bg-red-900/80 hover:bg-red-800 text-white font-mono font-bold transition flex items-center gap-1.5 disabled:opacity-40"
+                                >
+                                  <Crosshair className="w-3.5 h-3.5 text-red-200" />
+                                  <div className="text-left">
+                                    <strong className="block text-[11px]">Sword</strong>
+                                    <span className="text-[9px] text-red-200">3d6 Dano Anti-ICE</span>
+                                  </div>
+                                </button>
+
+                                <button
+                                  onClick={() => executeNetAction('banhammer')}
+                                  disabled={!loadedPrograms.banhammer}
+                                  className="p-2 rounded-lg bg-amber-900/80 hover:bg-amber-800 text-white font-mono font-bold transition flex items-center gap-1.5 disabled:opacity-40"
+                                >
+                                  <Hammer className="w-3.5 h-3.5 text-amber-200" />
+                                  <div className="text-left">
+                                    <strong className="block text-[11px]">Banhammer</strong>
+                                    <span className="text-[9px] text-amber-200">3d6+2 Dano Pesado</span>
+                                  </div>
+                                </button>
+
+                                <button
+                                  onClick={() => executeNetAction('zap')}
+                                  className="p-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-200 text-left transition flex items-center gap-1.5 font-mono"
+                                >
+                                  <Zap className="w-3.5 h-3.5 text-yellow-400" />
+                                  <div>
+                                    <strong className="block text-[11px]">Zap</strong>
+                                    <span className="text-[9px] text-zinc-400">1d6 Dano Rápido</span>
+                                  </div>
+                                </button>
+
+                                <button
+                                  onClick={() => executeNetAction('slide')}
+                                  className="p-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-200 text-left transition flex items-center gap-1.5 font-mono"
+                                >
+                                  <Footprints className="w-3.5 h-3.5 text-cyan-400" />
+                                  <div>
+                                    <strong className="block text-[11px]">Slide (Evasão)</strong>
+                                    <span className="text-[9px] text-zinc-400">DV {13 + (generatedFloors[currentFloorIndex]?.blackIce?.spd || 4)}</span>
+                                  </div>
+                                </button>
+                              </div>
+
+                              {/* Manual Trigger for GM or Testing */}
+                              <button
+                                onClick={() => {
+                                  const ice = generatedFloors[currentFloorIndex]?.blackIce;
+                                  if (ice) triggerBlackIceCounterAttack(ice, currentFloorIndex);
+                                }}
+                                className="w-full py-1.5 rounded-lg bg-red-950 hover:bg-red-900 border border-red-800/60 text-red-300 text-[10px] font-mono transition flex items-center justify-center gap-1.5"
+                                title="Gira o contra-ataque do Black ICE imediatamente contra o Netrunner"
+                              >
+                                <Skull className="w-3 h-3 text-red-400" />
+                                <span>Disparar Contra-Ataque do Black ICE Agora</span>
+                              </button>
+                            </div>
+                          ) : null}
+
+                          {/* General Net Actions Grid */}
+                          <span className="text-[10px] font-mono uppercase text-zinc-400 font-semibold block pt-1">
+                            Ações de Interface Gerais:
                           </span>
                           <div className="grid grid-cols-2 gap-2 text-xs">
                             <button
@@ -867,46 +1587,28 @@ export const NetrunningPage: React.FC = () => {
                               <Search className="w-3.5 h-3.5 text-purple-400" />
                               <div>
                                 <strong className="block text-[11px]">Pathfinder</strong>
-                                <span className="text-[9px] text-zinc-400">Escanear adiante</span>
-                              </div>
-                            </button>
-
-                            <button
-                              onClick={() => executeNetAction('sword')}
-                              className="p-2 rounded-lg bg-red-950/40 hover:bg-red-900/60 border border-red-800/50 text-red-200 text-left transition flex items-center gap-1.5"
-                            >
-                              <Crosshair className="w-3.5 h-3.5 text-red-400" />
-                              <div>
-                                <strong className="block text-[11px]">Sword</strong>
-                                <span className="text-[9px] text-red-300">Atacar Black ICE</span>
-                              </div>
-                            </button>
-
-                            <button
-                              onClick={() => executeNetAction('slide')}
-                              className="p-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-200 text-left transition flex items-center gap-1.5"
-                            >
-                              <LogOut className="w-3.5 h-3.5 text-yellow-400" />
-                              <div>
-                                <strong className="block text-[11px]">Slide</strong>
-                                <span className="text-[9px] text-zinc-400">Fuga de combate</span>
+                                <span className="text-[9px] text-zinc-400">Escanear nós</span>
                               </div>
                             </button>
                           </div>
 
+                          {/* Next Net Round / End Turn */}
                           <button
                             onClick={handleNextNetRound}
-                            className="w-full py-2.5 rounded-xl bg-purple-700 hover:bg-purple-600 text-white text-xs font-mono font-bold uppercase transition flex items-center justify-center gap-2 mt-2"
+                            className="w-full py-2.5 rounded-xl bg-purple-700 hover:bg-purple-600 text-white text-xs font-mono font-bold uppercase transition flex items-center justify-center gap-2 mt-2 shadow-lg"
                           >
                             <RefreshCw className="w-3.5 h-3.5" />
-                            <span>Encerrar Turno (Recarregar Ações)</span>
+                            <span>Encerrar Turno (Recarregar {maxNetActions} Ações)</span>
                           </button>
+                          <span className="text-[10px] text-zinc-500 font-mono text-center block">
+                            * Se houver Black ICE ativo no andar, ele contra-atacará antes da recarga.
+                          </span>
                         </div>
 
                         {/* Terminal Run Log */}
                         <div className="space-y-1 pt-2 border-t border-zinc-800">
                           <span className="text-[10px] font-mono text-zinc-500 uppercase block">Log do Cyberdeck:</span>
-                          <div className="p-3 rounded-lg bg-black/70 border border-zinc-800 text-[11px] font-mono text-zinc-300 max-h-48 overflow-y-auto space-y-1">
+                          <div className="p-3 rounded-lg bg-black/80 border border-zinc-800 text-[11px] font-mono text-zinc-300 max-h-52 overflow-y-auto space-y-1">
                             {runLog.map((logLine, lIdx) => (
                               <div key={lIdx} className="leading-snug">
                                 {logLine}
