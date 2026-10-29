@@ -313,7 +313,7 @@ export const PlayerSheetPage: React.FC = () => {
     savePlayerCharacter,
     deletePlayerCharacter,
   } = useUserRole();
-  const { combatants, updateHP: updateCombatHP, ablateSP: ablateCombatSP, addCriticalInjury, addCombatant } = useCombat();
+  const { combatants, updateHP: updateCombatHP, ablateSP: ablateCombatSP, addCriticalInjury, addCombatant, importFromPlayerCharacter } = useCombat();
 
   const [viewMode, setViewMode] = useState<'gallery' | 'sheet'>('sheet');
   const [activeSheetTab, setActiveSheetTab] = useState<'stats' | 'inventory' | 'skills' | 'cyber' | 'lifepath'>('stats');
@@ -617,27 +617,8 @@ export const PlayerSheetPage: React.FC = () => {
   };
 
   const handleSendPlayerToCombat = () => {
-    addCombatant({
-      id: 'combat-pc-' + char.id + '-' + Date.now(),
-      name: char.name + ' [Jogador]',
-      system: (char as any).system || 'RED',
-      initiative: Math.floor(Math.random() * 10) + 1 + effectiveREF,
-      currentHP: char.currentHP,
-      maxHP: char.maxHP,
-      headSP: char.armor?.head?.sp ?? char.headSP,
-      bodySP: char.armor?.body?.sp ?? char.bodySP,
-      conditions: [],
-      criticalInjuries: [],
-      deathSavePenalty: 0,
-      weapons: char.weapons.map(w => ({
-        name: w.name,
-        damage: w.damage,
-        rof: w.rof || 1,
-      })),
-      combatNumber: effectiveREF + 6,
-      appearance: char.handle || '',
-    });
-    alert(`Personagem ${char.name} adicionado ao Rastreador de Combate com sucesso!`);
+    importFromPlayerCharacter(char);
+    alert(`Personagem ${char.name} adicionado à Arena de Combate com sucesso! Armas, munição e implantes foram sincronizados.`);
   };
 
   const executeAttackRoll = () => {

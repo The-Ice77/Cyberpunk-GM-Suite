@@ -14,6 +14,8 @@ import {
   Crown,
   UserCheck,
   X,
+  Swords,
+  Sparkles,
 } from 'lucide-react';
 import { useSystem } from '../../context/SystemContext';
 import { useUserRole } from '../../context/UserRoleContext';
@@ -27,6 +29,8 @@ export type ActivePage =
   | 'netrunning'
   | 'codex'
   | 'player-sheet'
+  | 'combat'
+  | 'tarot'
   | 'archive';
 
 interface SidebarProps {
@@ -47,23 +51,27 @@ export const Sidebar: React.FC<SidebarProps> = ({ activePage, onSelectPage, isOp
     { id: 'people', label: 'Pessoas & Facções', icon: <Users className="w-4 h-4" />, categoryNumber: '01' },
     { id: 'world', label: 'Mundo & Night City', icon: <MapPin className="w-4 h-4" />, categoryNumber: '02' },
     { id: 'campaign', label: 'Diretor de Campanha', icon: <Compass className="w-4 h-4" />, categoryNumber: '03' },
-    { id: 'arsenal', label: 'Arsenal & Loot', icon: <Crosshair className="w-4 h-4" />, categoryNumber: '04' },
-    { id: 'netrunning', label: 'Netrunning & IoT', icon: <Network className="w-4 h-4" />, categoryNumber: '05', badge: isRed ? 'Elevador' : 'Fortaleza' },
-    { id: 'codex', label: 'Biblioteca & Códice', icon: <BookOpen className="w-4 h-4" />, categoryNumber: '06', badge: 'Tripla' },
-    { id: 'player-sheet', label: 'Fichas de Jogadores', icon: <User className="w-4 h-4" />, categoryNumber: '07' },
-    { id: 'archive', label: 'Biblioteca Digital', icon: <Library className="w-4 h-4" />, categoryNumber: '08', badge: '82 PDFs' },
+    { id: 'combat', label: 'Arena de Combate', icon: <Swords className="w-4 h-4 text-red-500" />, categoryNumber: '04', badge: 'Tático' },
+    { id: 'arsenal', label: 'Arsenal & Loot', icon: <Crosshair className="w-4 h-4" />, categoryNumber: '05' },
+    { id: 'netrunning', label: 'Netrunning & IoT', icon: <Network className="w-4 h-4" />, categoryNumber: '06', badge: isRed ? 'Elevador' : 'Fortaleza' },
+    { id: 'codex', label: 'Biblioteca & Códice', icon: <BookOpen className="w-4 h-4" />, categoryNumber: '07', badge: 'Tripla' },
+    { id: 'player-sheet', label: 'Fichas de Jogadores', icon: <User className="w-4 h-4" />, categoryNumber: '08' },
+    { id: 'tarot', label: 'Tarot de Night City', icon: <Sparkles className="w-4 h-4 text-purple-400" />, categoryNumber: '09', badge: 'Arcanos' },
+    { id: 'archive', label: 'Biblioteca Digital', icon: <Library className="w-4 h-4" />, categoryNumber: '10', badge: '82 PDFs' },
   ];
 
   const PLAYER_NAV_ITEMS: { id: ActivePage; label: string; icon: React.ReactNode; categoryNumber: string; badge?: string }[] = [
     { id: 'player-sheet', label: 'Minha Ficha', icon: <User className="w-4 h-4" />, categoryNumber: '01', badge: 'Ativo' },
     { id: 'hub', label: 'Hub Principal', icon: <LayoutDashboard className="w-4 h-4" />, categoryNumber: '00' },
-    { id: 'people', label: 'Pessoas & Facções', icon: <Users className="w-4 h-4" />, categoryNumber: '02' },
-    { id: 'world', label: 'Mapa & Distritos', icon: <MapPin className="w-4 h-4" />, categoryNumber: '03' },
-    { id: 'arsenal', label: 'Arsenal & Cromo', icon: <Crosshair className="w-4 h-4" />, categoryNumber: '04' },
-    { id: 'netrunning', label: 'Netrunning & Cyberdeck', icon: <Network className="w-4 h-4" />, categoryNumber: '05', badge: isRed ? 'Elevador' : 'Fortaleza' },
-    { id: 'campaign', label: 'Diário & Missões', icon: <Compass className="w-4 h-4" />, categoryNumber: '06' },
-    { id: 'codex', label: 'Biblioteca & Códice', icon: <BookOpen className="w-4 h-4" />, categoryNumber: '07' },
-    { id: 'archive', label: 'Biblioteca Digital', icon: <Library className="w-4 h-4" />, categoryNumber: '08', badge: '82 PDFs' },
+    { id: 'combat', label: 'Arena de Combate', icon: <Swords className="w-4 h-4 text-red-500" />, categoryNumber: '02', badge: 'Tático' },
+    { id: 'people', label: 'Pessoas & Facções', icon: <Users className="w-4 h-4" />, categoryNumber: '03' },
+    { id: 'world', label: 'Mapa & Distritos', icon: <MapPin className="w-4 h-4" />, categoryNumber: '04' },
+    { id: 'arsenal', label: 'Arsenal & Cromo', icon: <Crosshair className="w-4 h-4" />, categoryNumber: '05' },
+    { id: 'netrunning', label: 'Netrunning & Cyberdeck', icon: <Network className="w-4 h-4" />, categoryNumber: '06', badge: isRed ? 'Elevador' : 'Fortaleza' },
+    { id: 'campaign', label: 'Diário & Missões', icon: <Compass className="w-4 h-4" />, categoryNumber: '07' },
+    { id: 'codex', label: 'Biblioteca & Códice', icon: <BookOpen className="w-4 h-4" />, categoryNumber: '08' },
+    { id: 'tarot', label: 'Tarot de Night City', icon: <Sparkles className="w-4 h-4 text-purple-400" />, categoryNumber: '09', badge: 'Arcanos' },
+    { id: 'archive', label: 'Biblioteca Digital', icon: <Library className="w-4 h-4" />, categoryNumber: '10', badge: '82 PDFs' },
   ];
 
   const navItems = isPlayer ? PLAYER_NAV_ITEMS : GM_NAV_ITEMS;

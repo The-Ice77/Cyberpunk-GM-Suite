@@ -20,6 +20,8 @@ import { NetrunningPage } from './pages/NetrunningPage';
 import { CodexPage } from './pages/CodexPage';
 import { PlayerSheetPage } from './pages/PlayerSheetPage';
 import { DigitalArchivePage } from './pages/DigitalArchivePage';
+import { CombatPage } from './pages/CombatPage';
+import { TarotPage } from './pages/TarotPage';
 
 export const AppContent: React.FC = () => {
   const [activePage, setActivePage] = useState<ActivePage>('hub');
@@ -44,12 +46,7 @@ export const AppContent: React.FC = () => {
           }
         }}
         onToggleCombat={() => {
-          setIsCombatOpen(prev => !prev);
-          if (!isCombatOpen) {
-            setIsDiceOpen(false);
-            setIsAiOpen(false);
-            setIsTarotOpen(false);
-          }
+          setActivePage('combat');
         }}
         onToggleAi={() => {
           setIsAiOpen(prev => !prev);
@@ -60,12 +57,7 @@ export const AppContent: React.FC = () => {
           }
         }}
         onToggleTarot={() => {
-          setIsTarotOpen(prev => !prev);
-          if (!isTarotOpen) {
-            setIsDiceOpen(false);
-            setIsCombatOpen(false);
-            setIsAiOpen(false);
-          }
+          setActivePage('tarot');
         }}
         onToggleSidebar={() => setIsSidebarOpen(prev => !prev)}
       />
@@ -84,13 +76,24 @@ export const AppContent: React.FC = () => {
         <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-6 lg:p-8 pb-24 lg:pb-8">
           {activePage === 'hub' && (
             <HubPage
-              onNavigate={page => setActivePage(page)}
-              onOpenTarot={() => setIsTarotOpen(true)}
+              onNavigate={page => setActivePage(page as ActivePage)}
+              onOpenTarot={() => setActivePage('tarot')}
             />
           )}
           {activePage === 'people' && <PeoplePage />}
           {activePage === 'world' && <WorldPage />}
           {activePage === 'campaign' && <CampaignPage />}
+          {activePage === 'combat' && (
+            <CombatPage
+              onOpenTarot={() => setActivePage('tarot')}
+              onNavigate={page => setActivePage(page as ActivePage)}
+            />
+          )}
+          {activePage === 'tarot' && (
+            <TarotPage
+              onNavigate={page => setActivePage(page as ActivePage)}
+            />
+          )}
           {activePage === 'arsenal' && <ArsenalPage />}
           {activePage === 'netrunning' && <NetrunningPage />}
           {activePage === 'codex' && <CodexPage />}

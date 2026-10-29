@@ -14,6 +14,7 @@ import {
   Sparkles,
   User,
   Library,
+  Swords,
 } from 'lucide-react';
 import { useSystem } from '../context/SystemContext';
 import { useCampaign } from '../context/CampaignContext';
@@ -71,8 +72,18 @@ export const HubPage: React.FC<HubPageProps> = ({ onNavigate, onOpenTarot }) => 
       tag: 'Narrativa',
     },
     {
+      id: 'combat',
+      number: '05',
+      title: 'Arena de Combate',
+      subtitle: 'Iniciativa, Armas das Fichas e Danos Reais',
+      description: 'Gerenciador tático de tiroteios com puxada de armas e implantes reais das fichas de personagens, alcance e DVs oficiais, ablação de blindagem e ferimentos críticos.',
+      icon: <Swords className="w-5 h-5 text-red-500" />,
+      features: ['Importação 1-Click de Fichas', 'Armas, Dano e DV por Distância', 'Ferimentos Críticos e Ablação'],
+      tag: 'Tático',
+    },
+    {
       id: 'arsenal',
-      number: '04',
+      number: '06',
       title: 'Arsenal, Cromo & Loot',
       subtitle: 'Recompensas por Abate, Catálogo e Garagem',
       description: 'Gere saques de combate com dinheiro, munição, itens pessoais dos bolsos (Data Pack) e colheita do Banco de Corpos (Ripperdoc). Catálogo completo e upgrades de veículos nômades.',
@@ -82,7 +93,7 @@ export const HubPage: React.FC<HubPageProps> = ({ onNavigate, onOpenTarot }) => 
     },
     {
       id: 'netrunning',
-      number: '05',
+      number: '07',
       title: 'Netrunning Especializado',
       subtitle: isRed ? 'Arquitetura NET por Andares (Elevador)' : 'Fortalezas de Dados Clássicas 2020',
       description: isRed
@@ -96,7 +107,7 @@ export const HubPage: React.FC<HubPageProps> = ({ onNavigate, onOpenTarot }) => 
     },
     {
       id: 'codex',
-      number: '06',
+      number: '08',
       title: 'Biblioteca & Códice Triplo',
       subtitle: 'Sistema Oficial, Banco do Mestre e Forja Homebrew',
       description: 'Acesse o Bestiário oficial com envio para combate em 1 clique, consulte regras com citações exatas, gerencie o acervo da sua campanha e crie armas, cromo e inimigos na Forja Homebrew.',
@@ -106,7 +117,7 @@ export const HubPage: React.FC<HubPageProps> = ({ onNavigate, onOpenTarot }) => 
     },
     {
       id: 'player-sheet',
-      number: '07',
+      number: '09',
       title: 'Fichas de Jogadores',
       subtitle: 'Gerador Completo, Rolo de Dados & Perícias',
       description: 'Ficha interativa completa com rolagem integrada de perícias, combate com cálculo de dano e ablação, inventário com peso e custo, ciberware e gerador de lifepath.',
@@ -115,8 +126,18 @@ export const HubPage: React.FC<HubPageProps> = ({ onNavigate, onOpenTarot }) => 
       tag: 'Personagens',
     },
     {
+      id: 'tarot',
+      number: '10',
+      title: 'Tarot de Night City',
+      subtitle: 'Arcanos Maiores, Misty e Regra RED v1.2',
+      description: 'Santuário de profecias com as 22 cartas canônicas do DLC oficial da R. Talsorian, tiragens temáticas (Passado, Presente, Futuro) e efeitos de combate com 3+ seis no dano.',
+      icon: <Sparkles className="w-5 h-5 text-purple-400" />,
+      features: ['26 Arcanos com Artes Reais', 'Tiragens de 1 a 5 Cartas', 'Gatilho de Combate RED v1.2'],
+      tag: 'Arcanos',
+    },
+    {
       id: 'archive',
-      number: '08',
+      number: '11',
       title: 'Biblioteca Digital',
       subtitle: '82 Manuais Oficiais & DLCs Indexados',
       description: 'Consulta abrangente de todos os livros básicos, suplementos de facções, aventuras, screamsheets e expansões de regras em PDF indexados para a campanha.',

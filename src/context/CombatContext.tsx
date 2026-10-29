@@ -1,5 +1,17 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { GameSystem } from '../types/system';
+import { PlayerCharacter } from '../data/playerArchetypes';
+
+export interface CombatantWeapon {
+  name: string;
+  damage: string;
+  rof: number;
+  ammoType?: string;
+  magCapacity?: number;
+  magCurrent?: number;
+  notes?: string;
+  category?: 'pistol' | 'shotgun' | 'rifle' | 'smg' | 'sniper' | 'heavy' | 'melee' | 'cyberware' | 'unarmed' | string;
+}
 
 export interface Combatant {
   id: string;
@@ -11,6 +23,9 @@ export interface Combatant {
   // RED Armor:
   headSP: number;
   bodySP: number;
+  maxHeadSP?: number;
+  maxBodySP?: number;
+  shieldHP?: number;
   // 2020 Armor:
   torsoSP?: number;
   rArmSP?: number;
@@ -25,7 +40,24 @@ export interface Combatant {
   notes?: string;
   faction?: string;
   appearance?: string;
-  weapons?: { name: string; damage: string; rof: number }[];
+  imageUrl?: string;
+  characterSheetId?: string;
+  role?: string;
+  stats?: {
+    INT?: number;
+    REF: number;
+    DEX: number;
+    TECH?: number;
+    COOL?: number;
+    WILL?: number;
+    LUCK?: number;
+    MOVE?: number;
+    BODY: number;
+    EMP?: number;
+  };
+  skills?: { [skillName: string]: number };
+  weapons?: CombatantWeapon[];
+  cyberware?: { name: string; type: string; description: string }[];
   combatNumber?: number;
 }
 
@@ -35,6 +67,7 @@ interface CombatContextType {
   roundNumber: number;
   addCombatant: (c: Combatant) => void;
   addMultipleCombatants: (items: Combatant[]) => void;
+  importFromPlayerCharacter: (pc: PlayerCharacter) => void;
   removeCombatant: (id: string) => void;
   updateHP: (id: string, delta: number) => void;
   ablateSP: (id: string, location: 'head' | 'body' | 'torso' | 'rArm' | 'lArm' | 'rLeg' | 'lLeg', delta: number) => void;
@@ -76,6 +109,112 @@ export const CombatProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const addMultipleCombatants = (items: Combatant[]) => {
     setCombatants(prev => [...prev, ...items]);
+  };
+
+  const importFromPlayerCharacter = (pc: PlayerCharacter) => {
+    // Collect weapons from character sheet
+    const weaponsList: CombatantWeapon[] = (pc.weapons || []).map(w => ({
+      name: w.name,
+      damage: w.damage,
+      rof: w.rof,
+      ammoType: w.ammoType,
+      magCapacity: w.magCapacity,
+      magCurrent: w.magCurrent ?? w.magCapacity,
+      notes: w.notes,
+      category: w.ammoType === 'Melee' ? 'melee' : 'firearm',
+    }));
+
+    // Detect cyberware attacks (Mantis Blades, Gorilla Arms, Scratchers, Big Knucks, Monowire, Pop-up Guns)
+    (pc.cyberware || []).forEach(cy => {
+      const lower = cy.name.toLowerCase();
+      if (lower.includes('mantis') || lower.includes('blade') || lower.includes('lâmina')) {
+        weaponsList.push({
+          name: `[Cromo] ${cy.name}`,
+          damage: '3d6',
+          rof: 2,
+          ammoType: 'Melee',
+          notes: 'Arma Branca Pesada Embutida (Ignora metade do SP)',
+          category: 'cyberware',
+        });
+      } else if (lower.includes('gorilla') || lower.includes('knuck') || lower.includes('punho') || lower.includes('soco')) {
+        weaponsList.push({
+          name: `[Cromo] ${cy.name}`,
+          damage: '2d6',
+          rof: 2,
+          ammoType: 'Melee',
+          notes: 'Golpe Cibernético Contundente',
+          category: 'cyberware',
+        });
+      } else if (lower.includes('monowire') || lower.includes('monocabo')) {
+        weaponsList.push({
+          name: `[Cromo] ${cy.name}`,
+          damage: '3d6',
+          rof: 2,
+          ammoType: 'Melee',
+          notes: 'Monofio Cortante (Ignora metade do SP)',
+          category: 'cyberware',
+        });
+      } else if (lower.includes('pop-up') || lower.includes('arma embutida') || lower.includes('canhão')) {
+        weaponsList.push({
+          name: `[Cromo] ${cy.name}`,
+          damage: '3d6',
+          rof: 1,
+          ammoType: 'Heavy',
+          magCapacity: 8,
+          magCurrent: 8,
+          notes: 'Arma de Fogo Embutida no Braço',
+          category: 'cyberware',
+        });
+      }
+    });
+
+    // Body unarmed damage in Cyberpunk RED:
+    const bodyStat = pc.statsRED?.BODY || 6;
+    let brawlingDmg = '1d6';
+    if (bodyStat >= 11) brawlingDmg = '4d6';
+    else if (bodyStat >= 7) brawlingDmg = '3d6';
+    else if (bodyStat >= 5) brawlingDmg = '2d6';
+
+    weaponsList.push({
+      name: 'Ataque Desarmado (Brawling / Soco)',
+      damage: brawlingDmg,
+      rof: 2,
+      ammoType: 'Melee',
+      notes: `Baseado no BODY ${bodyStat}`,
+      category: 'unarmed',
+    });
+
+    const ref = pc.statsRED?.REF || 6;
+    const initRoll = Math.floor(Math.random() * 10) + 1 + ref;
+
+    const newCombatant: Combatant = {
+      id: `pc-${pc.id}-${Date.now()}`,
+      name: pc.handle ? `${pc.name} "${pc.handle}"` : pc.name,
+      system: pc.system || 'RED',
+      initiative: initRoll,
+      currentHP: pc.currentHP,
+      maxHP: pc.maxHP,
+      headSP: pc.headSP || pc.armor?.head?.sp || 0,
+      bodySP: pc.bodySP || pc.armor?.body?.sp || 0,
+      maxHeadSP: pc.armor?.head?.maxSP || pc.headSP || 0,
+      maxBodySP: pc.armor?.body?.maxSP || pc.bodySP || 0,
+      shieldHP: pc.shieldHP || 0,
+      conditions: [],
+      criticalInjuries: [],
+      deathSavePenalty: 0,
+      faction: 'Edgerunners',
+      appearance: pc.lifepath ? `${pc.lifepath.clothingStyle || ''} • ${pc.lifepath.hairstyle || ''}` : '',
+      imageUrl: pc.imageUrl,
+      characterSheetId: pc.id,
+      role: pc.role,
+      stats: pc.statsRED,
+      skills: pc.skills,
+      weapons: weaponsList,
+      cyberware: pc.cyberware,
+      combatNumber: ref + (pc.skills?.['Handgun'] || pc.skills?.['Shoulder Arms'] || 6),
+    };
+
+    setCombatants(prev => [...prev, newCombatant]);
   };
 
   const removeCombatant = (id: string) => {
@@ -222,6 +361,7 @@ export const CombatProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       roundNumber,
       addCombatant,
       addMultipleCombatants,
+      importFromPlayerCharacter,
       removeCombatant,
       updateHP,
       ablateSP,

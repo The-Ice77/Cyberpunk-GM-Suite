@@ -125,12 +125,12 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           <span className="text-[10px] tracking-tight truncate w-full">Co-GM IA</span>
         </button>
 
-        {/* Item 5: Combat Drawer */}
+        {/* Item 5: Combat Page */}
         <button
-          onClick={onToggleCombat}
+          onClick={() => onSelectPage('combat')}
           className={`flex flex-col items-center justify-center py-1 rounded-xl transition active:scale-95 relative ${
-            isCombatOpen
-              ? 'text-amber-400 font-bold'
+            activePage === 'combat'
+              ? 'text-red-400 font-bold'
               : 'text-zinc-400 hover:text-zinc-200'
           }`}
         >
