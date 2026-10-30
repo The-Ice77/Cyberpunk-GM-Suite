@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { NIGHT_CITY_DISTRICTS } from '../../data/mapData';
+import { districtLabel } from '../../data/districtRegistry';
 import {
   Building2,
   Shield,
@@ -55,7 +57,7 @@ export const StructureGeneratorSection: React.FC = () => {
   const [scale, setScale] = useState<StructureScale>('medium');
   const [threatLevel, setThreatLevel] = useState<StructureThreatLevel>('medium');
   const [faction, setFaction] = useState<string>('Maelstrom');
-  const [district, setDistrict] = useState<string>('Watson (Northside Industrial)');
+  const [district, setDistrict] = useState<string>(districtLabel(NIGHT_CITY_DISTRICTS[1]));
   const [customPrompt, setCustomPrompt] = useState<string>('');
   const [showAiOptions, setShowAiOptions] = useState<boolean>(false);
   const [isLoadingAI, setIsLoadingAI] = useState<boolean>(false);
@@ -67,7 +69,7 @@ export const StructureGeneratorSection: React.FC = () => {
       scale: 'medium',
       threatLevel: 'medium',
       faction: 'Maelstrom',
-      district: 'Watson (Northside Industrial)',
+      district: districtLabel(NIGHT_CITY_DISTRICTS[1]),
     })
   );
 
@@ -338,13 +340,7 @@ ${r.lootText ? `Saque Especial: ${r.lootText}` : ''}
           <div className="flex-1 w-full md:w-auto">
             <div className="flex items-center gap-2">
               <MapPin className="w-4 h-4 text-purple-400 shrink-0" />
-              <input
-                type="text"
-                value={district}
-                onChange={e => setDistrict(e.target.value)}
-                placeholder="Distrito de Night City (ex: Watson, Heywood, Centro Corporativo...)"
-                className="w-full bg-[#0a0a0d] border border-zinc-800 rounded-xl p-2 text-xs text-zinc-200 font-mono focus:border-purple-500"
-              />
+              <select value={district} onChange={e => setDistrict(e.target.value)} className="w-full bg-[#0a0a0d] border border-zinc-800 rounded-xl p-2 text-xs text-zinc-200 font-mono focus:border-purple-500"><option value={district}>{district}</option>{NIGHT_CITY_DISTRICTS.filter(d => districtLabel(d) !== district).map(d => (<option key={d.id} value={districtLabel(d)}>{districtLabel(d)}</option>))}</select>
             </div>
           </div>
 

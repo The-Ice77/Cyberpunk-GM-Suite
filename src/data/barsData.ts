@@ -29,7 +29,7 @@ export const NIGHT_CITY_BARS: BarVenue[] = [
   {
     id: 'afterlife',
     name: 'The Afterlife (O Pós-Vida)',
-    district: 'Watson (Little China - Antigo necrotério)',
+    district: 'Little China · Watson — Antigo necrotério',
     aesthetic: 'Iluminação âmbar fosca, mesas de aço polido onde outrora ficavam macas de autópsia, cabines de conferência à prova de som e telas com obituários de Solos.',
     musicStyle: 'Industrial frio, batidas graves compassadas e rock clássico dos anos 2020.',
     clientele: 'Solos lendários, Fixers de elite (Rogue), Netrunners veteranos e mercenários com nome na praça.',
@@ -62,7 +62,7 @@ export const NIGHT_CITY_BARS: BarVenue[] = [
   {
     id: 'totentanz',
     name: 'Totentanz (Dança da Morte)',
-    district: 'Watson (Northside / NID)',
+    district: 'Desenvolvimento de Watson',
     aesthetic: 'Prédio decrépito de 5 andares; canos estourados jorrando vapor sobre a pista de mosh; piso manchado de sangue seco e fiação exposta; cadáveres às vezes deixados encostados na parede.',
     musicStyle: 'Neo-Trash Metal, Death Industrial ensurdecedor e sirenes distorcidas com mais de 120 decibéis.',
     clientele: 'Maelstrommers com visores sangrentos, boosters ensandecidos, ciberpsicopatas em busca de briga e góticos cibernéticos.',
@@ -94,7 +94,7 @@ export const NIGHT_CITY_BARS: BarVenue[] = [
   {
     id: 'el-coyote-cojo',
     name: 'El Coyote Cojo',
-    district: 'Heywood (The Glen / Vista Del Rey)',
+    district: 'The Glen · Heywood',
     aesthetic: 'Bar acolhedor e rústico com luzes amarelas quentes, fotos de veteranos de guerra nas paredes, bandeiras tricolores e cheiro de carnitas frescas preparadas por Mama Welles.',
     musicStyle: 'Mariachi moderno com sintetizadores, Cumbia e clássicos acústicos latinos.',
     clientele: 'Moradores locais de Heywood, membros dos Valentinos respeitando a trégua e trabalhadores de fábrica.',
@@ -126,7 +126,7 @@ export const NIGHT_CITY_BARS: BarVenue[] = [
   {
     id: 'lizzies-bar',
     name: "Lizzie's Bar",
-    district: 'Watson (Kabuki)',
+    district: 'Kabuki · Watson',
     aesthetic: 'Neon rosa e roxo pulsante, estátuas de stripper cromadas, tacos de beisebol com pregos decorando o teto e cabines confortáveis de braindance privativo.',
     musicStyle: 'Synthwave sensual, Electro-Pop pesado e batidas eletrônicas dançantes.',
     clientele: 'Trabalhadores sexuais, artistas da noite, Fixers independentes e curiosos da vida noturna.',
@@ -158,7 +158,7 @@ export const NIGHT_CITY_BARS: BarVenue[] = [
   {
     id: 'the-short-circuit',
     name: 'The Short Circuit (Curto-Circuito)',
-    district: 'Watson (Kabuki Market)',
+    district: 'Kabuki · Watson',
     aesthetic: 'Telas verdes de fósforo antigas piscando código UNIX, cheiro de solda e estanho no ar, bancadas de trabalho compartilhadas ao lado das torneiras de cerveja.',
     musicStyle: 'Chiptune, sintetizadores analógicos 8-bit e ambient eletrônico meditativo.',
     clientele: 'Netrunners freelancers, Técnicos de hardware, contrabandistas de chips e nerds do Data Pool.',
@@ -189,7 +189,7 @@ export const NIGHT_CITY_BARS: BarVenue[] = [
   {
     id: 'empathy',
     name: 'Club Empathy',
-    district: 'City Center (Corporate Plaza)',
+    district: 'Downtown · City Center',
     aesthetic: 'Minimalismo escandinavo ultramoderno, mármore branco sintético, aquários gigantes com peixes mecânicos e névoa aromática que reduz a ansiedade dos clientes.',
     musicStyle: 'Lounge eletrônico sofisticado, jazz neo-clássico com saxofone holográfico.',
     clientele: 'Diretores de corporações, lobistas políticos, diplomatas e modelos com biosculpting perfeito.',
@@ -220,7 +220,7 @@ export const NIGHT_CITY_BARS: BarVenue[] = [
   {
     id: 'forlorn-hope',
     name: 'The Forlorn Hope',
-    district: 'Watson (Little China - Quarteirão Velho)',
+    district: 'Little China · Watson — Quarteirão Velho',
     aesthetic: 'Bar subterrâneo blindado construído em um antigo abrigo nuclear. As paredes são adornadas com capacetes perfurados por balas, medalhas de campanhas militares esquecidas e placas de blindagem de tanques.',
     musicStyle: 'Folk militar acústico, Rock clássico dos anos 90 e hinos de mercenários em volume moderado.',
     clientele: 'Veteranos condecorados da 2ª, 3ª e 4ª Guerra Corporativa, Solos aposentados e mercenários que valorizam honra marcial.',
@@ -252,7 +252,7 @@ export const NIGHT_CITY_BARS: BarVenue[] = [
   {
     id: 'dick-liddys',
     name: "Dick Liddy's",
-    district: 'Heywood (Vista Del Rey)',
+    district: 'The Glen · Heywood',
     aesthetic: 'Boteco sombrio e enfumaçado com persianas de madeira quebradas, lâmpadas incandescentes piscando com zumbido elétrico e copos com marcas d’água antigas.',
     musicStyle: 'Jazz Noir solitário, trompete melancólico e blues lento gravado em fitas analógicas.',
     clientele: 'Detetives particulares maltrapilhos, informantes de beco, policiais suspensos do DPNC e maridos traídos.',

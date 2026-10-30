@@ -1,5 +1,6 @@
 import { WEAPONS_DATABASE } from './arsenalData';
 import { codexMarketItemsFor } from '../services/codexCatalog';
+import { resolveDistrict, districtLabel, districtShortLabel } from './districtRegistry';
 
 export interface NightMarketItem {
   name: string;
@@ -48,42 +49,42 @@ export interface NightMarket {
 export const NIGHT_MARKET_LOCATIONS = [
   {
     name: 'Túneis de Esgoto e Linha F do Metrô Abandonado',
-    district: 'Watson (Kabuki)',
+    district: 'Kabuki · Watson',
     atmosphere: 'Vapor quente saindo de grades enferrujadas, barracas iluminadas por fitas de LED âmbar e cheiro de lixo orgânico misturado com óleo mineral de armas.',
     securityLevel: 'Média (Solos Armados & Cães K-9)' as const,
     entryCondition: 'Apresentar chip de convite de um Fixer local ou pagar 20eb na entrada.',
   },
   {
     name: 'Pátio de Contêineres Docas #44',
-    district: 'Zona Portuária / Marina',
+    district: 'Porto de Night City',
     atmosphere: 'Contêineres empilhados criando corredores labirínticos sob névoa salgada e holofotes amarelos que piscam intermitentemente.',
     securityLevel: 'Alta (Torres e Snipers nos Telhados)' as const,
     entryCondition: 'Revista corporal rigorosa na cancela; armas pesadas devem ser travadas com lacre térmico.',
   },
   {
     name: 'Estacionamento Subterrâneo do Megabuilding HB-7',
-    district: 'Heywood (Vista del Rey)',
+    district: 'The Glen · Heywood',
     atmosphere: 'Chão manchado de óleo diesel e marcas de pneu, barracas montadas nas caçambas de picapes blindadas e música chicano-rap ecoando pelas colunas de concreto.',
     securityLevel: 'Média (Solos Armados & Cães K-9)' as const,
     entryCondition: 'Dar o aperto de mão com código dos Valentinos ou estar acompanhado por um morador de Heywood.',
   },
   {
     name: 'Galpão Frigorífico Desativado da Meat-Corp',
-    district: 'Rancho Coronado (Santo Domingo)',
+    district: 'Rancho Coronado · Santo Domingo',
     atmosphere: 'Ganchos enferrujados pendurados no teto alto, névoa densa de gelo seco e vendedores vestindo casacos pesados de pele sintética com gorros táticos.',
     securityLevel: 'Baixa (Pistolas)' as const,
     entryCondition: 'Entrada franca, mas quem sacar arma dentro do frigorífico é fuzilado na hora.',
   },
   {
     name: 'Ruínas do Shopping Mall Pacifica Paradise',
-    district: 'Pacifica',
+    district: 'Pacifica Playground',
     atmosphere: 'Vitrines quebradas cobertas por grafites neon, palmeiras de plástico derretidas e um DJ tocando batidas pesadas em um mezanino elevado.',
     securityLevel: 'Baixa (Pistolas)' as const,
     entryCondition: 'Pagar pedágio de 10eb para os olheiros nos acessos da rodovia.',
   },
   {
     name: 'Acampamento de Trailers e Tanques Velhos dos Badlands',
-    district: 'Badlands Sul',
+    district: 'Badlands',
     atmosphere: 'Círculo de caminhões pesados com lonas amarradas entre as carrocerias criando um mercado coberto contra tempestades de areia, iluminado por fogueiras de CHOOH2.',
     securityLevel: 'Alta (Torres e Snipers nos Telhados)' as const,
     entryCondition: 'Declarar intenções pacíficas pelo rádio CB na frequência 104.2 antes de cruzar o perímetro de barricadas.',
@@ -392,10 +393,13 @@ export const NIGHT_MARKET_BARGAIN_TIPS = [
  * Gera proceduralmente um Mercado Negro completo seguindo os parâmetros oficiais de Cyberpunk RED.
  */
 export function generateProceduralNightMarket(customDistrict?: string): NightMarket {
-  const locPool = customDistrict
-    ? NIGHT_MARKET_LOCATIONS.filter(l => l.district.toLowerCase().includes(customDistrict.toLowerCase()))
+  const wanted = customDistrict ? resolveDistrict(customDistrict) : undefined;
+  const locPool = wanted
+    ? NIGHT_MARKET_LOCATIONS.filter(l => resolveDistrict(l.district)?.id === wanted.id)
     : NIGHT_MARKET_LOCATIONS;
-  const loc = locPool.length > 0 ? locPool[Math.floor(Math.random() * locPool.length)] : NIGHT_MARKET_LOCATIONS[0];
+  const baseLoc = locPool.length > 0 ? locPool[Math.floor(Math.random() * locPool.length)] : NIGHT_MARKET_LOCATIONS[Math.floor(Math.random() * NIGHT_MARKET_LOCATIONS.length)];
+  // Sem ponto fixo no distrito escolhido: reaproveita um local-modelo, mas ancorado no distrito pedido.
+  const loc = wanted && locPool.length === 0 ? { ...baseLoc, district: districtLabel(wanted), name: `${baseLoc.name} (filial em ${districtShortLabel(wanted)})` } : baseLoc;
 
   const fixer = NIGHT_MARKET_OPERATORS[Math.floor(Math.random() * NIGHT_MARKET_OPERATORS.length)];
   const comp = NIGHT_MARKET_COMPLICATIONS[Math.floor(Math.random() * NIGHT_MARKET_COMPLICATIONS.length)];

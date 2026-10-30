@@ -47,6 +47,7 @@ import {
 } from 'lucide-react';
 import { useSystem } from '../context/SystemContext';
 import { useUserRole, CustomDistrictLocation } from '../context/UserRoleContext';
+import { getDistrictById } from '../data/districtRegistry';
 import { NIGHT_CITY_DISTRICTS, MapDistrict, isPointInPolygon, detectDistrictByCoords, DISTRICT_LEGACY_ALIASES } from '../data/mapData';
 import { seasonalWeatherTables, strangeWeatherTable, urbanEventsList, StrangeWeatherRoll, UrbanEvent, WeatherRollEntry, DISTRICT_WEATHER_NUANCES } from '../data/weatherData';
 import { NIGHT_CITY_BARS, BarVenue } from '../data/barsData';
@@ -435,7 +436,7 @@ export const WorldPage: React.FC = () => {
 
   // WEATHER STATE
   const [selectedSeasonIdx, setSelectedSeasonIdx] = useState<number>(0);
-  const [selectedWeatherDistrict, setSelectedWeatherDistrict] = useState<string>('watson');
+  const [selectedWeatherDistrict, setSelectedWeatherDistrict] = useState<string>('watson-development');
   const [weatherSubTab, setWeatherSubTab] = useState<'narrative' | 'sensory' | 'tactics' | 'districts'>('narrative');
   const [isGeneratingWeatherAI, setIsGeneratingWeatherAI] = useState<boolean>(false);
   const [aiWeatherAtmosphere, setAiWeatherAtmosphere] = useState<AIWeatherAtmosphereResult | null>(null);
@@ -1478,7 +1479,7 @@ export const WorldPage: React.FC = () => {
                           onContextMenu={e => {
                             e.preventDefault();
                             e.stopPropagation();
-                            const dist = NIGHT_CITY_DISTRICTS.find(d => d.id === loc.districtId) || NIGHT_CITY_DISTRICTS[0];
+                            const dist = getDistrictById(loc.districtId) || NIGHT_CITY_DISTRICTS[0];
                             setContextMenu({
                               visible: true,
                               screenX: Math.min(window.innerWidth - 280, Math.max(10, e.clientX)),
@@ -2481,10 +2482,10 @@ export const WorldPage: React.FC = () => {
                   2. Distrito de Referência (Microclima Local):
                 </label>
                 <span className="text-[10px] font-mono text-cyan-400">
-                  {DISTRICT_WEATHER_NUANCES[selectedWeatherDistrict]?.districtName.split(' (')[0]}
+                  {DISTRICT_WEATHER_NUANCES[selectedWeatherDistrict]?.districtName}
                 </span>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[11px] font-mono">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[11px] font-mono max-h-56 overflow-y-auto pr-1">
                 {Object.values(DISTRICT_WEATHER_NUANCES).map(d => {
                   const isSel = selectedWeatherDistrict === d.districtId;
                   return (
@@ -2499,7 +2500,7 @@ export const WorldPage: React.FC = () => {
                       }`}
                       title={d.districtName}
                     >
-                      {d.districtName.split(' ')[0]}
+                      {d.shortName || d.districtName.split(' ')[0]}
                     </button>
                   );
                 })}
@@ -2542,7 +2543,7 @@ export const WorldPage: React.FC = () => {
                   <div className="bg-zinc-900/70 p-3 rounded-xl border border-zinc-800 space-y-1">
                     <span className="text-[10px] text-zinc-400 uppercase font-mono block">Condição de Superfície</span>
                     <strong className="text-zinc-100 font-mono text-base block">{currentWeatherRoll.condition}</strong>
-                    <span className="text-[10px] text-zinc-500 block">Setor: {DISTRICT_WEATHER_NUANCES[selectedWeatherDistrict]?.districtName.split(' (')[0]}</span>
+                    <span className="text-[10px] text-zinc-500 block">Setor: {DISTRICT_WEATHER_NUANCES[selectedWeatherDistrict]?.districtName}</span>
                   </div>
                 </div>
 
@@ -2678,7 +2679,7 @@ export const WorldPage: React.FC = () => {
                               Expandir Cena com IA Co-GM
                             </span>
                             <span className="text-[11px] text-zinc-500">
-                              Gera parágrafos noir sob medida e ganchos de eventos na rua para o distrito de {DISTRICT_WEATHER_NUANCES[selectedWeatherDistrict]?.districtName.split(' (')[0]}.
+                              Gera parágrafos noir sob medida e ganchos de eventos na rua para o distrito de {DISTRICT_WEATHER_NUANCES[selectedWeatherDistrict]?.districtName}.
                             </span>
                           </div>
                           <button

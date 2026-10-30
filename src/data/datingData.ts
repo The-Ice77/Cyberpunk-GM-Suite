@@ -66,7 +66,7 @@ export interface DatingLocationActivity {
 export const DATING_LOCATIONS: DatingLocationActivity[] = [
   {
     locationName: 'Base Militar da NorCal (NorCal Military Base)',
-    district: 'Perímetro Militar / Badlands Norte',
+    district: 'Base Militar NorCal',
     activities: [
       'Aliviar a tensão do primeiro encontro em um estande de tiro automatizado de precisão.',
       'Encarar um circuito de tirolesa e obstáculos de treino tático nas alturas.',
@@ -78,7 +78,7 @@ export const DATING_LOCATIONS: DatingLocationActivity[] = [
   },
   {
     locationName: 'Watson Development',
-    district: 'Watson',
+    district: 'Desenvolvimento de Watson',
     activities: [
       'Festa secreta no saguão de obras inacabado de um megabuilding abandonado.',
       'Passeio no Museu do Petróleo e CHOOH2 patrocinado pela SovOil.',
@@ -90,7 +90,7 @@ export const DATING_LOCATIONS: DatingLocationActivity[] = [
   },
   {
     locationName: 'New Westbrook (Japantown / Charter Hill)',
-    district: 'Westbrook',
+    district: 'Novo Westbrook',
     activities: [
       'Participar da plateia ao vivo de um game-show barulhento da Network News 54.',
       'Assistir a uma corrida clandestina de patins a jato perto do Corpo de Bombeiros #1.',
@@ -102,7 +102,7 @@ export const DATING_LOCATIONS: DatingLocationActivity[] = [
   },
   {
     locationName: 'Morro Rock (Plataforma de Lançamento)',
-    district: 'Porto Espacial / Costa',
+    district: 'Morro Rock',
     activities: [
       'Observar o teste dos portões de aço blindados do Acelerador de Massa Orbital.',
       'Assistir à queima de fogos de artifício químicos sobre a baía de Night City.',
@@ -114,7 +114,7 @@ export const DATING_LOCATIONS: DatingLocationActivity[] = [
   },
   {
     locationName: 'Zona Executiva (Executive Zone)',
-    district: 'Centro Corporativo',
+    district: 'Downtown · City Center',
     activities: [
       'Partida de minigolfe em um gramado sintético impecável no topo de um arranha-céu.',
       'Partida de tênis em uma quadra rara de grama orgânica regada com água destilada.',
@@ -126,7 +126,7 @@ export const DATING_LOCATIONS: DatingLocationActivity[] = [
   },
   {
     locationName: 'Antiga Zona de Combate (Old Combat Zone)',
-    district: 'Zona de Guerra',
+    district: 'Old Combat Zone · Pacifica',
     activities: [
       'Explorar as ruínas grafitadas de um antigo shopping center armado até os dentes.',
       'Comer espetinho de carne de procedência duvidosa no mercado negro da Meia-Noite.',

@@ -1,3 +1,5 @@
+import { NIGHT_CITY_DISTRICTS } from './mapData';
+import { DISTRICT_BOROUGH, districtLabel, districtShortLabel, getDistrictById } from './districtRegistry';
 import { WeatherCondition } from '../types/system';
 
 export interface WeatherSensoryDetails {
@@ -610,13 +612,14 @@ export const strangeWeatherTable: StrangeWeatherRoll[] = [
 
 export interface DistrictWeatherNuance {
   districtId: string;
+  shortName?: string;
   districtName: string;
   localAtmosphere: string;
   sensoryHook: string;
   environmentalHazard: string;
 }
 
-export const DISTRICT_WEATHER_NUANCES: Record<string, DistrictWeatherNuance> = {
+const BOROUGH_WEATHER_NUANCES: Record<string, DistrictWeatherNuance> = {
   watson: {
     districtId: 'watson',
     districtName: 'Watson (Little China, Kabuki, Northside)',
@@ -667,6 +670,52 @@ export const DISTRICT_WEATHER_NUANCES: Record<string, DistrictWeatherNuance> = {
     environmentalHazard: 'Tempestades de poeira que cegam sensores térmicos e óticos desprotegidos e desgastam filtros de ar de veículos em alta velocidade.',
   },
 };
+
+const ZONE_WEATHER_HAZARD: Record<string, string> = {
+  Corporate: 'Drones de segurança e sensores corporativos monitoram qualquer sinal de tumulto; abrigar-se em áreas privadas pode atrair guardas armados.',
+  Moderate: 'Ruas movimentadas com pouca cobertura: multidões em pânico atrapalham a fuga (-2 em Atletismo para atravessar a multidão).',
+  'Combat Zone': 'Sem energia confiável nem policiamento: tiroteios oportunistas e entulho instável tornam qualquer abrigo precário.',
+  Outskirts: 'Longe de qualquer abrigo sólido: exposição prolongada exige testes de Resistência contra calor, frio ou poeira ácida.',
+  Industrial: 'Vapores tóxicos e vazamentos químicos são agravados pelo clima: sem máscara, -2 em testes físicos e risco de intoxicação.',
+};
+const BOROUGH_BASE_KEY: Record<string, string> = {
+  Watson: 'watson',
+  Westbrook: 'westbrook',
+  'City Center': 'city_center',
+  Heywood: 'heywood',
+  Pacifica: 'pacifica',
+  'Santo Domingo': 'santo_domingo',
+};
+const ZONE_BASE_KEY: Record<string, string> = {
+  Corporate: 'city_center',
+  'Combat Zone': 'pacifica',
+  Industrial: 'santo_domingo',
+  Moderate: 'westbrook',
+  Outskirts: 'badlands',
+};
+
+/**
+ * Microclima por distrito oficial do mapa 2045 (um por distrito).
+ * Combina o clima do bairro-mãe com a descrição, o tipo de zona e as facções do distrito.
+ */
+export const DISTRICT_WEATHER_NUANCES: Record<string, DistrictWeatherNuance> = Object.fromEntries(
+  NIGHT_CITY_DISTRICTS.map(d => {
+    const base =
+      BOROUGH_WEATHER_NUANCES[BOROUGH_BASE_KEY[DISTRICT_BOROUGH[d.id] || ''] || ZONE_BASE_KEY[d.zoneType] || 'westbrook'];
+    const nuance: DistrictWeatherNuance = {
+      districtId: d.id,
+      shortName: districtShortLabel(d),
+      districtName: districtLabel(d),
+      localAtmosphere: `${d.description} ${base.localAtmosphere}`,
+      sensoryHook: base.sensoryHook,
+      environmentalHazard: `${base.environmentalHazard} ${ZONE_WEATHER_HAZARD[d.zoneType] || ''} Facções ativas: ${d.dominantFactions.join(', ')}.`.trim(),
+    };
+    return [d.id, nuance];
+  })
+);
+
+/** Aceita ids antigos (watson, heywood, city_center…) e devolve o id atual do distrito. */
+export const resolveWeatherDistrictId = (id: string): string => getDistrictById(id)?.id || 'watson-development';
 
 export interface UrbanEvent {
   id: string;

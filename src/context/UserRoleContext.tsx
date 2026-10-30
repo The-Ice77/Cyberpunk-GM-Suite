@@ -86,7 +86,7 @@ export const UserRoleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               {
                 id: 'loc-1',
                 name: 'Clínica Ripperdoc Dr. K Chrome',
-                districtId: 'watson',
+                districtId: 'kabuki',
                 type: 'Clínica Clandestina',
                 description: 'Consultório nos fundos de uma casa de chá em Kabuki especializada em Sandevistan contrabandeadas.',
                 notes: 'Dr. K deve um favor para o grupo por causa de uma dívida com a Maelstrom.',

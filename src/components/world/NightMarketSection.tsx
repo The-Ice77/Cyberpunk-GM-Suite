@@ -24,6 +24,7 @@ import {
 } from '../../data/nightMarketData';
 import { generateAINightMarket } from '../../services/aiService';
 import { NIGHT_CITY_DISTRICTS } from '../../data/mapData';
+import { districtLabel } from '../../data/districtRegistry';
 
 interface NightMarketSectionProps {
   initialDistrict?: string;
@@ -136,7 +137,7 @@ export const NightMarketSection: React.FC<NightMarketSectionProps> = ({ initialD
                   >
                     <option value="Qualquer">Qualquer Distrito (Aleatório)</option>
                     {NIGHT_CITY_DISTRICTS.map(d => (
-                      <option key={d.id} value={d.name}>{d.name}</option>
+                      <option key={d.id} value={districtLabel(d)}>{districtLabel(d)}</option>
                     ))}
                   </select>
                 </div>

@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { NIGHT_CITY_DISTRICTS } from '../../data/mapData';
+import { districtLabel } from '../../data/districtRegistry';
 import {
   Home,
   Shield,
@@ -32,7 +34,7 @@ export const SafeHousesSection: React.FC = () => {
   // AI Safe House Generator State
   const [isAiLoading, setIsAiLoading] = useState<boolean>(false);
   const [showAiOptions, setShowAiOptions] = useState<boolean>(false);
-  const [aiDistrict, setAiDistrict] = useState<string>('Watson');
+  const [aiDistrict, setAiDistrict] = useState<string>(districtLabel(NIGHT_CITY_DISTRICTS[1]));
   const [aiSecurity, setAiSecurity] = useState<string>('Média');
   const [aiPrompt, setAiPrompt] = useState<string>('');
   const [aiSafeHouse, setAiSafeHouse] = useState<SafeHouseItem | null>(null);
@@ -168,13 +170,7 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido:
                     onChange={e => setAiDistrict(e.target.value)}
                     className="w-full bg-[#0a0a0d] border border-zinc-800 rounded-lg p-2 text-xs text-zinc-200 focus:outline-none focus:border-amber-500"
                   >
-                    <option value="Watson">Watson</option>
-                    <option value="Westbrook">Westbrook</option>
-                    <option value="Heywood">Heywood</option>
-                    <option value="Pacifica">Pacifica</option>
-                    <option value="Santo Domingo">Santo Domingo</option>
-                    <option value="Centro Corporativo">Centro Corporativo</option>
-                    <option value="Badlands">Badlands</option>
+                    {NIGHT_CITY_DISTRICTS.map(d => (<option key={d.id} value={districtLabel(d)}>{districtLabel(d)}</option>))}
                   </select>
                 </div>
 

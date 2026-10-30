@@ -192,7 +192,7 @@ export const PeoplePage: React.FC = () => {
 
   // Dedicated Civilian (Everyday People) State
   const [civilianOccupationId, setCivilianOccupationId] = useState<CivilianOccupationId>('street_vendor');
-  const [civilianDistrictId, setCivilianDistrictId] = useState<CivilianDistrictOrigin>('watson');
+  const [civilianDistrictId, setCivilianDistrictId] = useState<CivilianDistrictOrigin>('watson-development');
   const [extraCivilianContext, setExtraCivilianContext] = useState<string>('');
   const [showCivilianAiOptions, setShowCivilianAiOptions] = useState<boolean>(false);
   const [isGeneratingCivilianAI, setIsGeneratingCivilianAI] = useState<boolean>(false);
@@ -446,7 +446,7 @@ export const PeoplePage: React.FC = () => {
     const newCiv: NPCSheet = {
       id: 'civ-manual-' + Date.now(),
       name: 'Cidadão de Night City',
-      faction: civilianDistrictId || 'watson',
+      faction: civilianDistrictId || 'watson-development',
       tier: 'civilian',
       system,
       role: 'Comerciante de Rua / Ambulante',
@@ -2833,7 +2833,7 @@ Táticas: ${generatedNPC.tactics}`;
                 <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 block font-mono">
                   2. Bairro / Distrito de Origem
                 </span>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs max-h-72 overflow-y-auto pr-1">
                   {CIVILIAN_DISTRICTS.map(dist => {
                     const isSelected = civilianDistrictId === dist.id;
                     return (
@@ -2847,7 +2847,7 @@ Táticas: ${generatedNPC.tactics}`;
                             : 'bg-[#0a0a0d] border-[#27272a] text-zinc-400 hover:bg-zinc-800'
                         }`}
                       >
-                        <span className="font-semibold text-zinc-200">{dist.name.split(' ')[0]}</span>
+                        <span className="font-semibold text-zinc-200 truncate">{dist.shortLabel}</span>
                         <span className="text-[9px] text-zinc-500 truncate">{dist.socialClass}</span>
                       </button>
                     );

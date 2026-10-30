@@ -1,3 +1,5 @@
+import { NIGHT_CITY_DISTRICTS } from './mapData';
+import { districtLabel, districtShortLabel, getDistrictById } from './districtRegistry';
 import { enrichNPCFromCodex } from '../services/codexCatalog';
 // ========================================================
 // GERADOR DEDICADO DE CIVIS & CIDADÃOS (CYBERPUNK RED)
@@ -19,13 +21,7 @@ export type CivilianOccupationId =
   | 'tech_repairman'
   | 'cubicle_tenant';
 
-export type CivilianDistrictOrigin =
-  | 'watson'
-  | 'heywood'
-  | 'pacifica'
-  | 'city_center'
-  | 'badlands'
-  | 'santo_domingo';
+export type CivilianDistrictOrigin = string; // id de distrito do mapa (ver districtRegistry)
 
 export interface CivilianOccupationOption {
   id: CivilianOccupationId;
@@ -127,14 +123,53 @@ export const CIVILIAN_OCCUPATIONS: CivilianOccupationOption[] = [
   },
 ];
 
-export const CIVILIAN_DISTRICTS: { id: CivilianDistrictOrigin; name: string; socialClass: string; typicalTrouble: string }[] = [
-  { id: 'watson', name: 'Watson (Little China & Kabuki)', socialClass: 'Classe Baixa / Imigrantes', typicalTrouble: 'Conflitos entre Maelstrom e Tyger Claws nas esquinas.' },
-  { id: 'heywood', name: 'Heywood (The Glen & Vista del Rey)', socialClass: 'Classe Trabalhadora / Bairros Unidos', typicalTrouble: 'Cobranças de proteção do Valentino e disputas familiares.' },
-  { id: 'pacifica', name: 'Pacifica (Zona de Combate & Hotspots)', socialClass: 'Marginalizados / Sem Serviços Públicos', typicalTrouble: 'Falta total de energia elétrica e trocas de tiros diárias.' },
-  { id: 'city_center', name: 'City Center (Distrito Corporativo)', socialClass: 'Executivos & Assalariados de Escritório', typicalTrouble: 'Espionagem corporativa, demissões sumárias e paranoia.' },
-  { id: 'santo_domingo', name: 'Santo Domingo (Rancho Coronado & Arroyo)', socialClass: 'Operários de Fábrica', typicalTrouble: 'Vazamentos químicos tóxicos e violência de gangue 6th Street.' },
-  { id: 'badlands', name: 'Periferia dos Badlands (Acampamentos)', socialClass: 'Refugiados & Trabalhadores de Estufa', typicalTrouble: 'Tempestades de areia ácida e ataques de saqueadores Wraiths.' },
-];
+interface DistrictProfile { socialClass: string; typicalTrouble: string }
+const PROFILE_WATSON: DistrictProfile = { socialClass: 'Classe Baixa / Imigrantes', typicalTrouble: 'Conflitos entre Maelstrom e Tyger Claws nas esquinas.' };
+const PROFILE_HEYWOOD: DistrictProfile = { socialClass: 'Classe Trabalhadora / Bairros Unidos', typicalTrouble: 'Cobranças de proteção do Valentino e disputas familiares.' };
+const PROFILE_PACIFICA: DistrictProfile = { socialClass: 'Marginalizados / Sem Serviços Públicos', typicalTrouble: 'Falta total de energia elétrica e trocas de tiros diárias.' };
+const PROFILE_CORP: DistrictProfile = { socialClass: 'Executivos & Assalariados de Escritório', typicalTrouble: 'Espionagem corporativa, demissões sumárias e paranoia.' };
+const PROFILE_SD: DistrictProfile = { socialClass: 'Operários de Fábrica', typicalTrouble: 'Vazamentos químicos tóxicos e violência de gangue 6th Street.' };
+const PROFILE_BADLANDS: DistrictProfile = { socialClass: 'Refugiados & Trabalhadores de Estufa', typicalTrouble: 'Tempestades de areia ácida e ataques de saqueadores Wraiths.' };
+
+const DISTRICT_PROFILE_BY_ID: Record<string, DistrictProfile> = {
+  'watson-development': { socialClass: 'Operários Industriais / Imigrantes', typicalTrouble: 'Fábricas poluentes, cobrança de dívidas e ataques do Maelstrom.' },
+  kabuki: { socialClass: 'Classe Baixa / Comerciantes de Rua', typicalTrouble: 'Mercados ilegais, agiotas e batidas da NCPD.' },
+  'little-china': PROFILE_WATSON,
+  'the-glen': PROFILE_HEYWOOD,
+  'north-heywood': PROFILE_HEYWOOD,
+  'heywood-docks': { socialClass: 'Estivadores / Famílias Latinas', typicalTrouble: 'Contrabando nas docas e disputas por turnos de trabalho.' },
+  'heywood-industrial': { socialClass: 'Operários de Fábrica', typicalTrouble: 'Acidentes de trabalho e brigas entre gangues rivais.' },
+  'pacifica-playground': PROFILE_PACIFICA,
+  'old-combat-zone': PROFILE_PACIFICA,
+  downtown: PROFILE_CORP,
+  'exec-zone': { socialClass: 'Elite Corporativa / Executivos', typicalTrouble: 'Segurança paranoica, sequestros e chantagem de alto nível.' },
+  'new-westbrook': { socialClass: 'Classe Média Alta / Profissionais', typicalTrouble: 'Roubo de propriedade intelectual e disputas imobiliárias.' },
+  'charter-hill': { socialClass: 'Elite Corporativa / Moradores de Condomínio', typicalTrouble: 'Vigilância constante e intrigas de vizinhança de alto padrão.' },
+  'old-japantown': { socialClass: 'Classe Média / Lojistas', typicalTrouble: 'Extorsão de gangues e turismo predatório.' },
+  'santo-domingo': PROFILE_SD,
+  'rancho-coronado': { socialClass: 'Classe Trabalhadora / Subúrbio', typicalTrouble: 'Roubos de carro e violência da 6th Street.' },
+  badlands: PROFILE_BADLANDS,
+};
+const PROFILE_BY_ZONE: Record<string, DistrictProfile> = {
+  Corporate: PROFILE_CORP,
+  Moderate: { socialClass: 'Classe Média / Trabalhadores', typicalTrouble: 'Aluguéis abusivos, crime oportunista e burocracia corporativa.' },
+  'Combat Zone': PROFILE_PACIFICA,
+  Outskirts: PROFILE_BADLANDS,
+  Industrial: { socialClass: 'Operários de Fábrica', typicalTrouble: 'Poluição, turnos exaustivos e gangues de bairro.' },
+};
+
+// Lista derivada dos distritos oficiais do mapa 2045 (inclui facções dominantes locais).
+export const CIVILIAN_DISTRICTS: { id: CivilianDistrictOrigin; name: string; shortLabel: string; socialClass: string; typicalTrouble: string }[] =
+  NIGHT_CITY_DISTRICTS.filter(d => d.id !== 'norcal-military').map(d => {
+    const prof = DISTRICT_PROFILE_BY_ID[d.id] || PROFILE_BY_ZONE[d.zoneType] || PROFILE_BY_ZONE.Moderate;
+    return {
+      id: d.id,
+      name: districtLabel(d),
+      shortLabel: districtShortLabel(d),
+      socialClass: prof.socialClass,
+      typicalTrouble: `${prof.typicalTrouble} Facções locais: ${d.dominantFactions.join(', ')}.`,
+    };
+  });
 
 export const CIVILIAN_NAMES = [
   'Mateo Ramirez', 'Li Na Chen', 'Tomasz Nowak', 'Maria Santos', 'Kenji Takahashi',
@@ -205,7 +240,7 @@ function buildCivilianRaw(options: {
   system: GameSystem;
 }): NPCSheet {
   const occ = CIVILIAN_OCCUPATIONS.find(o => o.id === options.occupationId) || CIVILIAN_OCCUPATIONS[Math.floor(Math.random() * CIVILIAN_OCCUPATIONS.length)];
-  const district = CIVILIAN_DISTRICTS.find(d => d.id === options.districtId) || CIVILIAN_DISTRICTS[Math.floor(Math.random() * CIVILIAN_DISTRICTS.length)];
+  const district = CIVILIAN_DISTRICTS.find(d => d.id === (getDistrictById(options.districtId)?.id || options.districtId)) || CIVILIAN_DISTRICTS[Math.floor(Math.random() * CIVILIAN_DISTRICTS.length)];
 
   const name = CIVILIAN_NAMES[Math.floor(Math.random() * CIVILIAN_NAMES.length)];
   const quirk = CIVILIAN_QUIRKS[Math.floor(Math.random() * CIVILIAN_QUIRKS.length)];

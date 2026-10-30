@@ -174,7 +174,7 @@ export function generateProceduralStructure(options: {
 }): TacticalStructure {
   const { category, scale, threatLevel } = options;
   const faction = options.faction || STRUCTURE_CATEGORY_INFO[category].defaultFaction;
-  const district = options.district || 'Watson (Northside Industrial)';
+  const district = options.district || 'Desenvolvimento de Watson';
 
   // Determine room count
   let targetRoomCount = 4;
