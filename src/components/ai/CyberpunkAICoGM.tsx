@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bot, X, Send, Key, Sparkles, Terminal, Shield, RefreshCw, Copy, Check, Trash2 } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import { CyberpunkMarkdown } from '../common/CyberpunkMarkdown';
 import { askCyberpunkAI, ChatMessage } from '../../services/aiService';
 import { useCampaign } from '../../context/CampaignContext';
 
@@ -197,121 +196,7 @@ Sou seu copiloto tático e narrativo em Night City. Conheço todas as regras ofi
                   </div>
                 ) : (
                   /* Assistant / System Rich Markdown Rendering */
-                  <div className="space-y-2 text-zinc-200">
-                    <ReactMarkdown
-                      remarkPlugins={[remarkGfm]}
-                      components={{
-                        // Headings
-                        h1: ({ children }) => (
-                          <h1 className="text-sm font-bold text-red-400 font-mono uppercase tracking-wider mt-2.5 mb-1 pb-1 border-b border-red-900/40 flex items-center gap-1.5">
-                            <span>#</span> {children}
-                          </h1>
-                        ),
-                        h2: ({ children }) => (
-                          <h2 className="text-xs font-bold text-amber-400 font-mono uppercase tracking-wide mt-2 mb-1 flex items-center gap-1">
-                            <span>##</span> {children}
-                          </h2>
-                        ),
-                        h3: ({ children }) => (
-                          <h3 className="text-xs font-bold text-cyan-400 font-mono mt-1.5 mb-0.5">
-                            {children}
-                          </h3>
-                        ),
-                        h4: ({ children }) => (
-                          <h4 className="text-[11px] font-bold text-purple-400 font-mono uppercase mt-1 mb-0.5">
-                            {children}
-                          </h4>
-                        ),
-                        // Text Stylings
-                        p: ({ children }) => (
-                          <p className="mb-1.5 last:mb-0 leading-relaxed text-zinc-300">
-                            {children}
-                          </p>
-                        ),
-                        strong: ({ children }) => (
-                          <strong className="font-bold text-zinc-100 bg-zinc-800/60 px-1 py-0.2 rounded font-sans">
-                            {children}
-                          </strong>
-                        ),
-                        em: ({ children }) => (
-                          <em className="italic text-zinc-300 font-serif">
-                            {children}
-                          </em>
-                        ),
-                        // Lists
-                        ul: ({ children }) => (
-                          <ul className="space-y-1 my-2 pl-1 list-none">
-                            {children}
-                          </ul>
-                        ),
-                        ol: ({ children }) => (
-                          <ol className="space-y-1 my-2 pl-4 list-decimal text-zinc-300 font-sans">
-                            {children}
-                          </ol>
-                        ),
-                        li: ({ children }) => (
-                          <li className="flex items-start gap-2 text-zinc-300 text-xs">
-                            <span className="text-red-500 font-bold select-none text-[13px] leading-tight">&bull;</span>
-                            <span className="flex-1">{children}</span>
-                          </li>
-                        ),
-                        // Quotes & Callouts
-                        blockquote: ({ children }) => (
-                          <blockquote className="border-l-2 border-red-500 bg-red-950/20 px-3 py-2 my-2 rounded-r-xl text-zinc-300 italic text-[11px] space-y-1">
-                            {children}
-                          </blockquote>
-                        ),
-                        // Inline & Block Codes
-                        code: ({ node, inline, className, children, ...props }: any) => {
-                          if (inline) {
-                            return (
-                              <code className="px-1.5 py-0.5 rounded bg-[#09090d] border border-zinc-800 text-cyan-300 font-mono text-[11px] font-bold" {...props}>
-                                {children}
-                              </code>
-                            );
-                          }
-                          return (
-                            <div className="my-2 rounded-xl bg-[#08080b] border border-zinc-800/90 p-3 overflow-x-auto font-mono text-[11px] text-zinc-300">
-                              <code {...props}>{children}</code>
-                            </div>
-                          );
-                        },
-                        // Tables
-                        table: ({ children }) => (
-                          <div className="overflow-x-auto my-2.5 rounded-xl border border-zinc-800 bg-[#0a0a0d]">
-                            <table className="w-full border-collapse text-[11px] font-mono">{children}</table>
-                          </div>
-                        ),
-                        thead: ({ children }) => (
-                          <thead className="bg-zinc-900 border-b border-zinc-800 text-zinc-200">{children}</thead>
-                        ),
-                        th: ({ children }) => (
-                          <th className="p-2 text-left font-bold text-cyan-300 border-r border-zinc-800/80 last:border-r-0 text-[10px] uppercase tracking-wider">
-                            {children}
-                          </th>
-                        ),
-                        td: ({ children }) => (
-                          <td className="p-2 border-t border-zinc-800/60 border-r border-zinc-800/60 last:border-r-0 text-zinc-300">
-                            {children}
-                          </td>
-                        ),
-                        // Links & Horizontal Lines
-                        a: ({ href, children }) => (
-                          <a
-                            href={href}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-cyan-400 hover:text-cyan-300 underline underline-offset-2 font-mono"
-                          >
-                            {children}
-                          </a>
-                        ),
-                        hr: () => <hr className="border-zinc-800 my-3" />,
-                      }}
-                    >
-                      {m.text}
-                    </ReactMarkdown>
-                  </div>
+                  <CyberpunkMarkdown content={m.text} />
                 )}
 
                 {/* Footer Bar: Timestamp & Copy Button */}

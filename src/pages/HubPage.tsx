@@ -20,6 +20,7 @@ import { useSystem } from '../context/SystemContext';
 import { useCampaign } from '../context/CampaignContext';
 import { useCombat } from '../context/CombatContext';
 import { ActivePage } from '../components/layout/Sidebar';
+import { CyberpunkMarkdownEditor } from '../components/common/CyberpunkMarkdownEditor';
 
 interface HubPageProps {
   onNavigate: (page: ActivePage) => void;
@@ -307,22 +308,14 @@ export const HubPage: React.FC<HubPageProps> = ({ onNavigate, onOpenTarot }) => 
       </div>
 
       {/* Quick Campaign Notes Scratchpad */}
-      <div className="p-5 rounded-2xl bg-[#121217] border border-[#27272a] space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-zinc-300">
-            <FileText className="w-4 h-4 text-red-500" />
-            <span>Bloco de Notas da Sessão (Persistência Local Automática)</span>
-          </div>
-          <span className="text-[11px] font-mono text-zinc-500">Salvo a cada caractere</span>
-        </div>
-        <textarea
-          rows={3}
-          value={notes}
-          onChange={e => setNotes(e.target.value)}
-          placeholder="Anote ganchos rápidos de missão, nomes de NPCs improvisados, senhas ou dívidas dos jogadores..."
-          className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-xl p-3 text-xs text-zinc-200 focus:outline-none focus:border-red-500 font-mono leading-relaxed"
-        />
-      </div>
+      <CyberpunkMarkdownEditor
+        value={notes}
+        onChange={setNotes}
+        label="Bloco de Notas da Sessão (Persistência Local Automática)"
+        badge="Markdown / Checklist / Rolagens RED"
+        placeholder="Anote ganchos rápidos de missão, nomes de NPCs improvisados, senhas ou dívidas dos jogadores...&#10;&#10;- [ ] Falar com o Fixer no Afterlife&#10;- [ ] Roubar o chip de dados na doca 4&#10;&#10;> [!DICA]&#10;> Clique na aba 'Visualizar' ou 'Split' para ver formatação rica!"
+        minRows={5}
+      />
     </div>
   );
 };

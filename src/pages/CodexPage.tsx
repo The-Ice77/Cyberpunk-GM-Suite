@@ -40,6 +40,7 @@ import { RuleEntry } from '../types/system';
 import { generateProceduralWeapon, generateProceduralCyberware } from '../data/customForgeData';
 import { generateAICustomWeaponDetailed, generateAICustomCyberwareDetailed } from '../services/aiService';
 import { GmReferenceTablesSection } from '../components/codex/GmReferenceTablesSection';
+import { CyberpunkMarkdownEditor } from '../components/common/CyberpunkMarkdownEditor';
 
 type MainTab = 'official' | 'campaign' | 'homebrew';
 type OfficialSubTab = 'bestiary' | 'rules';
@@ -1200,12 +1201,13 @@ export const CodexPage: React.FC = () => {
             <p className="text-[11px] text-zinc-400">
               Registre pontas soltas, traições corporativas agendadas, dívidas com Fixers, senhas de redes e acontecimentos da sua mesa:
             </p>
-            <textarea
+            <CyberpunkMarkdownEditor
               value={notes}
-              onChange={e => setNotes(e.target.value)}
-              placeholder="Ex: - Fixer Vee está devendo 2.000eb para a Arasaka.&#10;- Sargento Diego Ramos vai pedir propina no porto de Kabuki na sexta-feira.&#10;- A senha da fortaleza de dados do armazém da Biotechnica é 'CYBER-GEN-2045'."
-              rows={6}
-              className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-xl p-3.5 text-xs text-zinc-200 font-mono leading-relaxed focus:outline-none focus:border-amber-500"
+              onChange={setNotes}
+              label="Diário de Campanha"
+              badge="Markdown / GFM / Rolagens RED"
+              placeholder="Ex: - Fixer Vee está devendo 2.000eb para a Arasaka.&#10;- Sargento Diego Ramos vai pedir propina no porto de Kabuki na sexta-feira.&#10;- A senha da fortaleza de dados do armazém da Biotechnica é 'CYBER-GEN-2045'.&#10;&#10;> [!AVISO]&#10;> A patrulha da Max-Tac entrará em alerta se o combate durar mais de 3 rodadas."
+              minRows={8}
             />
           </div>
         </div>

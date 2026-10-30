@@ -174,6 +174,10 @@ import { NIGHT_CITY_DISTRICTS } from '../data/mapData';
 
 import { cyberpunkDB } from '../services/db';
 
+import { CyberpunkMarkdown } from '../components/common/CyberpunkMarkdown';
+
+import { CyberpunkMarkdownEditor } from '../components/common/CyberpunkMarkdownEditor';
+
 
 
 
@@ -872,8 +876,6 @@ ${rewardResult.nextSessionHooks.map(h => `• ${h}`).join('\n')}
 
   const [activeDiaryId, setActiveDiaryId] = useState<string>(diaries[0]?.id || 'diary-session-1');
 
-  const [diaryMode, setDiaryMode] = useState<'write' | 'preview'>('write');
-
 
 
   // Persist diaries in IndexedDB and LocalStorage
@@ -1214,20 +1216,6 @@ ${generatedScene.twist}`;
 
 
 
-  // Markdown Toolbar Inserter
-
-  const insertMarkdown = (prefix: string, suffix: string = '') => {
-
-    if (!currentDiary) return;
-
-    const updatedContent = currentDiary.content + `\n${prefix}texto${suffix}`;
-
-    updateCurrentDiaryContent(updatedContent);
-
-  };
-
-
-
   const updateCurrentDiaryContent = (text: string) => {
 
     setDiaries(prev =>
@@ -1276,120 +1264,9 @@ ${generatedScene.twist}`;
 
 
 
-  // Basic HTML-safe Markdown Formatter for Preview
-
+  // Full GFM Cyberpunk Markdown Formatter for Preview
   const renderMarkdownPreview = (text: string) => {
-
-    return text.split('\n').map((line, idx) => {
-
-      // Images: ![alt](url)
-
-      const imgMatch = line.match(/!\[(.*?)\]\((.*?)\)/);
-
-      if (imgMatch) {
-
-        return (
-
-          <div key={idx} className="my-3">
-
-            <img
-
-              src={imgMatch[2]}
-
-              alt={imgMatch[1]}
-
-              className="max-h-80 w-auto rounded-xl border border-zinc-800 object-cover shadow-md"
-
-              onError={(e) => { (e.target as any).src = 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80'; }}
-
-            />
-
-            {imgMatch[1] && <span className="text-[10px] text-zinc-500 font-mono mt-1 block">{imgMatch[1]}</span>}
-
-          </div>
-
-        );
-
-      }
-
-      // Headings
-
-      if (line.startsWith('# ')) {
-
-        return <h1 key={idx} className="text-xl font-bold text-zinc-100 border-b border-zinc-800 pb-2 my-3">{line.replace('# ', '')}</h1>;
-
-      }
-
-      if (line.startsWith('## ')) {
-
-        return <h2 key={idx} className="text-lg font-bold text-zinc-200 mt-4 mb-2">{line.replace('## ', '')}</h2>;
-
-      }
-
-      if (line.startsWith('### ')) {
-
-        return <h3 key={idx} className="text-sm font-bold text-cyan-400 font-mono mt-3 mb-1">{line.replace('### ', '')}</h3>;
-
-      }
-
-      // Blockquote
-
-      if (line.startsWith('> ')) {
-
-        return (
-
-          <blockquote key={idx} className="border-l-4 border-amber-500 pl-3 py-1 my-2 bg-amber-950/20 text-amber-200 text-xs italic rounded-r-lg">
-
-            {line.replace('> ', '')}
-
-          </blockquote>
-
-        );
-
-      }
-
-      // Horizontal Rule
-
-      if (line.trim() === '---') {
-
-        return <hr key={idx} className="border-zinc-800 my-4" />;
-
-      }
-
-      // Lists
-
-      if (line.startsWith('- [ ] ')) {
-
-        return <div key={idx} className="flex items-center gap-2 text-xs text-zinc-300 my-1"><span className="w-3.5 h-3.5 rounded border border-zinc-600 inline-block" /> {line.replace('- [ ] ', '')}</div>;
-
-      }
-
-      if (line.startsWith('- [x] ')) {
-
-        return <div key={idx} className="flex items-center gap-2 text-xs text-emerald-400 my-1"><Check className="w-3.5 h-3.5" /> <span className="line-through">{line.replace('- [x] ', '')}</span></div>;
-
-      }
-
-      if (line.startsWith('- ') || line.startsWith('* ')) {
-
-        return <li key={idx} className="text-xs text-zinc-300 ml-4 list-disc my-0.5">{line.substring(2)}</li>;
-
-      }
-
-      // Empty line
-
-      if (!line.trim()) {
-
-        return <div key={idx} className="h-2" />;
-
-      }
-
-      // Standard paragraph
-
-      return <p key={idx} className="text-xs text-zinc-300 leading-relaxed">{line}</p>;
-
-    });
-
+    return <CyberpunkMarkdown content={text} />;
   };
 
 
@@ -2258,50 +2135,6 @@ ${generatedScene.twist}`;
 
             <div className="flex items-center gap-2">
 
-              {/* Write vs Preview Toggle */}
-
-              <div className="flex items-center bg-[#14141a] border border-[#27272a] rounded-lg p-0.5 text-xs font-mono">
-
-                <button
-
-                  onClick={() => setDiaryMode('write')}
-
-                  className={`px-2.5 py-1 rounded-md transition flex items-center gap-1 ${
-
-                    diaryMode === 'write' ? 'bg-zinc-800 text-zinc-100 font-bold' : 'text-zinc-400'
-
-                  }`}
-
-                >
-
-                  <Edit className="w-3 h-3" />
-
-                  <span>Editar</span>
-
-                </button>
-
-                <button
-
-                  onClick={() => setDiaryMode('preview')}
-
-                  className={`px-2.5 py-1 rounded-md transition flex items-center gap-1 ${
-
-                    diaryMode === 'preview' ? 'bg-zinc-800 text-amber-400 font-bold' : 'text-zinc-400'
-
-                  }`}
-
-                >
-
-                  <Eye className="w-3 h-3" />
-
-                  <span>Visualizar</span>
-
-                </button>
-
-              </div>
-
-
-
               {diaries.length > 1 && (
 
                 <button
@@ -2364,143 +2197,15 @@ ${generatedScene.twist}`;
 
 
 
-              {/* Markdown Toolbar (visible in write mode) */}
-
-              {diaryMode === 'write' && (
-
-                <div className="flex flex-wrap items-center gap-1 p-1.5 rounded-xl bg-[#0a0a0d] border border-zinc-800 text-zinc-400">
-
-                  <button
-
-                    onClick={() => insertMarkdown('**', '**')}
-
-                    className="p-1.5 rounded hover:bg-zinc-800 hover:text-zinc-200"
-
-                    title="Negrito"
-
-                  >
-
-                    <Bold className="w-3.5 h-3.5" />
-
-                  </button>
-
-                  <button
-
-                    onClick={() => insertMarkdown('*', '*')}
-
-                    className="p-1.5 rounded hover:bg-zinc-800 hover:text-zinc-200"
-
-                    title="Itálico"
-
-                  >
-
-                    <Italic className="w-3.5 h-3.5" />
-
-                  </button>
-
-                  <button
-
-                    onClick={() => insertMarkdown('### ')}
-
-                    className="px-2 py-1 rounded text-[11px] font-mono hover:bg-zinc-800 hover:text-zinc-200"
-
-                    title="Título H3"
-
-                  >
-
-                    H3
-
-                  </button>
-
-                  <button
-
-                    onClick={() => insertMarkdown('- ')}
-
-                    className="p-1.5 rounded hover:bg-zinc-800 hover:text-zinc-200"
-
-                    title="Lista"
-
-                  >
-
-                    <List className="w-3.5 h-3.5" />
-
-                  </button>
-
-                  <button
-
-                    onClick={() => insertMarkdown('> ')}
-
-                    className="p-1.5 rounded hover:bg-zinc-800 hover:text-zinc-200"
-
-                    title="Citação"
-
-                  >
-
-                    <Quote className="w-3.5 h-3.5" />
-
-                  </button>
-
-                  <button
-
-                    onClick={() => insertMarkdown('---')}
-
-                    className="p-1.5 rounded hover:bg-zinc-800 hover:text-zinc-200"
-
-                    title="Linha Divisória"
-
-                  >
-
-                    <Minus className="w-3.5 h-3.5" />
-
-                  </button>
-
-                  <button
-
-                    onClick={() => insertMarkdown('![Legenda da Imagem](https://link-da-imagem.jpg)')}
-
-                    className="p-1.5 rounded hover:bg-zinc-800 hover:text-zinc-200 flex items-center gap-1 text-[11px] font-mono"
-
-                    title="Inserir Imagem por URL"
-
-                  >
-
-                    <ImageIcon className="w-3.5 h-3.5 text-cyan-400" />
-
-                    <span>Imagem</span>
-
-                  </button>
-
-                </div>
-
-              )}
-
-
-
-              {/* Textarea or Preview */}
-
-              {diaryMode === 'write' ? (
-
-                <textarea
-
-                  value={currentDiary.content}
-
-                  onChange={e => updateCurrentDiaryContent(e.target.value)}
-
-                  rows={18}
-
-                  className="w-full bg-[#0a0a0d] border border-[#27272a] rounded-xl p-4 text-xs font-mono text-zinc-200 leading-relaxed focus:outline-none focus:border-amber-500"
-
-                />
-
-              ) : (
-
-                <div className="p-6 rounded-xl bg-[#0a0a0d] border border-zinc-800/80 min-h-[400px] space-y-1 font-sans">
-
-                  {renderMarkdownPreview(currentDiary.content)}
-
-                </div>
-
-              )}
+              {/* Enhanced Cyberpunk Markdown Editor Workspace */}
+              <CyberpunkMarkdownEditor
+                value={currentDiary.content}
+                onChange={updateCurrentDiaryContent}
+                label={`Crônica: ${currentDiary.title}`}
+                badge="GFM / Rolagens RED"
+                minRows={18}
+                allowSplitView={true}
+              />
 
 
 

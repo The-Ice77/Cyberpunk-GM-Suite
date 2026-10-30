@@ -31,6 +31,7 @@ import {
   drawRandomTarotCard,
 } from '../data/tarotData';
 import { askCyberpunkAI } from '../services/aiService';
+import { CyberpunkMarkdown } from '../components/common/CyberpunkMarkdown';
 
 interface SavedReading {
   id: string;
@@ -450,11 +451,11 @@ Dê uma interpretação mística, sombria e imersiva das ruas de Night City em 2
                 </div>
 
                 {aiInterpretation ? (
-                  <div className="p-4 rounded-xl bg-black/70 border border-purple-800/60 text-xs text-zinc-200 font-sans leading-relaxed space-y-2">
-                    <p className="whitespace-pre-line italic text-purple-100">
-                      "{aiInterpretation}"
-                    </p>
-                    <span className="text-[10px] text-zinc-500 font-mono block text-right">
+                  <div className="p-4 rounded-xl bg-black/70 border border-purple-800/60 text-xs text-zinc-200 font-sans leading-relaxed space-y-3">
+                    <div className="border-l-2 border-purple-500 pl-3">
+                      <CyberpunkMarkdown content={aiInterpretation} />
+                    </div>
+                    <span className="text-[10px] text-zinc-500 font-mono block text-right pt-2 border-t border-purple-950/40">
                       — Misty Olszewski, Misty’s Esoterica, Watson
                     </span>
                   </div>

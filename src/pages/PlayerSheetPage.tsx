@@ -71,6 +71,7 @@ import {
 } from '../data/arsenalData';
 import { CodexItemSearchModal, CodexCategory } from '../components/character/CodexItemSearchModal';
 import { exportCharacterSheetToPrintPDF } from '../utils/sheetPdfExport';
+import { CyberpunkMarkdownEditor } from '../components/common/CyberpunkMarkdownEditor';
 
 type CreationMethod = 'streetrat' | 'edgerunner' | 'pointbuy';
 
@@ -2781,12 +2782,13 @@ export const PlayerSheetPage: React.FC = () => {
                   Este espaço armazena a história compilada do seu Edgerunner, contatos, dívidas e a crônica gerada por IA. Qualquer alteração aqui é sincronizada em tempo real com a ficha.
                 </p>
 
-                <textarea
-                  rows={6}
+                <CyberpunkMarkdownEditor
                   value={char.notes || ''}
-                  onChange={e => savePlayerCharacter({ ...char, notes: e.target.value })}
-                  placeholder="Escreva livremente o histórico do seu personagem ou clique em 'Gerar Crônica IA' acima..."
-                  className="w-full bg-[#0a0a0d] border border-zinc-800 rounded-xl p-3 text-xs text-zinc-200 focus:outline-none focus:border-rose-500 leading-relaxed font-sans"
+                  onChange={val => savePlayerCharacter({ ...char, notes: val })}
+                  label="Crônica & Anotações da Ficha"
+                  badge="Markdown / GFM"
+                  placeholder="Escreva livremente o histórico do seu personagem ou clique em 'Gerar Crônica IA' acima... Suporta **negrito**, tabelas, listas de contatos e alertas!"
+                  minRows={8}
                 />
               </div>
             </div>
