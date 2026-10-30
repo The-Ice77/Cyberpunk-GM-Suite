@@ -238,7 +238,7 @@ export const SCENE_IMPROV_DATA: SceneImprovTables = {
   zones: {
     'Centro Corporativo & Coberturas': {
       description: 'Arranha-céus espelhados, patrulhas de drones executivos e seguranças particulares engravatados com armas ocultas.',
-      districts: ['City Center', 'North Oak', 'Charter Hill'],
+      districts: ['Downtown · City Center', 'Novo Westbrook', 'Charter Hill · Westbrook'],
       sensory: {
         sights: [
           'Reflexos de painéis solares e telões gigantes em vidros espelhados negros de 80 andares.',
@@ -262,7 +262,7 @@ export const SCENE_IMPROV_DATA: SceneImprovTables = {
     },
     'Zona de Combate & Ruínas Urbanas': {
       description: 'Prédios bombardeados, ausência total de polícia, barricadas de lixo em chamas e tiroteios constantes.',
-      districts: ['Old Downtown', 'South Night City', 'Pacifica Coastview'],
+      districts: ['Downtown · City Center', 'South Night City', 'Pacifica Playground'],
       sensory: {
         sights: [
           'Carcaças de carros viradas e queimadas servindo de trincheiras furadas de balas de grosso calibre.',
@@ -286,7 +286,7 @@ export const SCENE_IMPROV_DATA: SceneImprovTables = {
     },
     'Distritos Populares & Subúrbios': {
       description: 'Ruas apinhadas de pedestres, prédios de apartamentos abarrotados, quiosques de comida de rua e neon piscando.',
-      districts: ['Watson Little China', 'Westbrook Japantown', 'Heywood Wellsprings', 'The Glen'],
+      districts: ['Little China · Watson', 'Old Japantown · Westbrook', 'North Heywood', 'The Glen · Heywood'],
       sensory: {
         sights: [
           'Varais de roupas e fios elétricos emaranhados cruzando o espaço entre prédios de seis andares.',
@@ -310,7 +310,7 @@ export const SCENE_IMPROV_DATA: SceneImprovTables = {
     },
     'Badlands & Territórios Nômades': {
       description: 'Extensões desérticas de terra vermelha rachada, tempestades de poeira e comboios de ferro e poeira.',
-      districts: ['Badlands Norte', 'Badlands Sul', 'Rodovia 101'],
+      districts: ['Badlands', 'Badlands', 'Badlands'],
       sensory: {
         sights: [
           'Planície de terra vermelha rachada estendendo-se até montanhas ressecadas sob um céu cinzento opaco.',
@@ -334,7 +334,7 @@ export const SCENE_IMPROV_DATA: SceneImprovTables = {
     },
     'Subsolo, Metrô Abandonado & Esgotos': {
       description: 'Túneis de serviço inundados, trilhos enferrujados de maglev e refúgios de comunidades subterrâneas.',
-      districts: ['Túneis do Maglev Antigo', 'Subsolo de Kabuki', 'Galerias Pluviais de Heywood'],
+      districts: ['Túneis do Maglev Antigo', 'Kabuki · Watson', 'The Glen · Heywood'],
       sensory: {
         sights: [
           'Trilhos de trem magnético retorcidos e cobertos por camadas de ferrugem e líquen bioluminescente.',
@@ -358,7 +358,7 @@ export const SCENE_IMPROV_DATA: SceneImprovTables = {
     },
     'Docas & Distrito Industrial Norte (NID)': {
       description: 'Contêineres de carga empilhados, guindastes gigantescos, depósitos frios e névoa salina corrosiva.',
-      districts: ['Watson NID', 'Porto de Night City', 'Doca de Contêineres Morro Rock'],
+      districts: ['Desenvolvimento de Watson', 'Porto de Night City', 'Morro Rock'],
       sensory: {
         sights: [
           'Paredes de contêineres marítimos empilhados em labirintos de quatro andares de altura.',
@@ -382,7 +382,7 @@ export const SCENE_IMPROV_DATA: SceneImprovTables = {
     },
     'Mercados Noturnos & Feiras de Rua': {
       description: 'Becos estreitos apinhados de bancas iluminadas por cordões de lâmpadas, cheiro de comida e armas contrabandeadas.',
-      districts: ['Mercado Noturno de Kabuki', 'Feira Livre de Vista del Rey', 'Beco dos Cromos'],
+      districts: ['Kabuki · Watson', 'The Glen · Heywood', 'Beco dos Cromos'],
       sensory: {
         sights: [
           'Lâmpadas incandescentes amarelas amarradas em cordas balançando sobre bancas cobertas de lona.',
@@ -430,7 +430,7 @@ export const SCENE_IMPROV_DATA: SceneImprovTables = {
     },
     'Clínicas de Ripperdocs Clandestinas': {
       description: 'Cadeiras cirúrgicas ensanguentadas, ferramentas odontológicas reaproveitadas e tubos de anestésico duvidoso.',
-      districts: ['Subsolo de Watson', 'Clínica de Beco em Pacifica', 'Laboratório Móvel de Heywood'],
+      districts: ['Desenvolvimento de Watson', 'Pacifica Playground', 'The Glen · Heywood'],
       sensory: {
         sights: [
           'Cadeira odontológica reclinável presa ao chão com cintas de contenção de couro reforçado.',

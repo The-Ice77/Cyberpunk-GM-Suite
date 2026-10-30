@@ -41,9 +41,9 @@ export const GANGS_LIST: GangProfile[] = [
     "category": "Booster",
     "leader": "Warlock / Declan Griffin",
     "turf": [
-      "Watson",
-      "Northside Industrial District (NID)",
-      "Little China",
+      "Desenvolvimento de Watson",
+      "Desenvolvimento de Watson",
+      "Little China · Watson",
       "Totentanz Club"
     ],
     "threatLevel": "Extremo",
@@ -116,10 +116,10 @@ export const GANGS_LIST: GangProfile[] = [
     "category": "Syndicate",
     "leader": "Mister Sato / Conselho de Oyabuns",
     "turf": [
-      "Japantown",
-      "Kabuki",
-      "Little China",
-      "Charter Hill"
+      "Old Japantown · Westbrook",
+      "Kabuki · Watson",
+      "Little China · Watson",
+      "Charter Hill · Westbrook"
     ],
     "threatLevel": "Alto",
     "identifiers": "Tatuagens japonesas tradicionais (irezumi) que brilham com tinta luminescente sob luz negra; motos esportivas velozes; ternos modernos de seda sintética ou jaquetas de motoqueiro.",
@@ -191,10 +191,10 @@ export const GANGS_LIST: GangProfile[] = [
     "category": "Combat/PMC",
     "leader": "Coronel Rick Morrison / Will Gunner",
     "turf": [
-      "Rancho Coronado",
-      "Arroyo",
-      "Charter Hill",
-      "Vista Del Rey periferia"
+      "Rancho Coronado · Santo Domingo",
+      "Santo Domingo",
+      "Charter Hill · Westbrook",
+      "The Glen · Heywood"
     ],
     "threatLevel": "Alto",
     "identifiers": "Fardas camufladas urbanas, coletes táticos pesados com bandeiras das Velhas Nações Unidas e dos EUA, bonés e jaquetas militares estilizadas.",
@@ -266,7 +266,7 @@ export const GANGS_LIST: GangProfile[] = [
     "leader": "The Great Bobo / Sem liderança centralizada formal",
     "turf": [
       "Zonas de Combate de Night City",
-      "Parques de Diversão Abandonados em Pacifica",
+      "Pacifica Playground",
       "Galerias Pluviais Subterrâneas"
     ],
     "threatLevel": "Extremo",
@@ -337,7 +337,7 @@ export const GANGS_LIST: GangProfile[] = [
     "category": "Cult",
     "leader": "Bispo Zachary / O Conclave dos Justos",
     "turf": [
-      "Zona de Combate Central",
+      "Old Combat Zone · Pacifica",
       "Igrejas Católicas e Protestantes em Ruínas",
       "Distritos de Cortiços Desolados"
     ],
@@ -408,9 +408,9 @@ export const GANGS_LIST: GangProfile[] = [
     "category": "Syndicate",
     "leader": "Padre Ibarra / Mama Welles / Don Gustavo",
     "turf": [
-      "Heywood",
-      "The Glen",
-      "Vista Del Rey",
+      "The Glen · Heywood",
+      "The Glen · Heywood",
+      "The Glen · Heywood",
       "El Coyote Cojo Bar"
     ],
     "threatLevel": "Alto",
@@ -481,8 +481,8 @@ export const GANGS_LIST: GangProfile[] = [
     "category": "Cult",
     "leader": "Brigitte / Placide / Ti Neptune",
     "turf": [
-      "Pacifica",
-      "Coastview",
+      "Pacifica Playground",
+      "Pacifica Playground",
       "Batty's Hotel",
       "Subterrâneos da Antiga Rede"
     ],
@@ -555,8 +555,8 @@ export const GANGS_LIST: GangProfile[] = [
     "category": "Party",
     "leader": "Lil Fish / Apex / Matilhas Descentralizadas",
     "turf": [
-      "Marina de Watson",
-      "Little China canais",
+      "Desenvolvimento de Watson",
+      "Little China · Watson",
       "Calçadões da Baía de Coronado"
     ],
     "threatLevel": "Médio",
@@ -627,8 +627,8 @@ export const GANGS_LIST: GangProfile[] = [
     "category": "Cult",
     "leader": "The Beloved Gaping Maw / General Grimm",
     "turf": [
-      "Estradas dos Badlands",
-      "Santo Domingo periferia",
+      "Badlands",
+      "Santo Domingo",
       "Depósitos de sucata industrial"
     ],
     "threatLevel": "Médio",
@@ -698,8 +698,8 @@ export const GANGS_LIST: GangProfile[] = [
     "category": "Prankster",
     "leader": "Count Vlad / O Maestro Fantasma",
     "turf": [
-      "Centro Corporativo",
-      "Teatros Abandonados de Westbrook",
+      "Downtown · City Center",
+      "Novo Westbrook",
       "Cemitérios e Criptas Nobres"
     ],
     "threatLevel": "Médio",
@@ -769,7 +769,7 @@ export const GANGS_LIST: GangProfile[] = [
     "category": "Combat/PMC",
     "leader": "Capitão Miller / Sarge Ortiz",
     "turf": [
-      "Arroyo Industrial",
+      "Santo Domingo",
       "Docas de Containers de Morro Bay",
       "Armazéns Ferroviários"
     ],
@@ -840,7 +840,7 @@ export const GANGS_LIST: GangProfile[] = [
     "category": "Nomad/Racer",
     "leader": "Santiago Rodriguez / Don Hernan",
     "turf": [
-      "Badlands Sul",
+      "Badlands",
       "Interestadual 101",
       "Postos Abandonados de Gasolina"
     ],
@@ -911,7 +911,7 @@ export const GANGS_LIST: GangProfile[] = [
     "category": "Booster",
     "leader": "Old Croc / Big Mike",
     "turf": [
-      "Esgotos e Canais de Pacifica",
+      "Pacifica Playground",
       "Canal de Del Coronado",
       "Estações de Tratamento Desativadas"
     ],
@@ -982,9 +982,9 @@ export const GANGS_LIST: GangProfile[] = [
     "category": "Poser",
     "leader": "Father Anderson / Papai Sabe Tudo",
     "turf": [
-      "Little Europe",
-      "Subúrbios de Westbrook",
-      "Ruas Residenciais de Charter Hill"
+      "Pequena Europa",
+      "Novo Westbrook",
+      "Charter Hill · Westbrook"
     ],
     "threatLevel": "Baixo",
     "identifiers": "Suéteres de lã sintética xadrez dos anos 50, cachimbos artificiais sem tabaco, sorrisos congelados e cortes de cabelo impecáveis estilo subúrbio retrô.",
@@ -1053,7 +1053,7 @@ export const GANGS_LIST: GangProfile[] = [
     "category": "Nomad/Racer",
     "leader": "Kestrel Tynon / O Barão do Asfalto",
     "turf": [
-      "Rotas Comerciais das Badlands",
+      "Badlands",
       "Postos de Pedágio Abandonados",
       "Oásis Tóxicos"
     ],
@@ -1125,7 +1125,7 @@ export const GANGS_LIST: GangProfile[] = [
     "leader": "Agente 711 / Conselho de Sombras",
     "turf": [
       "Centros Financeiros",
-      "Cafés Secretos em Charter Hill",
+      "Charter Hill · Westbrook",
       "Prédios de Telecomunicações"
     ],
     "threatLevel": "Alto",
@@ -1196,7 +1196,7 @@ export const GANGS_LIST: GangProfile[] = [
     "leader": "Sylvan / Timber",
     "turf": [
       "Florestas Queimadas ao Norte",
-      "Colinas de North Oak desmatadas",
+      "Novo Westbrook",
       "Parques Desérticos"
     ],
     "threatLevel": "Médio",
@@ -1266,8 +1266,8 @@ export const GANGS_LIST: GangProfile[] = [
     "category": "Party",
     "leader": "Sunburst / Mama Gaia",
     "turf": [
-      "Praias Tóxicas de Pacifica",
-      "Acampamentos de Tendas em Santo Domingo",
+      "Pacifica Playground",
+      "Santo Domingo",
       "Lixões"
     ],
     "threatLevel": "Baixo",
@@ -1337,8 +1337,8 @@ export const GANGS_LIST: GangProfile[] = [
     "category": "Nomad/Racer",
     "leader": "Herman Munster / Baron von Drag",
     "turf": [
-      "Interestaduais de Santo Domingo",
-      "Autódromo Abandonado de Pacifica",
+      "Santo Domingo",
+      "Pacifica Playground",
       "Estrada das Colinas"
     ],
     "threatLevel": "Alto",
@@ -1408,8 +1408,8 @@ export const GANGS_LIST: GangProfile[] = [
     "category": "Booster",
     "leader": "Titan Prime / Dra. Valerie Grey",
     "turf": [
-      "Little China",
-      "Watson Centro Médico",
+      "Little China · Watson",
+      "Desenvolvimento de Watson",
       "Laboratórios Desativados"
     ],
     "threatLevel": "Extremo",
@@ -1479,9 +1479,9 @@ export const GANGS_LIST: GangProfile[] = [
     "category": "Party",
     "leader": "Julian von Hohenlohe / Lady Astrid",
     "turf": [
-      "North Oak",
-      "Clubes Exclusivos de Cobertura em City Center",
-      "Marina de Luxo"
+      "Novo Westbrook",
+      "Downtown · City Center",
+      "Porto de Night City"
     ],
     "threatLevel": "Médio",
     "identifiers": "Roupas de alta costura europeia de marcas como Yves Saint-Laurent Sintético e Gucci Cyber; óculos escuros com armação de platina; cheiro de champanhe caro e cocaína sintética.",
@@ -1550,8 +1550,8 @@ export const GANGS_LIST: GangProfile[] = [
     "category": "Street/Territorial",
     "leader": "Sprocket / Velocity Kid",
     "turf": [
-      "Calçadas de Japantown",
-      "Corredores Expressos de Watson",
+      "Old Japantown · Westbrook",
+      "Desenvolvimento de Watson",
       "Passarelas Suspensas"
     ],
     "threatLevel": "Baixo",
@@ -1621,7 +1621,7 @@ export const GANGS_LIST: GangProfile[] = [
     "category": "Combat/PMC",
     "leader": "Major Braxton Vance / Operador Delta",
     "turf": [
-      "Charter Hill",
+      "Charter Hill · Westbrook",
       "Instalações de Telecomunicações",
       "Depósitos de Armas"
     ],
@@ -1692,9 +1692,9 @@ export const GANGS_LIST: GangProfile[] = [
     "category": "Street/Territorial",
     "leader": "Scarlett / Ruby Vance",
     "turf": [
-      "Rancho Coronado",
+      "Rancho Coronado · Santo Domingo",
       "Escolas e Pátios em Ruínas",
-      "Cortiços em Heywood"
+      "The Glen · Heywood"
     ],
     "threatLevel": "Médio",
     "identifiers": "Cabelos pintados de vermelho brilhante, jaquetas bordadas com nuvens vermelhas radioativas, tênis gastos com solas luminosas.",
@@ -1763,8 +1763,8 @@ export const GANGS_LIST: GangProfile[] = [
     "category": "Syndicate",
     "leader": "Dragão Dourado Chen / Shan Yu",
     "turf": [
-      "Chinatown",
-      "Mercado Central de Little China",
+      "Little China · Watson",
+      "Little China · Watson",
       "Docas de Frutos do Mar"
     ],
     "threatLevel": "Alto",
@@ -1834,7 +1834,7 @@ export const GANGS_LIST: GangProfile[] = [
     "category": "Poser",
     "leader": "O Diretor de Cena / Prima Donna Ophelia",
     "turf": [
-      "Teatros Abandonados de Westbrook",
+      "Novo Westbrook",
       "Little Italy",
       "Auditórios em Ruínas"
     ],
@@ -1905,8 +1905,8 @@ export const GANGS_LIST: GangProfile[] = [
     "category": "Booster",
     "leader": "Demolition Dan / Sledge",
     "turf": [
-      "Zona de Combate Sul",
-      "Pátios de Demolição de Arroyo",
+      "Old Combat Zone · Pacifica",
+      "Santo Domingo",
       "Armazéns Abandonados"
     ],
     "threatLevel": "Alto",
@@ -1976,9 +1976,9 @@ export const GANGS_LIST: GangProfile[] = [
     "category": "Street/Territorial",
     "leader": "Flash / Kitty Neon",
     "turf": [
-      "Kabuki",
+      "Kabuki · Watson",
       "Beco dos Sintetizadores",
-      "Telhados de Little China"
+      "Little China · Watson"
     ],
     "threatLevel": "Médio",
     "identifiers": "Jaquetas de couro sintético roxas e amarelas com relâmpagos fluorescentes; patins a jato ou tênis com propulsores pneumáticos; orelhas de gato cibernéticas.",
@@ -2047,8 +2047,8 @@ export const GANGS_LIST: GangProfile[] = [
     "category": "Cult",
     "leader": "Xamã Park Eun-ji / A Dama dos Sete Espíritos",
     "turf": [
-      "Beco dos Templos em Japantown",
-      "Subterrâneos de Little China",
+      "Old Japantown · Westbrook",
+      "Little China · Watson",
       "Santuários Clandestinos"
     ],
     "threatLevel": "Alto",
@@ -2118,8 +2118,8 @@ export const GANGS_LIST: GangProfile[] = [
     "category": "Poser",
     "leader": "Calliope / Terpsichore",
     "turf": [
-      "Galerias de Arte de Westbrook",
-      "Distrito da Moda em City Center",
+      "Novo Westbrook",
+      "Downtown · City Center",
       "Hotéis de Luxo"
     ],
     "threatLevel": "Baixo",
@@ -2190,7 +2190,7 @@ export const GANGS_LIST: GangProfile[] = [
     "leader": "Johnny Carson Clone / O Produtor Executivo",
     "turf": [
       "Estúdios de TV Abandonados",
-      "Centro Comercial de Japantown",
+      "Old Japantown · Westbrook",
       "Bairros de Entretenimento"
     ],
     "threatLevel": "Baixo",
@@ -2260,8 +2260,8 @@ export const GANGS_LIST: GangProfile[] = [
     "category": "Street/Territorial",
     "leader": "Princesa Sakura / Starlight",
     "turf": [
-      "Kabuki",
-      "Arcades de Little China",
+      "Kabuki · Watson",
+      "Little China · Watson",
       "Shopping Centers Subterrâneos"
     ],
     "threatLevel": "Médio",
@@ -2332,7 +2332,7 @@ export const GANGS_LIST: GangProfile[] = [
     "leader": "O Grande Roedor / Splinter Vermelho",
     "turf": [
       "Túneis do Antigo Metrô Abandonado",
-      "Galerias Subterrâneas de City Center",
+      "Downtown · City Center",
       "Lixão Central"
     ],
     "threatLevel": "Médio",
@@ -2403,7 +2403,7 @@ export const GANGS_LIST: GangProfile[] = [
     "leader": "Profeta Mordecai / O Juiz de Sangue",
     "turf": [
       "Zonas de Combate",
-      "Encruzilhadas Desoladas de Santo Domingo",
+      "Santo Domingo",
       "Ruínas do Holocausto Nuclear"
     ],
     "threatLevel": "Extremo",
@@ -2473,9 +2473,9 @@ export const GANGS_LIST: GangProfile[] = [
     "category": "Party",
     "leader": "Dr. Spore / Mycella",
     "turf": [
-      "Túneis Úmidos de Pacifica",
-      "Estufas Clandestinas em Heywood",
-      "Porões de Watson"
+      "Pacifica Playground",
+      "The Glen · Heywood",
+      "Desenvolvimento de Watson"
     ],
     "threatLevel": "Baixo",
     "identifiers": "Boinas em formato de cogumelos com pontos vermelhos e brancos; roupas tingidas com extratos botânicos; dedos manchados de fungos luminosos.",
@@ -2544,9 +2544,9 @@ export const GANGS_LIST: GangProfile[] = [
     "category": "Cult",
     "leader": "Adão Supremo / Mãe Eva Negra",
     "turf": [
-      "Zona de Combate de Morro Bay",
+      "Old Combat Zone · Pacifica",
       "Hospitais Psiquiátricos Abandonados",
-      "Subterrâneos de Charter Hill"
+      "Charter Hill · Westbrook"
     ],
     "threatLevel": "Alto",
     "identifiers": "Pele completamente tatuada com motivos anatômicos de órgãos expostos; enxertos exóticos como caudas pré-henséis e dentes de carnívoro; roupas mínimas de couro e correntes.",
@@ -2615,7 +2615,7 @@ export const GANGS_LIST: GangProfile[] = [
     "category": "Street/Territorial",
     "leader": "Rainha Roxy / Bianca Diamond",
     "turf": [
-      "Kabuki",
+      "Kabuki · Watson",
       "Beco dos Bordéis",
       "Avenida das Lanterna Vermelhas"
     ],
@@ -2686,7 +2686,7 @@ export const GANGS_LIST: GangProfile[] = [
     "category": "Booster",
     "leader": "Bones / Serra Dentada",
     "turf": [
-      "Zonas Industriais de Arroyo",
+      "Santo Domingo",
       "Desmanches de Automóveis",
       "Matadouros Abandonados"
     ],
@@ -2758,7 +2758,7 @@ export const GANGS_LIST: GangProfile[] = [
     "leader": "O Guardião das Cinzas / Irmão Mortis",
     "turf": [
       "Cemitério de Night City",
-      "Crematórios de North Oak periferia",
+      "Novo Westbrook",
       "Mausoléus"
     ],
     "threatLevel": "Médio",
@@ -2828,9 +2828,9 @@ export const GANGS_LIST: GangProfile[] = [
     "category": "Street/Territorial",
     "leader": "Capitão Hook / Maremoto Maria",
     "turf": [
-      "Docas de Morro Rock",
+      "Morro Rock",
       "Barcaças Flutuantes da Baía",
-      "Píeres de Watson"
+      "Desenvolvimento de Watson"
     ],
     "threatLevel": "Alto",
     "identifiers": "Tatuagens náuticas com âncoras e sereias cibernéticas; jaquetas de pescador amarelas manchadas de óleo combustível; pernas e braços biônicos reforçados com ligas marinhas anti-ferrugem.",
@@ -2900,7 +2900,7 @@ export const GANGS_LIST: GangProfile[] = [
     "leader": "O Alfa / Garra Vermelha",
     "turf": [
       "Zonas Florestais Abandonadas",
-      "Combat Zone Norte",
+      "Old Combat Zone · Pacifica",
       "Galpões Ferroviários"
     ],
     "threatLevel": "Alto",
@@ -2970,8 +2970,8 @@ export const GANGS_LIST: GangProfile[] = [
     "category": "Syndicate",
     "leader": "Madame Liu / A Rosa Negra",
     "turf": [
-      "Hotéis de Luxo de City Center",
-      "Casas de Chá de Charter Hill",
+      "Downtown · City Center",
+      "Charter Hill · Westbrook",
       "Clubes Privados"
     ],
     "threatLevel": "Alto",
@@ -3041,7 +3041,7 @@ export const GANGS_LIST: GangProfile[] = [
     "category": "Poser",
     "leader": "Dorothy / O Espantalho Louco",
     "turf": [
-      "Colinas Orientais de Santo Domingo",
+      "Santo Domingo",
       "Ruas de Paralelepípedo Pintadas de Amarelo",
       "Ferro-Velho"
     ],
@@ -3112,8 +3112,8 @@ export const GANGS_LIST: GangProfile[] = [
     "category": "Combat/PMC",
     "leader": "Warlord Vance / Capitão Rex",
     "turf": [
-      "Zona de Combate Central",
-      "Prédios Fortificados de Pacifica",
+      "Old Combat Zone · Pacifica",
+      "Pacifica Playground",
       "Perímetros Murados"
     ],
     "threatLevel": "Extremo",

@@ -47,7 +47,7 @@ import {
 } from 'lucide-react';
 import { useSystem } from '../context/SystemContext';
 import { useUserRole, CustomDistrictLocation } from '../context/UserRoleContext';
-import { getDistrictById } from '../data/districtRegistry';
+import { getDistrictById, districtLabel, districtShortLabel } from '../data/districtRegistry';
 import { NIGHT_CITY_DISTRICTS, MapDistrict, isPointInPolygon, detectDistrictByCoords, DISTRICT_LEGACY_ALIASES } from '../data/mapData';
 import { seasonalWeatherTables, strangeWeatherTable, urbanEventsList, StrangeWeatherRoll, UrbanEvent, WeatherRollEntry, DISTRICT_WEATHER_NUANCES } from '../data/weatherData';
 import { NIGHT_CITY_BARS, BarVenue } from '../data/barsData';
@@ -1755,7 +1755,7 @@ export const WorldPage: React.FC = () => {
                             : 'bg-[#181820] text-zinc-400 hover:text-zinc-200 border border-zinc-800'
                         }`}
                       >
-                        {d.name.split(' ')[0]}
+                        {d.shortName || districtShortLabel(d)}
                       </button>
                     ))}
                   </div>
@@ -3810,7 +3810,7 @@ export const WorldPage: React.FC = () => {
                           >
                             <option value="Qualquer">Qualquer Distrito</option>
                             {NIGHT_CITY_DISTRICTS.map(d => (
-                              <option key={d.id} value={d.name}>{d.name}</option>
+                              <option key={d.id} value={districtLabel(d)}>{districtLabel(d)}</option>
                             ))}
                           </select>
                         </div>

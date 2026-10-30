@@ -108,7 +108,7 @@ export const UserRoleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               {
                 id: 'fac-1',
                 name: 'Sindicato dos Corvos Negros',
-                turf: 'Subsolos de Watson',
+                turf: 'Kabuki · Watson',
                 leader: 'Valerie "Hex" Kane',
                 description: 'Rede autônoma de contrabandistas de chips neurais proibidos e armas militares.',
               },
