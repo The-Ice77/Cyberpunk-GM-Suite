@@ -48,6 +48,13 @@ import { useCombat } from '../context/CombatContext';
 import { GANGS_LIST } from '../data/gangsData';
 import { FACTIONS_LIST } from '../data/factionsData';
 import { NPCSheet, NPCTier } from '../types/system';
+import ThreatCalibrationPanel from '../components/common/ThreatCalibrationPanel';
+import {
+  ThreatCalibration,
+  DEFAULT_CALIBRATION,
+  applyThreatCalibration,
+  getPowerLabel,
+} from '../utils/threatScaling';
 import { getWeaponIcon, getCyberwareIcon, getGearIcon, getVehicleIcon } from '../utils/itemIcons';
 import { ImageUploadModal } from '../components/common/ImageUploadModal';
 import {
@@ -92,6 +99,7 @@ import {
   EnemySquad,
   SQUAD_PRESET_DEFINITIONS,
   generateEnemySquadOffline,
+  applySquadCalibration,
 } from '../data/squadGeneratorData';
 
 const FIRST_NAMES = ['Kael', 'Jax', 'Raven', 'Vektor', 'Rocco', 'Slick', 'Nyx', 'Brick', 'T-Bug', 'Zero', 'Crash', 'Elena', 'Malik', 'Hana', 'Dante', 'Blaze', 'Cipher', 'Viper', 'Spike', 'Ghost'];
@@ -122,6 +130,8 @@ export const PeoplePage: React.FC = () => {
       system: 'RED',
     });
   });
+  const [enemyCalibration, setEnemyCalibration] = useState<ThreatCalibration>({ ...DEFAULT_CALIBRATION });
+  const [squadCalibration, setSquadCalibration] = useState<ThreatCalibration>({ ...DEFAULT_CALIBRATION });
   const [squadCopied, setSquadCopied] = useState<boolean>(false);
   const [squadSendSuccess, setSquadSendSuccess] = useState<boolean>(false);
   const [squadToast, setSquadToast] = useState<string | null>(null);
@@ -515,8 +525,12 @@ export const PeoplePage: React.FC = () => {
       subfactionId: selectedSubfaction,
       system,
     });
-    setGeneratedNPC(npc);
-    setNpcToast(`NPC gerado pelas tabelas oficiais do Corebook & Dossier!`);
+    setGeneratedNPC(applyThreatCalibration(npc, enemyCalibration));
+    setNpcToast(
+      enemyCalibration.powerOffset !== 0
+        ? `Inimigo gerado — nível ${getPowerLabel(enemyCalibration.powerOffset).label}!`
+        : `NPC gerado pelas tabelas oficiais do Corebook & Dossier!`
+    );
     setTimeout(() => setNpcToast(null), 3000);
   };
 
@@ -532,7 +546,7 @@ export const PeoplePage: React.FC = () => {
         system,
         extraContext: extraNpcContext,
       });
-      setGeneratedNPC(npc);
+      setGeneratedNPC(applyThreatCalibration(npc, enemyCalibration));
       setNpcToast(`NPC aprofundado com inteligência artificial pelo Co-GM!`);
       setTimeout(() => setNpcToast(null), 3500);
     } catch (err) {
@@ -648,7 +662,7 @@ Stats: HP ${generatedCivilian.statsRED?.HP || 25} | SP ${generatedCivilian.stats
       missionContext: squadMissionContext,
       system,
     });
-    setGeneratedSquad(squad);
+    setGeneratedSquad(applySquadCalibration(squad, squadCalibration));
     setSquadToast(`Tropa "${squad.squadName}" gerada com sucesso (${squad.members.length} membros)!`);
     setTimeout(() => setSquadToast(null), 3500);
   };
@@ -668,7 +682,7 @@ Stats: HP ${generatedCivilian.statsRED?.HP || 25} | SP ${generatedCivilian.stats
         missionContext: squadMissionContext,
         system,
       });
-      setGeneratedSquad(squad);
+      setGeneratedSquad(applySquadCalibration(squad, squadCalibration));
       setSquadToast(`Tropa gerada e aprofundada com IA Co-GM com táticas únicas!`);
       setTimeout(() => setSquadToast(null), 4000);
     } catch (err) {
@@ -2351,6 +2365,9 @@ Táticas: ${generatedNPC.tactics}`;
                 )}
               </div>
 
+              {/* Calibragem de Poder do Inimigo */}
+              <ThreatCalibrationPanel value={enemyCalibration} onChange={setEnemyCalibration} accent="red" />
+
               {/* Opção Extra: Configurar Inimigo com IA (Gemini Co-GM) */}
               <div className="rounded-xl border border-red-900/40 bg-red-950/15 p-4 space-y-3">
                 <div className="flex items-center justify-between">
@@ -3316,16 +3333,18 @@ Táticas: ${generatedNPC.tactics}`;
                 <input
                   type="range"
                   min="2"
-                  max="10"
+                  max="16"
                   value={squadSize}
                   onChange={e => setSquadSize(Number(e.target.value))}
                   className="w-full accent-amber-500"
                 />
-                <div className="flex items-center justify-between text-[10px] font-mono text-zinc-500 mt-1">
+                <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[10px] font-mono text-zinc-500 mt-1">
                   <button type="button" onClick={() => setSquadSize(3)} className="hover:text-amber-400">Patrulha (3)</button>
                   <button type="button" onClick={() => setSquadSize(4)} className="hover:text-amber-400">Padrão (4)</button>
                   <button type="button" onClick={() => setSquadSize(6)} className="hover:text-amber-400">Choque (6)</button>
                   <button type="button" onClick={() => setSquadSize(8)} className="hover:text-amber-400">Bando (8)</button>
+                  <button type="button" onClick={() => setSquadSize(12)} className="hover:text-amber-400">Pelotão (12)</button>
+                  <button type="button" onClick={() => setSquadSize(16)} className="hover:text-amber-400">Horda (16)</button>
                 </div>
               </div>
 
@@ -3360,6 +3379,14 @@ Táticas: ${generatedNPC.tactics}`;
                   <span>Incluir Franco-Atirador / Sniper</span>
                 </label>
               </div>
+
+              {/* Calibragem de Poder da Tropa */}
+              <ThreatCalibrationPanel
+                value={squadCalibration}
+                onChange={setSquadCalibration}
+                showSpread
+                accent="amber"
+              />
 
               {/* Mission Context */}
               <div>

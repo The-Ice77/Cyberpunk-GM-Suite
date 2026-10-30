@@ -1,6 +1,7 @@
 import { GameSystem, NPCTier, NPCSheet, WeaponItem } from '../types/system';
 import { GANGS_LIST } from './gangsData';
 import { FACTIONS_LIST } from './factionsData';
+import { ThreatCalibration, applyThreatCalibration, getPowerLabel, isDefaultCalibration } from '../utils/threatScaling';
 
 export type SquadPresetId =
   | 'ncpd'
@@ -735,7 +736,7 @@ export function generateEnemySquadOffline(options: SquadGenerationOptions): Enem
   const presetDef = SQUAD_PRESET_DEFINITIONS[options.presetId] || SQUAD_PRESET_DEFINITIONS.ncpd;
   const factionName = options.customFactionName?.trim() || presetDef.defaultFaction;
   const threat = options.threatLevel || presetDef.defaultThreat;
-  const targetSize = Math.max(2, Math.min(10, options.squadSize || presetDef.defaultSize));
+  const targetSize = Math.max(2, Math.min(16, options.squadSize || presetDef.defaultSize));
 
   const radioCallsign = `${getRandomItem(presetDef.callsignPrefixes)} #${Math.floor(Math.random() * 89 + 10)}`;
 
@@ -876,5 +877,59 @@ export function generateEnemySquadOffline(options: SquadGenerationOptions): Enem
     surrenderThreshold: presetDef.surrenderRules,
     members,
     notes: options.missionContext || `Esquadrão gerado para combate imediato ou patrulha em Night City.`,
+  };
+}
+
+/**
+ * Aplica a Calibragem de Poder a uma tropa inteira (membros + fichas).
+ * O líder recebe +1 nível; `spread` gera variação individual entre os demais membros.
+ */
+export function applySquadCalibration(squad: EnemySquad, cal: ThreatCalibration): EnemySquad {
+  if (isDefaultCalibration(cal)) return squad;
+
+  const members = squad.members.map(m => {
+    const jitter = cal.spread > 0 && !m.isLeader
+      ? Math.floor(Math.random() * (cal.spread * 2 + 1)) - cal.spread
+      : 0;
+    const memberOffset = Math.max(-8, Math.min(8, cal.powerOffset + jitter + (m.isLeader ? 1 : 0)));
+    const sheet = applyThreatCalibration(m.sheet, cal, memberOffset);
+    const s = sheet.statsRED;
+    return {
+      ...m,
+      tier: sheet.tier,
+      roleTitle: sheet.role,
+      hp: s ? s.HP : m.hp,
+      maxHP: s ? s.HP : m.maxHP,
+      headSP: s ? s.headSP : m.headSP,
+      bodySP: s ? s.bodySP : m.bodySP,
+      combatNumber: s?.combatNumber ?? m.combatNumber,
+      ref: s ? s.REF : m.ref,
+      dex: s ? s.DEX : m.dex,
+      body: s ? s.BODY : m.body,
+      weapons: sheet.weapons.map(w => ({ name: w.name, damage: w.damage, rof: w.rof ?? 1, notes: w.notes })),
+      cyberware: sheet.cyberware,
+      gear: sheet.gear,
+      tacticalOrder: sheet.tactics || m.tacticalOrder,
+      sheet,
+    };
+  });
+
+  const label = getPowerLabel(cal.powerOffset).label;
+  const extraDirectives: string[] = [];
+  if (cal.traits.includes('never_surrender') || cal.cyberLevel === 'psycho') {
+    extraDirectives.push('4. Fanáticos: a tropa não recua nem se rende, mesmo com o líder caído.');
+  }
+  if (cal.traits.includes('ambush_ready')) {
+    extraDirectives.push('5. Emboscada: o grupo age primeiro no turno 1 se não for detectado.');
+  }
+  if (cal.powerOffset <= -3) {
+    extraDirectives.push('4. Moral frágil: a tropa quebra e foge ao perder dois membros.');
+  }
+
+  return {
+    ...squad,
+    members,
+    tacticalDirectives: [...squad.tacticalDirectives, ...extraDirectives],
+    notes: `${squad.notes ? squad.notes + '\n' : ''}⚡ Calibragem de Poder: ${label} (${cal.powerOffset > 0 ? '+' : ''}${cal.powerOffset})${cal.spread ? `, variação ±${cal.spread}` : ''}.`,
   };
 }
