@@ -1,3 +1,4 @@
+import { enrichNPCFromCodex, randomCodexPocketItems } from '../services/codexCatalog';
 // ========================================================
 // GERADOR NARRATIVO DE NPCS (CYBERPUNK RED & 2020)
 // Baseado no Core Rulebook (p. 388-409) & Danger Gal Dossier
@@ -166,7 +167,7 @@ export const NPC_POCKET_LOOT_TABLE = [
 ];
 
 // Gerador Algorítmico Canônico de NPCs
-export function generateNarrativeNPCOffline(options: {
+function buildNarrativeNPCRaw(options: {
   tier: NPCTier;
   archetypeId: NarrativeArchetypeId;
   factionCategory: 'gangs' | 'corps' | 'trauma' | 'police' | 'nomads' | 'independent';
@@ -385,7 +386,7 @@ export function generateNarrativeNPCOffline(options: {
 
   // Sorteia 3 itens dos bolsos
   const shuffledPockets = [...NPC_POCKET_LOOT_TABLE].sort(() => 0.5 - Math.random());
-  const pocketLoot = shuffledPockets.slice(0, 3);
+  const pocketLoot = [...shuffledPockets.slice(0, 2), ...randomCodexPocketItems(1, tier === 'boss' ? 500 : tier === 'miniboss' ? 250 : 120)];
 
   // Armas formatadas
   const weapons: WeaponItem[] = factionWeapons.map((wName, idx) => ({
@@ -466,4 +467,10 @@ export function generateNarrativeNPCOffline(options: {
     cyberware: factionGear,
     gear: pocketLoot,
   };
+}
+
+
+/** Gera o NPC e resolve armas, ciberware e equipamento diretamente no Códice. */
+export function generateNarrativeNPCOffline(options: Parameters<typeof buildNarrativeNPCRaw>[0]): NPCSheet {
+  return enrichNPCFromCodex(buildNarrativeNPCRaw(options));
 }

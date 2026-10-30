@@ -1,4 +1,5 @@
 import { WEAPONS_DATABASE } from './arsenalData';
+import { codexMarketItemsFor } from '../services/codexCatalog';
 
 export interface NightMarketItem {
   name: string;
@@ -412,7 +413,7 @@ export function generateProceduralNightMarket(customDistrict?: string): NightMar
       vendorPersonality: s.vendorPersonality,
       category: s.category,
       specialService: s.specialService,
-      items: shuffledItems,
+      items: [...shuffledItems, ...codexMarketItemsFor(s.category, 2)],
     };
   });
 

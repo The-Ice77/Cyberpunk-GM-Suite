@@ -36,6 +36,7 @@ import {
   STREET_DRUGS_DATABASE,
 } from '../data/arsenalData';
 import { POCKET_PERSONAL_ITEMS, BODY_BANK_HARVEST_TABLE } from '../data/lootData';
+import { getCodexCatalog, codexEntryToWeapon, pickFromCodex, randomCodexPocketItems } from '../services/codexCatalog';
 import {
   CORPSE_LOOT_TABLE,
   HIDDEN_STASH_TABLE,
@@ -164,34 +165,37 @@ export const ArsenalPage: React.FC = () => {
     let quality = 'Padrão';
 
     // Pick weapon pool according to tier
-    let eligibleWeapons = WEAPONS_DATABASE;
+    const codexWeapons: WeaponItem[] = getCodexCatalog().filter(x => x.kind === 'weapon').map(x => x.homebrew ? codexEntryToWeapon(x) : (x.raw as WeaponItem));
+    let eligibleWeapons = codexWeapons;
     if (lootTier === 'mook') {
       cash = Math.floor(Math.random() * 6 + 1) * 10; // 1d6*10eb
       ammoCount = Math.floor(Math.random() * 12) + 4;
       quality = Math.random() > 0.4 ? 'Qualidade Pobre (Suja/Enferrujada - Engasga com 1 no d10)' : 'Qualidade Padrão';
-      eligibleWeapons = WEAPONS_DATABASE.filter(w => w.category.includes('Pistola') || w.category.includes('Branca'));
+      eligibleWeapons = codexWeapons.filter(w => w.category.includes('Pistola') || w.category.includes('Branca'));
     } else if (lootTier === 'lieutenant') {
       cash = (Math.floor(Math.random() * 6 + 1) + Math.floor(Math.random() * 6 + 1)) * 50; // 2d6*50eb
       ammoCount = Math.floor(Math.random() * 25) + 15;
       ammoType = Math.random() > 0.5 ? 'Fuzil 5.56mm (AP Perfurante)' : 'Cartuchos 12GA Slug';
       quality = 'Qualidade Padrão Militar com Mira Holográfica';
-      eligibleWeapons = WEAPONS_DATABASE.filter(w => w.category.includes('Submetralhadora') || w.category.includes('Fuzil de Assalto') || w.category.includes('Espingarda'));
+      eligibleWeapons = codexWeapons.filter(w => w.category.includes('Submetralhadora') || w.category.includes('Fuzil de Assalto') || w.category.includes('Espingarda'));
     } else if (lootTier === 'miniboss') {
       cash = (Math.floor(Math.random() * 10 + 1)) * 100;
       ammoCount = Math.floor(Math.random() * 40) + 20;
       ammoType = 'Munição Incendiária / Elétrica EMP';
       quality = 'Excelente (+1 no Ataque) com Conectores Smartlink';
-      eligibleWeapons = WEAPONS_DATABASE.filter(w => w.category.includes('Fuzil') || w.category.includes('Pesada') || w.name.includes('Monokatana'));
+      eligibleWeapons = codexWeapons.filter(w => w.category.includes('Fuzil') || w.category.includes('Pesada') || w.name.includes('Monokatana'));
     } else {
       cash = (Math.floor(Math.random() * 10 + 1) + Math.floor(Math.random() * 10 + 1)) * 200;
       ammoCount = Math.floor(Math.random() * 60) + 30;
       ammoType = 'Munição Militar Pesada / Foguetes / Smart';
       quality = 'Lendária / Protótipo Militar (+1 Ataque, Confiabilidade MB)';
-      eligibleWeapons = WEAPONS_DATABASE.filter(w => w.category.includes('Pesada') || w.name.includes('Malorian') || w.name.includes('Barrett') || w.name.includes('Kendachi'));
+      eligibleWeapons = codexWeapons.filter(w => w.category.includes('Pesada') || w.name.includes('Malorian') || w.name.includes('Barrett') || w.name.includes('Kendachi'));
     }
 
-    const randomWeapon = eligibleWeapons[Math.floor(Math.random() * eligibleWeapons.length)] || WEAPONS_DATABASE[0];
+    const randomWeapon = eligibleWeapons[Math.floor(Math.random() * eligibleWeapons.length)] || codexWeapons[0];
     const randomGear = STREET_GEAR_DATABASE[Math.floor(Math.random() * STREET_GEAR_DATABASE.length)];
+    const codexAmmo = pickFromCodex({ kind: 'ammo', maxCost: lootTier === 'mook' ? 60 : undefined })[0];
+    if (codexAmmo) ammoType = `${codexAmmo.name} 📖`;
 
     let drugFound: string | undefined = undefined;
     if (Math.random() > 0.4) {
@@ -224,7 +228,7 @@ export const ArsenalPage: React.FC = () => {
       },
       gearDropped: `${randomGear.name} (${randomGear.category})`,
       drugDropped: drugFound,
-      pocketItems: [item1, item2],
+      pocketItems: [item1, item2, ...randomCodexPocketItems(1, lootTier === 'mook' ? 80 : 300)],
       harvestables: harvestList,
     });
   };

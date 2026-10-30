@@ -1,3 +1,4 @@
+import { enrichNPCFromCodex } from '../services/codexCatalog';
 // ========================================================
 // GERADOR DEDICADO DE CIVIS & CIDADÃOS (CYBERPUNK RED)
 // Baseado no DLC Everyday People & Night City Lore
@@ -198,7 +199,7 @@ export const CIVILIAN_POCKET_LOOT = [
 ];
 
 // Gerador Algorítmico Canônico de Civis (Everyday People)
-export function generateCivilianOffline(options: {
+function buildCivilianRaw(options: {
   occupationId?: CivilianOccupationId;
   districtId?: CivilianDistrictOrigin;
   system: GameSystem;
@@ -300,4 +301,10 @@ export function generateCivilianOffline(options: {
     cyberware: ['Sem implantes militares', 'Interface neural civil básica (ou chip pessoal)'],
     gear: pocketLoot,
   };
+}
+
+
+/** Gera o civil e resolve armas de autodefesa diretamente no Códice. */
+export function generateCivilianOffline(options: Parameters<typeof buildCivilianRaw>[0]): NPCSheet {
+  return enrichNPCFromCodex(buildCivilianRaw(options));
 }

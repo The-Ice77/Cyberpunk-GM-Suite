@@ -1,3 +1,4 @@
+import { pickFromCodex } from '../services/codexCatalog';
 // ========================================================
 // SISTEMA OFICIAL DE RECOMPENSAS DE FIM DE SESSÃO & PROGRESSÃO
 // Baseado no Cyberpunk RED Core Rulebook (págs. 410-412)
@@ -588,6 +589,21 @@ export function calculateSessionRewardsOffline(options: {
     // Pega um item randômico
     const randomItem = SPECIAL_SALVAGE_POOL[Math.floor(Math.random() * SPECIAL_SALVAGE_POOL.length)];
     specialLoot.push(randomItem);
+  }
+
+  // Item adicional sorteado diretamente do Códice (oficial + homebrew)
+  const codexLoot = pickFromCodex({ kind: Math.random() > 0.5 ? 'weapon' : 'cyberware', minCost: 100 })[0];
+  if (codexLoot) {
+    specialLoot.push({
+      id: 'codex-' + Date.now(),
+      name: codexLoot.name + ' 📖',
+      category: codexLoot.kind === 'weapon' ? 'Armamento' : 'Cromo/Cyberware',
+      valueEb: codexLoot.costEb,
+      description: codexLoot.description || 'Item recuperado, listado no Códice.',
+      mechanicalEffect: codexLoot.kind === 'weapon'
+        ? 'Dano ' + codexLoot.raw.damage + ', ROF ' + (codexLoot.raw.rof ?? 1) + '. Custo de referência: ' + codexLoot.costLabel
+        : 'Perda de Humanidade ' + codexLoot.raw.humanityLoss + '. Requer ripperdoc para instalar.',
+    } as SpecialSalvageItem);
   }
 
   const mvpHighlights = [

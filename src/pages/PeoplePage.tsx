@@ -48,6 +48,7 @@ import { useCombat } from '../context/CombatContext';
 import { GANGS_LIST } from '../data/gangsData';
 import { FACTIONS_LIST } from '../data/factionsData';
 import { NPCSheet, NPCTier } from '../types/system';
+import { enrichNPCFromCodex } from '../services/codexCatalog';
 import ThreatCalibrationPanel from '../components/common/ThreatCalibrationPanel';
 import {
   ThreatCalibration,
@@ -100,6 +101,7 @@ import {
   SQUAD_PRESET_DEFINITIONS,
   generateEnemySquadOffline,
   applySquadCalibration,
+  codexifySquad,
 } from '../data/squadGeneratorData';
 
 const FIRST_NAMES = ['Kael', 'Jax', 'Raven', 'Vektor', 'Rocco', 'Slick', 'Nyx', 'Brick', 'T-Bug', 'Zero', 'Crash', 'Elena', 'Malik', 'Hana', 'Dante', 'Blaze', 'Cipher', 'Viper', 'Spike', 'Ghost'];
@@ -525,7 +527,7 @@ export const PeoplePage: React.FC = () => {
       subfactionId: selectedSubfaction,
       system,
     });
-    setGeneratedNPC(applyThreatCalibration(npc, enemyCalibration));
+    setGeneratedNPC(applyThreatCalibration(enrichNPCFromCodex(npc), enemyCalibration));
     setNpcToast(
       enemyCalibration.powerOffset !== 0
         ? `Inimigo gerado — nível ${getPowerLabel(enemyCalibration.powerOffset).label}!`
@@ -546,7 +548,7 @@ export const PeoplePage: React.FC = () => {
         system,
         extraContext: extraNpcContext,
       });
-      setGeneratedNPC(applyThreatCalibration(npc, enemyCalibration));
+      setGeneratedNPC(applyThreatCalibration(enrichNPCFromCodex(npc), enemyCalibration));
       setNpcToast(`NPC aprofundado com inteligência artificial pelo Co-GM!`);
       setTimeout(() => setNpcToast(null), 3500);
     } catch (err) {
@@ -564,7 +566,7 @@ export const PeoplePage: React.FC = () => {
       districtId: civilianDistrictId,
       system,
     });
-    setGeneratedCivilian(civ);
+    setGeneratedCivilian(enrichNPCFromCodex(civ));
     setCivilianToast(`Cidadão gerado pelas regras de Everyday People!`);
     setTimeout(() => setCivilianToast(null), 3000);
   };
@@ -579,7 +581,7 @@ export const PeoplePage: React.FC = () => {
         system,
         extraContext: extraCivilianContext,
       });
-      setGeneratedCivilian(civ);
+      setGeneratedCivilian(enrichNPCFromCodex(civ));
       setCivilianToast(`Cidadão único aprofundado com IA Co-GM!`);
       setTimeout(() => setCivilianToast(null), 3500);
     } catch (err) {
@@ -621,7 +623,7 @@ Stats: HP ${generatedCivilian.statsRED?.HP || 25} | SP ${generatedCivilian.stats
       ownerFaction: petOwnerFaction,
       system,
     });
-    setGeneratedPet(pet);
+    setGeneratedPet(enrichNPCFromCodex(pet));
     setPetToast(`Pet gerado com regras canônicas de animais (Interface RED)!`);
     setTimeout(() => setPetToast(null), 3000);
   };
@@ -638,7 +640,7 @@ Stats: HP ${generatedCivilian.statsRED?.HP || 25} | SP ${generatedCivilian.stats
         system,
         extraContext: extraPetContext,
       });
-      setGeneratedPet(pet);
+      setGeneratedPet(enrichNPCFromCodex(pet));
       setPetToast(`Pet gerado com IA e peculiaridades do universo Cyberpunk!`);
       setTimeout(() => setPetToast(null), 3500);
     } catch (err) {
@@ -662,7 +664,7 @@ Stats: HP ${generatedCivilian.statsRED?.HP || 25} | SP ${generatedCivilian.stats
       missionContext: squadMissionContext,
       system,
     });
-    setGeneratedSquad(applySquadCalibration(squad, squadCalibration));
+    setGeneratedSquad(applySquadCalibration(codexifySquad(squad), squadCalibration));
     setSquadToast(`Tropa "${squad.squadName}" gerada com sucesso (${squad.members.length} membros)!`);
     setTimeout(() => setSquadToast(null), 3500);
   };
@@ -682,7 +684,7 @@ Stats: HP ${generatedCivilian.statsRED?.HP || 25} | SP ${generatedCivilian.stats
         missionContext: squadMissionContext,
         system,
       });
-      setGeneratedSquad(applySquadCalibration(squad, squadCalibration));
+      setGeneratedSquad(applySquadCalibration(codexifySquad(squad), squadCalibration));
       setSquadToast(`Tropa gerada e aprofundada com IA Co-GM com táticas únicas!`);
       setTimeout(() => setSquadToast(null), 4000);
     } catch (err) {
@@ -906,7 +908,7 @@ Implantes: ${generatedPet.cyberware.join(', ')}`;
         gear: ['Agente Descartável', '1d6x10eb em credstick', 'Munição extra (20 tiros)'],
       };
 
-      setGeneratedNPC(newNPC);
+      setGeneratedNPC(enrichNPCFromCodex(newNPC));
     } else {
       // Corporation, Trauma, Police, Nomads
       const factionKey = selectedCategory === 'trauma' ? 'trauma-team' : selectedCategory === 'police' ? 'ncpd' : selectedCategory === 'nomads' ? 'nomads-civilians' : selectedSubfaction;
@@ -975,7 +977,7 @@ Implantes: ${generatedPet.cyberware.join(', ')}`;
         gear: ['Rádio Criptografado', 'Credstick Corporativo', 'Kit Médico Rápido'],
       };
 
-      setGeneratedNPC(newNPC);
+      setGeneratedNPC(enrichNPCFromCodex(newNPC));
     }
   };
 

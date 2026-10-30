@@ -1,6 +1,7 @@
 import { GameSystem, NPCTier, NPCSheet, WeaponItem } from '../types/system';
 import { GANGS_LIST } from './gangsData';
 import { FACTIONS_LIST } from './factionsData';
+import { enrichNPCFromCodex } from '../services/codexCatalog';
 import { ThreatCalibration, applyThreatCalibration, getPowerLabel, isDefaultCalibration } from '../utils/threatScaling';
 
 export type SquadPresetId =
@@ -761,7 +762,7 @@ export function generateEnemySquadOffline(options: SquadGenerationOptions): Enem
   }
 
   // Create members
-  const members: SquadMember[] = roles.map((role, idx) => {
+  const rawMembers: SquadMember[] = roles.map((role, idx) => {
     const isLeader = idx === 0;
     const stats = calculateRoleStats(role, threat, isLeader, options.system);
     const firstName = getRandomItem(SQUAD_FIRST_NAMES);
@@ -852,6 +853,8 @@ export function generateEnemySquadOffline(options: SquadGenerationOptions): Enem
     };
   });
 
+  const members: SquadMember[] = rawMembers.map(codexifyMember);
+
   const specialAssetsCount = Math.min(presetDef.specialAssetsPool.length, threat === 'Pesadelo' ? 4 : threat === 'Extremo' ? 3 : 2);
   const selectedAssets = [...presetDef.specialAssetsPool].slice(0, specialAssetsCount);
 
@@ -932,4 +935,20 @@ export function applySquadCalibration(squad: EnemySquad, cal: ThreatCalibration)
     tacticalDirectives: [...squad.tacticalDirectives, ...extraDirectives],
     notes: `${squad.notes ? squad.notes + '\n' : ''}⚡ Calibragem de Poder: ${label} (${cal.powerOffset > 0 ? '+' : ''}${cal.powerOffset})${cal.spread ? `, variação ±${cal.spread}` : ''}.`,
   };
+}
+
+/** Resolve armas, ciberware e equipamento de um membro diretamente no Códice. */
+export function codexifyMember(m: SquadMember): SquadMember {
+  const sheet = enrichNPCFromCodex(m.sheet);
+  return {
+    ...m,
+    weapons: sheet.weapons.map(w => ({ name: w.name, damage: w.damage, rof: w.rof ?? 1, notes: w.notes })),
+    cyberware: sheet.cyberware,
+    gear: sheet.gear,
+    sheet,
+  };
+}
+
+export function codexifySquad(squad: EnemySquad): EnemySquad {
+  return { ...squad, members: squad.members.map(codexifyMember) };
 }
